@@ -10,6 +10,7 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  sequence_diagrams: false            # Sequence Diagram 생성 비활성화
 
   path_filters:                       # 리뷰에서 제외할 파일 패턴
     - "!**/README.md"                  # README.md 파일 제외
@@ -64,5 +65,14 @@ reviews:
       enabled: false
     biome:
       enabled: false
+    deket:
+      enabled: true                    # 의존성 보안 취약점 검사
+      severity_threshold: medium       # 중간 이상 심각도만 리포트
+      fail_on_high: true              # 높은 심각도 발견 시 실패
+      exclude_paths:                   # 검사에서 제외할 경로
+        - "**/test/**"
+        - "**/tests/**"
+        - "**/node_modules/**"
+      include_dev_dependencies: false  # 개발 의존성 제외
 chat:
   auto_reply: true                     # 질문에 자동 응답
