@@ -1,0 +1,68 @@
+language: ko-KR
+early_access: true
+enable_free_tier: true
+
+reviews:
+  profile: chill
+  request_changes_workflow: true      # 리뷰 후 필요한 경우 변경 요청
+  high_level_summary: true            # 변경 사항 요약 제공
+  high_level_summary_placeholder: '@coderabbitai 요약'   # 요약 기본 문구
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  path_filters:                       # 리뷰에서 제외할 파일 패턴
+    - "!**/README.md"                  # README.md 파일 제외
+
+  abort_on_close: true                 # PR이 닫히면 리뷰 중단
+
+  auto_review:
+    enabled: true                      # 자동 리뷰 활성화
+    auto_incremental_review: true      # 변경분만 점진적으로 리뷰
+    base_branches: []
+
+
+  tools:                               # 활성화할 정적 분석/품질 도구
+    shellcheck:
+      enabled: true                    # 셸 스크립트 검사
+    markdownlint:
+      enabled: true                    # Markdown 문법 검사
+    github-checks:
+      enabled: true                    # GitHub Checks API 활용
+      timeout_ms: 90000                 # 타임아웃 90초
+    languagetool:
+      enabled: true                    # 문법/언어 검사
+      disabled_rules:                  # 비활성화할 규칙
+        - EN_UNPAIRED_BRACKETS
+        - EN_UNPAIRED_QUOTES
+      disabled_categories:             # 비활성화할 카테고리
+        - TYPOS
+        - TYPOGRAPHY
+        - CASING
+      enabled_only: false
+      level: default
+      enabled_rules: []                 # 활성화할 특정 규칙 없음
+      enabled_categories: []            # 활성화할 특정 카테고리 없음
+    hadolint:
+      enabled: true                    # Dockerfile 검사
+    yamllint:
+      enabled: true                    # YAML 문법 검사
+    checkov:
+      enabled: true                    # 인프라 보안 검사(IaC)
+    ast-grep:
+      packages: []                      # AST 기반 패턴 검사
+      rule_dirs: []
+      util_dirs: []
+      essential_rules: true
+    ruff:
+      enabled: false
+    swiftlint:
+      enabled: false
+    phpstan:
+      enabled: false
+    golangci-lint:
+      enabled: false
+    biome:
+      enabled: false
+chat:
+  auto_reply: true                     # 질문에 자동 응답
