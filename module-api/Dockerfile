@@ -1,37 +1,34 @@
 # Stage 1: Build stage  
-FROM gradle:8.14.3-jdk21 AS builder
+FROM openjdk:21-jdk-slim AS builder
 
 WORKDIR /app
 
-ENV GRADLE_USER_HOME=/gradle
+# 패키지 업데이트 및 필요한 도구 설치
+RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
-COPY gradlew gradle.properties settings.gradle.kts ./
-COPY gradle ./gradle
+# Gradle 직접 설치
+RUN curl -L https://services.gradle.org/distributions/gradle-8.14.3-bin.zip -o gradle.zip && \
+    unzip gradle.zip && \
+    mv gradle-8.14.3 /opt/gradle && \
+    rm gradle.zip
+ENV PATH="/opt/gradle/bin:$PATH"
 
-# 프로젝트 빌드 파일들 복사
+# 프로젝트 설정 파일들 복사
+COPY gradle.properties settings.gradle.kts ./
 COPY build.gradle.kts ./
 COPY module-api/build.gradle.kts ./module-api/
 COPY module-domain/build.gradle.kts ./module-domain/
 COPY module-infra/build.gradle.kts ./module-infra/
 COPY module-global-utils/build.gradle.kts ./module-global-utils/
 
-# 의존성 다운로드 (타임아웃과 재시도 설정)
-RUN gradle --no-daemon --build-cache dependencies \
-    --refresh-dependencies \
-    -Dorg.gradle.daemon=false \
-    -Dorg.gradle.parallel=false \
-    -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" \
-    --stacktrace || \
-    gradle --no-daemon dependencies --stacktrace
-
-# 소스 코드 복사
+# 소스 코드 먼저 복사
 COPY module-api/src ./module-api/src
 COPY module-domain/src ./module-domain/src
 COPY module-infra/src ./module-infra/src
 COPY module-global-utils/src ./module-global-utils/src
 
-# 애플리케이션 빌드 (시스템 gradle 사용)
-RUN gradle :module-api:bootJar --no-daemon --build-cache -x test
+# 빌드와 의존성 다운로드를 한 번에 (더 효율적)
+RUN gradle :module-api:bootJar --no-daemon -x test --stacktrace
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre-alpine
