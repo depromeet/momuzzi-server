@@ -27,7 +27,6 @@ COPY module-domain/src ./module-domain/src
 COPY module-infra/src ./module-infra/src
 COPY module-global-utils/src ./module-global-utils/src
 
-# 빌드와 의존성 다운로드를 한 번에 (더 효율적)
 RUN gradle :module-api:bootJar --no-daemon -x test --stacktrace
 
 # Stage 2: Runtime stage
