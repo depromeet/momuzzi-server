@@ -1,14 +1,12 @@
 # Stage 1: Build stage
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM gradle:8.14.3-jdk21-alpine AS builder
 
 WORKDIR /app
 
 ENV GRADLE_USER_HOME=/gradle
 
-# Gradle Wrapper와 설정 파일들 복사 (캐시 최적화)
 COPY gradlew gradle.properties settings.gradle.kts ./
 COPY gradle ./gradle
-RUN chmod +x gradlew
 
 # 프로젝트 빌드 파일들 복사
 COPY build.gradle.kts ./
@@ -17,9 +15,8 @@ COPY module-domain/build.gradle.kts ./module-domain/
 COPY module-infra/build.gradle.kts ./module-infra/
 COPY module-global-utils/build.gradle.kts ./module-global-utils/
 
-# 의존성 다운로드
-RUN ./gradlew --no-daemon --build-cache dependencies --refresh-dependencies || \
-    ./gradlew --no-daemon --build-cache dependencies
+# 의존성 다운로드 (시스템 gradle 사용)
+RUN gradle --no-daemon --build-cache dependencies
 
 # 소스 코드 복사
 COPY module-api/src ./module-api/src
@@ -27,8 +24,8 @@ COPY module-domain/src ./module-domain/src
 COPY module-infra/src ./module-infra/src
 COPY module-global-utils/src ./module-global-utils/src
 
-# 애플리케이션 빌드 (테스트 스킵)
-RUN ./gradlew :module-api:bootJar --no-daemon --build-cache -x test
+# 애플리케이션 빌드 (시스템 gradle 사용)
+RUN gradle :module-api:bootJar --no-daemon --build-cache -x test
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre-alpine
