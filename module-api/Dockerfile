@@ -17,8 +17,9 @@ COPY module-domain/build.gradle.kts ./module-domain/
 COPY module-infra/build.gradle.kts ./module-infra/
 COPY module-global-utils/build.gradle.kts ./module-global-utils/
 
-# 의존성 다운로드 (캐시 최적화)
-RUN ./gradlew --no-daemon --build-cache dependencies
+# 의존성 다운로드
+RUN ./gradlew --no-daemon --build-cache dependencies --refresh-dependencies || \
+    ./gradlew --no-daemon --build-cache dependencies
 
 # 소스 코드 복사
 COPY module-api/src ./module-api/src
@@ -32,7 +33,8 @@ RUN ./gradlew :module-api:bootJar --no-daemon --build-cache -x test
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre-alpine
 
-RUN apk add --no-cache tzdata && \
+RUN apk add --no-cache curl bash unzip git ca-certificates tzdata && \
+    update-ca-certificates && \
     cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
     apk del tzdata
