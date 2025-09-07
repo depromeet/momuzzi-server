@@ -1,0 +1,45 @@
+services:
+  backend:
+    container_name: backend
+    build:
+      context: .
+      dockerfile: module-api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_USER=${PROD_DB_USERNAME}
+      - MYSQL_PASSWORD=${PROD_DB_PASSWORD}
+      - MYSQL_URL=jdbc:mysql://${PROD_DB_ENDPOINT}:3306/${PROD_DB_NAME}
+    networks:
+      - depromeet_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    container_name: nginx
+    image: nginx:1.29.0
+    ports:
+      - "90:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - depromeet_network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "curl", "-kf", "http://localhost" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  depromeet_network:
+    driver: bridge
