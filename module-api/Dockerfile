@@ -2,15 +2,32 @@ FROM eclipse-temurin:21-jdk AS builder
 
 WORKDIR /app
 
-# 시스템 패키지 설치
 RUN apt-get update && apt-get install -y unzip curl && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+COPY gradlew gradlew.bat ./
+COPY gradle/ gradle/
+COPY gradle.properties settings.gradle.kts build.gradle.kts ./
+
+COPY module-api/build.gradle.kts ./module-api/
+COPY module-domain/build.gradle.kts ./module-domain/
+COPY module-infra/build.gradle.kts ./module-infra/
+COPY module-global-utils/build.gradle.kts ./module-global-utils/
 
 RUN chmod +x ./gradlew
 
-# 빌드 실행
-RUN ./gradlew :module-api:bootJar -x test --no-daemon
+RUN ./gradlew dependencies --no-daemon \
+    -Dorg.gradle.internal.http.connectionTimeout=60000 \
+    -Dorg.gradle.internal.http.socketTimeout=60000
+
+COPY module-api/src ./module-api/src
+COPY module-domain/src ./module-domain/src
+COPY module-infra/src ./module-infra/src
+COPY module-global-utils/src ./module-global-utils/src
+
+# 6. 빌드 실행 (의존성은 이미 캐시됨)
+RUN ./gradlew :module-api:bootJar -x test --no-daemon \
+    --parallel \
+    -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m"
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
