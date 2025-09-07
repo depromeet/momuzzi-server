@@ -1,5 +1,5 @@
-# Stage 1: Build stage
-FROM gradle:8.14.3-jdk21-alpine AS builder
+# Stage 1: Build stage  
+FROM gradle:8.14.3-jdk21 AS builder
 
 WORKDIR /app
 
@@ -15,8 +15,14 @@ COPY module-domain/build.gradle.kts ./module-domain/
 COPY module-infra/build.gradle.kts ./module-infra/
 COPY module-global-utils/build.gradle.kts ./module-global-utils/
 
-# 의존성 다운로드 (시스템 gradle 사용)
-RUN gradle --no-daemon --build-cache dependencies
+# 의존성 다운로드 (타임아웃과 재시도 설정)
+RUN gradle --no-daemon --build-cache dependencies \
+    --refresh-dependencies \
+    -Dorg.gradle.daemon=false \
+    -Dorg.gradle.parallel=false \
+    -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" \
+    --stacktrace || \
+    gradle --no-daemon dependencies --stacktrace
 
 # 소스 코드 복사
 COPY module-api/src ./module-api/src
