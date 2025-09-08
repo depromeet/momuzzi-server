@@ -30,6 +30,7 @@ services:
     volumes:
       - ./module-infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./module-infra/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
     environment:
       - TZ=Asia/Seoul
     networks:
