@@ -1,4 +1,4 @@
-FROM openjdk:21-jre
+FROM openjdk:21-slim
 
 ARG JAR_FILE=build/libs/*.jar
 
