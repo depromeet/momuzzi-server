@@ -2,6 +2,8 @@ FROM openjdk:21-slim
 
 ARG JAR_FILE=module-api/build/libs/*.jar
 
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 COPY ${JAR_FILE} app.jar
 
 RUN ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && echo "Asia/Seoul" > /etc/timezone
