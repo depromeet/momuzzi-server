@@ -1,0 +1,33 @@
+services:
+  registry:
+    image: registry:2
+    container_name: registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - depromeet_network
+
+  registry-web:
+    image: hyper/docker-registry-web
+    container_name: registry-web
+    restart: unless-stopped
+    environment:
+      REGISTRY_URL: http://registry:5000/v2
+      REGISTRY_NAME: Depromeet Team 3 Private Docker Registry
+      REGISTRY_READONLY: false
+    depends_on:
+      - registry
+    networks:
+      - depromeet_network
+
+volumes:
+  registry_data:
+    driver: local
+
+networks:
+  depromeet_network:
+    external: true
