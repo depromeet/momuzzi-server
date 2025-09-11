@@ -1,6 +1,7 @@
 services:
   backend:
     container_name: backend
+    image: ${DOCKER_IMAGE:-}
     build:
       context: .
       dockerfile: module-api/Dockerfile
