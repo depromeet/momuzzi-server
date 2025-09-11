@@ -116,7 +116,7 @@ pipeline {
                         passwordVariable: 'REGISTRY_PASSWORD'
                     )]) {
                         sh """
-                            echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdinyes
+                            echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
                             docker push ${fullImageName}:${imageTag}
                             docker push ${fullImageName}:latest
                         """
