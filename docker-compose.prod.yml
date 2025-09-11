@@ -1,7 +1,7 @@
 services:
   backend:
     container_name: backend
-    image: ${DOCKER_IMAGE:-}
+    image: ${DOCKER_IMAGE:-backend:latest}
     build:
       context: .
       dockerfile: module-api/Dockerfile

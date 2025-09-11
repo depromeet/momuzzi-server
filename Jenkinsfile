@@ -144,51 +144,57 @@ pipeline {
                     )]) {
                         sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
                             sh """
-                                ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} '
-                                    # 배포 디렉토리로 이동
-                                    cd ${DEPLOY_PATH}
-                                    
-                                    # Git 최신 코드 pull
-                                    git fetch origin
-                                    git reset --hard origin/main
-                                    
-                                    # Docker 네트워크가 없으면 생성
-                                    docker network ls | grep depromeet_network || docker network create depromeet_network
-                                    
-                                    # Registry 이미지 존재 여부 확인
-                                    REGISTRY_IMAGE_EXISTS=false
-                                    
-                                    # Registry에 로그인 시도
-                                    if echo "${REGISTRY_PASSWORD}" | docker login ${REGISTRY_URL} -u "${REGISTRY_USERNAME}" --password-stdin; then
-                                        # 이미지 존재 여부 확인
-                                        if docker pull ${REGISTRY_URL}/${IMAGE_NAME}:latest > /dev/null 2>&1; then
-                                            echo "Registry image found, using registry image"
-                                            REGISTRY_IMAGE_EXISTS=true
-                                        else
-                                            echo "Registry image not found, will build locally"
-                                        fi
-                                    else
-                                        echo "Registry login failed, will build locally"
-                                    fi
-                                    
-                                    # 기존 컨테이너 종료
-                                    docker-compose -f docker-compose.prod.yml down --remove-orphans
-                                    
-                                    if [ "$REGISTRY_IMAGE_EXISTS" = true ]; then
-                                        # Registry 이미지로 배포
-                                        DOCKER_IMAGE=${REGISTRY_URL}/${IMAGE_NAME}:latest docker-compose -f docker-compose.prod.yml up -d
-                                    else
-                                        # 로컬 빌드 배포
-                                        docker-compose -f docker-compose.prod.yml up -d --build
-                                    fi
-                                    
-                                    # 사용하지 않는 이미지 정리
-                                    docker image prune -af --filter "until=24h"
-                                    
-                                    # 배포 상태 확인
-                                    sleep 30
-                                    docker ps
-                                '
+                                ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
+export REGISTRY_USERNAME="${REGISTRY_USERNAME}"
+export REGISTRY_PASSWORD="${REGISTRY_PASSWORD}"
+export REGISTRY_URL="${REGISTRY_URL}"
+export IMAGE_NAME="${IMAGE_NAME}"
+export DEPLOY_PATH="${DEPLOY_PATH}"
+
+# 배포 디렉토리로 이동
+cd \${DEPLOY_PATH}
+
+# Git 최신 코드 pull
+git fetch origin
+git reset --hard origin/main
+
+# Docker 네트워크가 없으면 생성
+docker network ls | grep depromeet_network || docker network create depromeet_network
+
+# Registry 이미지 존재 여부 확인
+REGISTRY_IMAGE_EXISTS=false
+
+# Registry에 로그인 시도
+if echo "\${REGISTRY_PASSWORD}" | docker login \${REGISTRY_URL} -u "\${REGISTRY_USERNAME}" --password-stdin; then
+    # 이미지 존재 여부 확인
+    if docker pull \${REGISTRY_URL}/\${IMAGE_NAME}:latest > /dev/null 2>&1; then
+        echo "Registry image found, using registry image"
+        REGISTRY_IMAGE_EXISTS=true
+    else
+        echo "Registry image not found, will build locally"
+    fi
+else
+    echo "Registry login failed, will build locally"
+fi
+
+# 기존 컨테이너 종료
+docker-compose -f docker-compose.prod.yml down --remove-orphans
+
+if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
+    # Registry 이미지로 배포
+    DOCKER_IMAGE=\${REGISTRY_URL}/\${IMAGE_NAME}:latest docker-compose -f docker-compose.prod.yml up -d
+else
+    # 로컬 빌드 배포
+    docker-compose -f docker-compose.prod.yml up -d --build
+fi
+
+# 사용하지 않는 이미지 정리
+docker image prune -af --filter "until=24h"
+
+# 배포 상태 확인
+sleep 30
+docker ps
+EOF
                             """
                         }
                     }
@@ -204,19 +210,19 @@ pipeline {
                 script {
                     sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} '
-                                # 헬스체크 (최대 5분 대기)
-                                for i in {1..10}; do
-                                    if curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
-                                        echo "Health check passed!"
-                                        exit 0
-                                    fi
-                                    echo "Waiting for application to start... (attempt \$i/10)"
-                                    sleep 30
-                                done
-                                echo "Health check failed!"
-                                exit 1
-                            '
+                            ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
+# 헬스체크 (최대 5분 대기)
+for i in {1..10}; do
+    if curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
+        echo "Health check passed!"
+        exit 0
+    fi
+    echo "Waiting for application to start... (attempt \$i/10)"
+    sleep 30
+done
+echo "Health check failed!"
+exit 1
+EOF
                         """
                     }
                 }
