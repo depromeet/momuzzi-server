@@ -33,8 +33,28 @@ services:
     networks:
       - depromeet_network
 
+  jenkins:
+    image: jenkins/jenkins:2.462.3-lts
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker:ro
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    user: root
+    networks:
+      - depromeet_network
+
 volumes:
   registry_data:
+    driver: local
+  jenkins_home:
     driver: local
 
 networks:
