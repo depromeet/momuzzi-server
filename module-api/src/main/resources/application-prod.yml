@@ -14,3 +14,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update      # 추후 validate
+
+api:
+  naver:
+    map:
+      client-id: ${CLIENT_ID}
+      client-secret: ${CLIENT_SECRET}
