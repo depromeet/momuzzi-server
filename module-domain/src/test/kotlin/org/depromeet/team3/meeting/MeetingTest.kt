@@ -19,6 +19,7 @@ class MeetingTest {
         val meeting = Meeting(
             hostUserId = hostUserId,
             attendeeCount = attendeeCount,
+            stationId = 1L,
             createdAt = now
         )
 
@@ -40,6 +41,7 @@ class MeetingTest {
             id = 1L,
             hostUserId = 1L,
             attendeeCount = 5,
+            stationId = 1L,
             createdAt = now
         )
 
@@ -47,6 +49,7 @@ class MeetingTest {
             id = 1L,
             hostUserId = 1L,
             attendeeCount = 5,
+            stationId = 1L,
             createdAt = now
         )
 

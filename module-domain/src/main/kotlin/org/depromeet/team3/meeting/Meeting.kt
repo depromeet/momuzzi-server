@@ -10,7 +10,7 @@ data class Meeting(
     val isClosed: Boolean = false,
     val stationId: Long,
     val endAt: LocalDateTime? = null,
-    override val createdAt: LocalDateTime,
+    override val createdAt: LocalDateTime? = null,
     override val updatedAt: LocalDateTime? = null,
 ) : BaseTimeDomain(createdAt, updatedAt) {
 
