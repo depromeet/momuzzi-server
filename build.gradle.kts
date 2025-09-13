@@ -10,7 +10,7 @@ plugins {
 allprojects {
     group = "org.depromeet"
     version = "0.0.1-SNAPSHOT"
-    
+
     repositories {
         mavenCentral()
     }
@@ -19,26 +19,38 @@ allprojects {
 // 하위 프로젝트에만 적용
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
-    apply(plugin = "org.springframework.boot")  
+    apply(plugin = "org.springframework.boot")
     apply(plugin = "io.spring.dependency-management")
     apply(plugin = "org.jetbrains.kotlin.plugin.spring")
-    
+
     configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
         imports {
             mavenBom("org.springframework.cloud:spring-cloud-dependencies:2024.0.1")
         }
     }
-    
+
     // tasks 설정
+    tasks.withType<JavaCompile> {
+        targetCompatibility = "21"
+        sourceCompatibility = "21"
+    }
+
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions {
             freeCompilerArgs = listOf("-Xjsr305=strict")
             jvmTarget = "21"
         }
     }
-    
+
     tasks.withType<Test> {
         useJUnitPlatform()
+    }
+
+    afterEvaluate {
+        dependencies {
+            add("testImplementation", "org.junit.jupiter:junit-jupiter:5.9.2")
+            add("testImplementation", "org.jetbrains.kotlin:kotlin-test-junit5:1.8.20")
+        }
     }
 }
 
