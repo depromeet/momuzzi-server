@@ -68,7 +68,7 @@ pipeline {
                 script {
                     sh '''
                         # Kotlin 컴파일 최적화로 빌드
-                        ./gradlew clean :module-api:bootJar \
+                            ./gradlew :module-api:clean :module-api:bootJar \
                             --no-daemon \
                             --stacktrace \
                             -x test \
