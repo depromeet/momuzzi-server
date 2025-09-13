@@ -5,4 +5,6 @@ interface MeetingRepository {
     fun save(meeting: Meeting): Meeting
 
     fun findMeetingsByUserId(userId: Long): List<Meeting>
+    
+    fun findById(id: Long): Meeting?
 }
