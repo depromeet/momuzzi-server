@@ -10,23 +10,26 @@ class UserMapper : DomainMapper<User, UserEntity> {
     override fun toDomain(entity: UserEntity): User {
         return User(
             id = entity.id,
-            kakaoId = entity.kakaoId,
             email = entity.email,
             nickname = entity.nickname,
+            profileImage = entity.profileImage,
+            socialId = entity.socialId,
+            refreshToken = entity.refreshToken,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
         )
     }
     
     override fun toEntity(domain: User): UserEntity {
-        val entity = UserEntity(
+        return UserEntity(
             id = domain.id,
-            kakaoId = domain.kakaoId,
+            socialId = domain.socialId,
             email = domain.email,
-            nickname = domain.nickname
-        )
-        // BaseTimeEntity의 createdAt은 자동으로 설정되므로 별도 설정 불필요
-        // updatedAt은 필요시 updateTimestamp() 메서드 호출
-        return entity
+            nickname = domain.nickname,
+            profileImage = domain.profileImage,
+            refreshToken = domain.refreshToken
+        ).also {
+            // BaseTimeEntity의 createdAt, updatedAt 처리는 자동으로 됨
+        }
     }
 }

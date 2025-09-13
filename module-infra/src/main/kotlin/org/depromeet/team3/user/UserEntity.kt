@@ -8,14 +8,20 @@ import org.depromeet.team3.common.BaseTimeEntity
 class UserEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    var id: Long? = null,
     
-    @Column(name = "kakao_id", nullable = false, unique = true)
-    val kakaoId: String,
+    @Column(name = "social_id", nullable = false, unique = true)
+    var socialId: String = "",
+    
+    @Column(nullable = false, unique = true)
+    var email: String = "",
     
     @Column(nullable = false)
-    val email: String,
+    var nickname: String = "",
     
-    @Column(nullable = false)
-    val nickname: String,
+    @Column(name = "profile_image")
+    var profileImage: String? = null,
+    
+    @Column(name = "refresh_token")
+    var refreshToken: String? = null,
 ) : BaseTimeEntity()
