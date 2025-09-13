@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class UserMapper : DomainMapper<User, UserEntity> {
-    
+
     override fun toDomain(entity: UserEntity): User {
         return User(
             id = entity.id,
@@ -19,7 +19,7 @@ class UserMapper : DomainMapper<User, UserEntity> {
             updatedAt = entity.updatedAt
         )
     }
-    
+
     override fun toEntity(domain: User): UserEntity {
         return UserEntity(
             id = domain.id,

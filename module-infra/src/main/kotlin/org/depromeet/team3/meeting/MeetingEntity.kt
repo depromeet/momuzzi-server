@@ -2,6 +2,8 @@ package org.depromeet.team3.meeting
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
+import org.depromeet.team3.station.StationEntity
+import org.depromeet.team3.user.UserEntity
 import java.time.LocalDateTime
 
 @Entity
@@ -11,9 +13,6 @@ class MeetingEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
     
-    @Column(name = "host_user_id", nullable = false)
-    val hostUserId: Long,
-    
     @Column(name = "attendee_count", nullable = false)
     val attendeeCount: Int,
     
@@ -22,4 +21,14 @@ class MeetingEntity(
     
     @Column(name = "end_at")
     val endAt: LocalDateTime? = null,
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "host_user_id", nullable = false)
+    val hostUser: UserEntity,
+    
+    @OneToOne(mappedBy = "meeting", fetch = FetchType.LAZY)
+    val station: StationEntity,
+    
+    @OneToMany(mappedBy = "meeting", fetch = FetchType.LAZY)
+    val attendees: MutableList<MeetingAttendeeEntity> = mutableListOf()
 ) : BaseTimeEntity()

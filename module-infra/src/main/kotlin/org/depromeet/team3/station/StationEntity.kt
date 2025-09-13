@@ -10,9 +10,6 @@ class StationEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
     
-    @Column(name = "meeting_id", nullable = false)
-    val meetingId: Long,
-    
     @Column(nullable = false)
     val name: String,
     

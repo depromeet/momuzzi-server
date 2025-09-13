@@ -11,7 +11,7 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    
+
   jpa:
     hibernate:
       ddl-auto: create
@@ -45,3 +45,11 @@ kakao:
   redirect-uri: http://localhost:8080/login/oauth2/code/kakao
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
+
+api:
+  naver:
+    map:
+      client-id: ${CLIENT_ID}
+      client-secret: ${CLIENT_SECRET}
+      geocoding-base-url: https://naveropenapi.apigw.ntruss.com/map-geocode/v2
+      local-search-base-url: https://openapi.naver.com/v1/search
