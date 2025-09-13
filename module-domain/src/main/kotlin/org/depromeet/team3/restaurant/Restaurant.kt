@@ -1,6 +1,7 @@
 package org.depromeet.team3.restaurant
 
 import org.depromeet.team3.common.BaseTimeDomain
+import org.depromeet.team3.menu.Menu
 import java.time.LocalDateTime
 
 data class Restaurant(
@@ -15,6 +16,7 @@ data class Restaurant(
     val phoneNo: String,
     val descriptions: String,
     val isDeleted: Boolean = false,
+    val menus: MutableList<Menu> = mutableListOf(),
     override val createdAt: LocalDateTime,
     override val updatedAt: LocalDateTime? = null,
 ) : BaseTimeDomain(createdAt, updatedAt)

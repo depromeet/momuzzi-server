@@ -2,17 +2,24 @@ package org.depromeet.team3.mapper
 
 import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingEntity
+import org.depromeet.team3.station.StationJpaRepository
+import org.depromeet.team3.user.UserJpaRepository
 import org.springframework.stereotype.Component
 
 @Component
-class MeetingMapper : DomainMapper<Meeting, MeetingEntity> {
+class MeetingMapper(
+    private val userJpaRepository: UserJpaRepository,
+    private val stationJpaRepository: StationJpaRepository,
+    private val stationMapper: StationMapper
+) : DomainMapper<Meeting, MeetingEntity> {
     
     override fun toDomain(entity: MeetingEntity): Meeting {
         return Meeting(
-            id = entity.id,
-            hostUserId = entity.hostUserId,
+            id = entity.id!!,
+            hostUserId = entity.hostUser.id!!,
             attendeeCount = entity.attendeeCount,
             isClosed = entity.isClosed,
+            stationId = stationMapper.toDomain(entity.station).id!!,
             endAt = entity.endAt,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
@@ -20,15 +27,19 @@ class MeetingMapper : DomainMapper<Meeting, MeetingEntity> {
     }
     
     override fun toEntity(domain: Meeting): MeetingEntity {
-        val entity = MeetingEntity(
+        val userEntity = userJpaRepository.findById(domain.hostUserId)
+            .orElseThrow { IllegalArgumentException(" user doesn't exist") }
+
+        val stationEntity = stationJpaRepository.findById(domain.stationId)
+            .orElseThrow { IllegalArgumentException(" station doesn't exist") }
+
+        return MeetingEntity(
             id = domain.id,
-            hostUserId = domain.hostUserId,
             attendeeCount = domain.attendeeCount,
             isClosed = domain.isClosed,
-            endAt = domain.endAt
+            endAt = domain.endAt,
+            hostUser = userEntity,
+            station = stationEntity
         )
-        // BaseTimeEntity의 createdAt은 자동으로 설정되므로 별도 설정 불필요
-        // updatedAt은 필요시 updateTimestamp() 메서드 호출
-        return entity
     }
 }

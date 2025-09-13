@@ -2,6 +2,7 @@ package org.depromeet.team3.user
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
+import org.depromeet.team3.meeting.MeetingEntity
 
 @Entity
 @Table(name = "tb_users")
@@ -18,4 +19,7 @@ class UserEntity(
     
     @Column(nullable = false)
     val nickname: String,
+    
+    @OneToMany(mappedBy = "hostUser", fetch = FetchType.LAZY)
+    val meetings: MutableList<MeetingEntity> = mutableListOf()
 ) : BaseTimeEntity()

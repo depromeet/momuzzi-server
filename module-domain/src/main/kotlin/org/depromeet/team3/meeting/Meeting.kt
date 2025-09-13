@@ -8,6 +8,7 @@ data class Meeting(
     val hostUserId: Long,
     val attendeeCount: Int,
     val isClosed: Boolean = false,
+    val stationId: Long,
     val endAt: LocalDateTime? = null,
     override val createdAt: LocalDateTime,
     override val updatedAt: LocalDateTime? = null,

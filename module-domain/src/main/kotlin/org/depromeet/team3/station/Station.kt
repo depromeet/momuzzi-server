@@ -5,7 +5,6 @@ import java.time.LocalDateTime
 
 data class Station(
     val id: Long? = null,
-    val meetingId: Long,
     val name: String,
     val locX: Double,
     val locY: Double,
