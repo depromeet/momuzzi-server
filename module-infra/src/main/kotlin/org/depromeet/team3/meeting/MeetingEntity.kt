@@ -27,5 +27,8 @@ class MeetingEntity(
     val hostUser: UserEntity,
     
     @OneToOne(mappedBy = "meeting", fetch = FetchType.LAZY)
-    val station: StationEntity
+    val station: StationEntity,
+    
+    @OneToMany(mappedBy = "meeting", fetch = FetchType.LAZY)
+    val attendees: MutableList<MeetingAttendeeEntity> = mutableListOf()
 ) : BaseTimeEntity()
