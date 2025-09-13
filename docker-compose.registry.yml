@@ -11,6 +11,7 @@ services:
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_CATALOG_MAXENTRIES: 5000
     volumes:
       - registry_data:/var/lib/registry
       - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
@@ -28,6 +29,7 @@ services:
       REGISTRY_NAME: Depromeet Team 3 Private Docker Registry
       REGISTRY_READONLY: "false"
       REGISTRY_BASIC_AUTH: "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}"
+      REGISTRY_TRUST_ANY_SSL: "true"
     depends_on:
       - registry
     networks:
