@@ -1,15 +1,21 @@
 package org.depromeet.team3.mapper
 
+import org.depromeet.team3.menu.MenuJpaRepository
 import org.depromeet.team3.restaurant.Restaurant
 import org.depromeet.team3.restaurant.RestaurantEntity
 import org.springframework.stereotype.Component
 
 @Component
-class RestaurantMapper : DomainMapper<Restaurant, RestaurantEntity> {
+class RestaurantMapper(
+    private val menuJpaRepository: MenuJpaRepository,
+    private val menuMapper: MenuMapper
+) : DomainMapper<Restaurant, RestaurantEntity> {
     
     override fun toDomain(entity: RestaurantEntity): Restaurant {
+        val menus = entity.menus.map { menuMapper.toDomain(it) }.toMutableList()
+
         return Restaurant(
-            id = entity.id,
+            id = entity.id!!,
             name = entity.name,
             category = entity.category,
             rating = entity.rating,
@@ -20,13 +26,16 @@ class RestaurantMapper : DomainMapper<Restaurant, RestaurantEntity> {
             phoneNo = entity.phoneNo,
             descriptions = entity.descriptions,
             isDeleted = entity.isDeleted,
+            menus = menus,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
         )
     }
     
     override fun toEntity(domain: Restaurant): RestaurantEntity {
-        val entity = RestaurantEntity(
+        val menuEntities = domain.id?.let(menuJpaRepository::findAllByRestaurantId) ?: emptyList()
+
+        return RestaurantEntity(
             id = domain.id,
             name = domain.name,
             category = domain.category,
@@ -37,10 +46,8 @@ class RestaurantMapper : DomainMapper<Restaurant, RestaurantEntity> {
             workingHours = domain.workingHours,
             phoneNo = domain.phoneNo,
             descriptions = domain.descriptions,
-            isDeleted = domain.isDeleted
+            isDeleted = domain.isDeleted,
+            menus = menuEntities.toMutableList()
         )
-        // BaseTimeEntity의 createdAt은 자동으로 설정되므로 별도 설정 불필요
-        // updatedAt은 필요시 updateTimestamp() 메서드 호출
-        return entity
     }
 }

@@ -10,7 +10,6 @@ class StationMapper : DomainMapper<Station, StationEntity> {
     override fun toDomain(entity: StationEntity): Station {
         return Station(
             id = entity.id,
-            meetingId = entity.meetingId,
             name = entity.name,
             locX = entity.locX,
             locY = entity.locY,
@@ -21,16 +20,12 @@ class StationMapper : DomainMapper<Station, StationEntity> {
     }
     
     override fun toEntity(domain: Station): StationEntity {
-        val entity = StationEntity(
+        return StationEntity(
             id = domain.id,
-            meetingId = domain.meetingId,
             name = domain.name,
             locX = domain.locX,
             locY = domain.locY,
             isDeleted = domain.isDeleted
         )
-        // BaseTimeEntity의 createdAt은 자동으로 설정되므로 별도 설정 불필요
-        // updatedAt은 필요시 updateTimestamp() 메서드 호출
-        return entity
     }
 }
