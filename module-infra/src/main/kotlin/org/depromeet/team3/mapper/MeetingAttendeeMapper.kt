@@ -3,12 +3,12 @@ package org.depromeet.team3.mapper
 import org.depromeet.team3.meeting.MeetingAttendee
 import org.depromeet.team3.meeting.MeetingAttendeeEntity
 import org.depromeet.team3.meeting.MeetingJpaRepository
-import org.depromeet.team3.user.UserJpaRepository
+import org.depromeet.team3.user.UserRepository
 import org.springframework.stereotype.Component
 
 @Component
 class MeetingAttendeeMapper(
-    private val userJpaRepository: UserJpaRepository,
+    private val userRepository: UserRepository,
     private val meetingJpaRepository: MeetingJpaRepository
 ) : DomainMapper<MeetingAttendee, MeetingAttendeeEntity> {
     
@@ -26,7 +26,7 @@ class MeetingAttendeeMapper(
         val meetingEntity = meetingJpaRepository.findById(domain.meetingId)
             .orElseThrow { IllegalArgumentException("Meeting not found with id: ${domain.meetingId}") }
 
-        val userEntity = userJpaRepository.findById(domain.userId)
+        val userEntity = userRepository.findById(domain.userId)
             .orElseThrow { IllegalArgumentException("User not found with id: ${domain.userId}") }
         
         return MeetingAttendeeEntity(
