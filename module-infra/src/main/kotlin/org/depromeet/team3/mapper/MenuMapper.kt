@@ -7,14 +7,13 @@ import org.springframework.stereotype.Component
 
 @Component
 class MenuMapper(
-    private val restaurantMapper: RestaurantMapper,
     private val restaurantJpaRepository: RestaurantJpaRepository
 ) : DomainMapper<Menu, MenuEntity> {
     
     override fun toDomain(entity: MenuEntity): Menu {
         return Menu(
             id = entity.id!!,
-            restaurantId = restaurantMapper.toDomain(entity.restaurant).id!!,
+            restaurantId = entity.restaurant.id!!, // 직접 접근
             name = entity.name,
             category = entity.category,
             price = entity.price,

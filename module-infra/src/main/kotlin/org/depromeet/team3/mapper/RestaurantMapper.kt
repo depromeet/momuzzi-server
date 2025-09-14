@@ -3,12 +3,13 @@ package org.depromeet.team3.mapper
 import org.depromeet.team3.menu.MenuJpaRepository
 import org.depromeet.team3.restaurant.Restaurant
 import org.depromeet.team3.restaurant.RestaurantEntity
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Component
 
 @Component
 class RestaurantMapper(
     private val menuJpaRepository: MenuJpaRepository,
-    private val menuMapper: MenuMapper
+    @Lazy private val menuMapper: MenuMapper
 ) : DomainMapper<Restaurant, RestaurantEntity> {
     
     override fun toDomain(entity: RestaurantEntity): Restaurant {
