@@ -12,7 +12,6 @@ services:
       REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
       REGISTRY_CATALOG_MAXENTRIES: 5000
-      REGISTRY_STORAGE_DELETE_ENABLED: "true"
     volumes:
       - registry_data:/var/lib/registry
       - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
@@ -20,18 +19,17 @@ services:
       - depromeet_network
 
   registry-web:
-    image: parabuzzle/craneoperator:latest
+    image: hyper/docker-registry-web
     container_name: registry-web
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      REGISTRY_HOST: registry
-      REGISTRY_PORT: 5000
-      REGISTRY_USERNAME: "${REGISTRY_USERNAME}"
-      REGISTRY_PASSWORD: "${REGISTRY_PASSWORD}"
-      USERNAME: "${REGISTRY_USERNAME}"
-      PASSWORD: "${REGISTRY_PASSWORD}"
+      REGISTRY_URL: http://registry:5000/v2
+      REGISTRY_NAME: Depromeet Team 3 Private Docker Registry
+      REGISTRY_READONLY: "false"
+      REGISTRY_BASIC_AUTH: "{REGISTRY_USERNAME}:{REGISTRY_PASSWORD}"
+      REGISTRY_TRUST_ANY_SSL: "true"
     depends_on:
       - registry
     networks:
