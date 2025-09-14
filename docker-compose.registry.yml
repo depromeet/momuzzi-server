@@ -28,8 +28,7 @@ services:
       REGISTRY_URL: http://registry:5000/v2
       REGISTRY_NAME: Depromeet Team 3 Private Docker Registry
       REGISTRY_READONLY: "false"
-      REGISTRY_USERNAME: "${REGISTRY_USERNAME}"
-      REGISTRY_PASSWORD: "${REGISTRY_PASSWORD}"
+      REGISTRY_BASIC_AUTH: "ZGVwcm9tZWV0OjEyMzQ="
       REGISTRY_TRUST_ANY_SSL: "true"
     depends_on:
       - registry
