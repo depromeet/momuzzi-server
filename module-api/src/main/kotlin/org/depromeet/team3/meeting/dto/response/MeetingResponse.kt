@@ -1,14 +1,31 @@
 package org.depromeet.team3.meeting.dto.response
 
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDateTime
 
+@Schema(description = "모임 정보 응답")
 data class MeetingResponse(
+    @Schema(description = "모임 ID", example = "1")
     val id: Long,
+    
+    @Schema(description = "호스트 사용자 ID", example = "123")
     val hostUserId: Long,
+    
+    @Schema(description = "참여자 수", example = "5")
     val attendeeCount: Int,
+    
+    @Schema(description = "모임 종료 여부", example = "false")
     val isClosed: Boolean,
+    
+    @Schema(description = "역 ID", example = "1")
     val stationId: Long,
+    
+    @Schema(description = "모임 종료 시간", example = "2024-12-31T18:00:00")
     val endAt: LocalDateTime,
+    
+    @Schema(description = "모임 생성 시간", example = "2024-12-25T10:00:00")
     val createdAt: LocalDateTime,
+    
+    @Schema(description = "모임 수정 시간", example = "2024-12-25T15:30:00")
     val updatedAt: LocalDateTime?
 )

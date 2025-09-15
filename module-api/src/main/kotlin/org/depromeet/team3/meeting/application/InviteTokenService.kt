@@ -68,7 +68,7 @@ class InviteTokenService(
                 isValid = false,
                 isExpired = false,
                 meetingId = null,
-                message = "토큰의 미팅 ID 형식이 올바르지 않습니다."
+                message = "토큰의 모임 ID 형식이 올바르지 않습니다."
             )
         }
         
@@ -82,14 +82,13 @@ class InviteTokenService(
                 message = "토큰의 만료 시간 형식이 올바르지 않습니다."
             )
         }
-        
-        // 미팅 존재 여부 확인
+
         val meeting = meetingRepository.findById(meetingId)
             ?: return ValidateInviteTokenResponse(
                 isValid = false,
                 isExpired = false,
                 meetingId = meetingId,
-                message = "존재하지 않는 미팅입니다."
+                message = "존재하지 않는 모임입니다."
             )
         
         if (meeting.isClosed) {
@@ -97,7 +96,7 @@ class InviteTokenService(
                 isValid = false,
                 isExpired = false,
                 meetingId = meetingId,
-                message = "이미 종료된 미팅입니다."
+                message = "이미 종료된 모임입니다."
             )
         }
 
@@ -118,5 +117,4 @@ class InviteTokenService(
             message = "유효한 토큰입니다."
         )
     }
-
 }

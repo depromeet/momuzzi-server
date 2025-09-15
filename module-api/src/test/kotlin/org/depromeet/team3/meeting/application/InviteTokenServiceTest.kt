@@ -53,7 +53,7 @@ class InviteTokenServiceTest {
     }
     
     @Test
-    fun `존재하지 않는 미팅으로 초대 토큰 생성 시 예외 발생`() {
+    fun `존재하지 않는 모임으로 초대 토큰 생성 시 예외 발생`() {
         // Given
         val meetingId = 999L
         val baseUrl = "https://app.momuzzi.com"
@@ -67,7 +67,7 @@ class InviteTokenServiceTest {
     }
     
     @Test
-    fun `종료된 미팅으로 초대 토큰 생성 시 예외 발생`() {
+    fun `종료된 모임으로 초대 토큰 생성 시 예외 발생`() {
         // Given
         val meetingId = 1L
         val baseUrl = "https://app.momuzzi.com"
@@ -75,7 +75,7 @@ class InviteTokenServiceTest {
             id = meetingId,
             hostUserId = 1L,
             attendeeCount = 5,
-            isClosed = true, // 종료된 미팅
+            isClosed = true,
             stationId = 1L,
             endAt = LocalDateTime.now().minusHours(1),
             createdAt = LocalDateTime.now(),
@@ -138,7 +138,7 @@ class InviteTokenServiceTest {
     }
     
     @Test
-    fun `존재하지 않는 미팅 ID로 토큰 검증 실패 테스트`() {
+    fun `존재하지 않는 모임 ID로 토큰 검증 실패 테스트`() {
         // Given
         val meetingId = 999L
         val baseUrl = "https://app.momuzzi.com"

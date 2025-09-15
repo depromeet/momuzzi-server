@@ -1,5 +1,10 @@
 package org.depromeet.team3.meeting.controller
 
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.depromeet.team3.meeting.application.CreateMeetingService
@@ -19,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+@Tag(name = "모임", description = "모임 관련 API")
 @RestController
 @RequestMapping("/meetings")
 class MeetingController(
@@ -28,8 +34,16 @@ class MeetingController(
     private val joinMeetingService: JoinMeetingService
 ) {
 
+    @Operation(
+        summary = "사용자 모임 목록 조회",
+        description = "특정 사용자가 참여한 모임 목록을 조회합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "모임 목록 조회 성공")
+    )
     @GetMapping
     fun getMeeting(
+        @Parameter(description = "사용자 ID", example = "123")
         userId: Long
     ) : DpmApiResponse<List<MeetingResponse>> {
         val response = getMeetingService(userId)
@@ -37,8 +51,16 @@ class MeetingController(
         return DpmApiResponse.ok(response)
     }
 
+    @Operation(
+        summary = "모임 초대 토큰 검증",
+        description = "모임 초대 토큰의 유효성을 검증합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "토큰 검증 성공")
+    )
     @GetMapping("/validate-invite")
     fun validateInviteToken(
+        @Parameter(description = "모임 초대 토큰", example = "abc123def456")
         @RequestParam token: String
     ): DpmApiResponse<ValidateInviteTokenResponse> {
         val response = inviteTokenService.validateInviteToken(token)
@@ -46,8 +68,16 @@ class MeetingController(
         return DpmApiResponse.ok(response)
     }
 
+    @Operation(
+        summary = "모임 생성",
+        description = "새로운 모임을 생성합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "모임 생성 성공")
+    )
     @PostMapping
     fun create(
+        @Parameter(description = "사용자 ID", example = "123")
         userId: Long,
         @RequestBody @Valid request: CreateMeetingRequest,
     ) : DpmApiResponse<Unit> {
@@ -56,8 +86,16 @@ class MeetingController(
         return DpmApiResponse.ok()
     }
 
+    @Operation(
+        summary = "모임 초대 토큰 생성",
+        description = "특정 모임의 초대 토큰을 생성합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "초대 토큰 생성 성공")
+    )
     @PostMapping("/{meetingId}/invite")
     fun createInviteLink(
+        @Parameter(description = "모임 ID", example = "1")
         @PathVariable meetingId: Long,
         @RequestBody @Valid request: GenerateInviteTokenRequest
     ): DpmApiResponse<InviteTokenResponse> {
@@ -69,9 +107,18 @@ class MeetingController(
         return DpmApiResponse.ok(response)
     }
 
+    @Operation(
+        summary = "모임 참여",
+        description = "특정 모임에 참여합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "모임 참여 성공")
+    )
     @PostMapping("/{meetingId}/join")
     fun join(
+        @Parameter(description = "모임 ID", example = "1")
         @PathVariable("meetingId") meetingId: Long,
+        @Parameter(description = "사용자 ID", example = "123")
         userId: Long,
     ) : DpmApiResponse<Unit> {
         joinMeetingService.invoke(meetingId, userId)

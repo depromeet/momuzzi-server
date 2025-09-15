@@ -9,7 +9,7 @@ data class ValidateInviteTokenResponse(
     @Schema(description = "토큰 만료 여부", example = "false")
     val isExpired: Boolean,
     
-    @Schema(description = "미팅 ID", example = "123")
+    @Schema(description = "모임 ID", example = "123")
     val meetingId: Long?,
     
     @Schema(description = "검증 결과 메시지", example = "유효한 토큰입니다.")
