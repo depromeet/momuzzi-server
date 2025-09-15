@@ -27,7 +27,7 @@ pipeline {
     tools {
         gradle 'gradle-8.14.3'
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -70,7 +70,7 @@ pipeline {
         //        sh './gradlew test --no-daemon --stacktrace'
         //    }
         //}
-        
+
         stage('Build Application') {
             steps {
                 script {
