@@ -215,15 +215,16 @@ else
     echo "Registry login failed, will build locally"
 fi
 
-# 기존 컨테이너 종료
-docker-compose -f docker-compose.prod.yml down --remove-orphans
+# 애플리케이션 서비스만 재시작 (Jenkins/Registry 제외)
+docker-compose -f docker-compose.prod.yml stop backend nginx || true
+docker-compose -f docker-compose.prod.yml rm -f backend nginx || true
 
 if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
     # Registry 이미지로 배포
-    DOCKER_IMAGE=\${REGISTRY_URL}/\${IMAGE_NAME}:latest docker-compose -f docker-compose.prod.yml up -d
+    DOCKER_IMAGE=\${REGISTRY_URL}/\${IMAGE_NAME}:latest docker-compose -f docker-compose.prod.yml up -d backend nginx
 else
     # 로컬 빌드 배포
-    docker-compose -f docker-compose.prod.yml up -d --build
+    docker-compose -f docker-compose.prod.yml up -d --build backend nginx
 fi
 
 # 사용하지 않는 이미지 정리
