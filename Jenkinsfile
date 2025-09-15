@@ -100,7 +100,10 @@ pipeline {
         
         stage('Docker Build & Push') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    branch 'origin/main'
+                }
             }
             steps {
                 script {
@@ -137,7 +140,10 @@ pipeline {
         
         stage('Deploy to NCP Server') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    branch 'origin/main'
+                }
             }
             steps {
                 script {
@@ -208,7 +214,10 @@ EOF
         
         stage('Health Check') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    branch 'origin/main'
+                }
             }
             steps {
                 script {
