@@ -36,7 +36,7 @@ services:
       - depromeet_network
 
   jenkins:
-    image: jenkins/jenkins:2.462.3-lts
+    image: jenkins/jenkins:2.497.3-lts
     container_name: jenkins
     restart: unless-stopped
     ports:
