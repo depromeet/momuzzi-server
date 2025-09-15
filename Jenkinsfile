@@ -105,62 +105,65 @@ pipeline {
         }
         
         stage('Docker Build & Push') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'origin/main'
-                }
-            }
             steps {
                 script {
-                    def imageTag = "${env.GIT_COMMIT_SHORT}"
-                    def fullImageName = "${REGISTRY_URL}/${IMAGE_NAME}"
+                    def isMainBranch = env.BRANCH_NAME == 'main' || 
+                                     env.GIT_BRANCH == 'origin/main' || 
+                                     env.GIT_BRANCH == 'main' ||
+                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
                     
-                    // Docker 이미지 빌드
-                    sh """
-                        docker build -f module-api/Dockerfile -t ${fullImageName}:${imageTag} .
-                        docker tag ${fullImageName}:${imageTag} ${fullImageName}:latest
-                    """
-                    
-                    // Registry에 로그인 및 이미지 푸시
-                    withCredentials([usernamePassword(
-                        credentialsId: "${REGISTRY_CREDENTIALS_ID}",
-                        usernameVariable: 'REGISTRY_USERNAME',
-                        passwordVariable: 'REGISTRY_PASSWORD'
-                    )]) {
+                    if (isMainBranch) {
+                        def imageTag = "${env.GIT_COMMIT_SHORT}"
+                        def fullImageName = "${REGISTRY_URL}/${IMAGE_NAME}"
+                        
+                        // Docker 이미지 빌드
                         sh """
-                            echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
-                            docker push ${fullImageName}:${imageTag}
-                            docker push ${fullImageName}:latest
+                            docker build -f module-api/Dockerfile -t ${fullImageName}:${imageTag} .
+                            docker tag ${fullImageName}:${imageTag} ${fullImageName}:latest
                         """
+                        
+                        // Registry에 로그인 및 이미지 푸시
+                        withCredentials([usernamePassword(
+                            credentialsId: "${REGISTRY_CREDENTIALS_ID}",
+                            usernameVariable: 'REGISTRY_USERNAME',
+                            passwordVariable: 'REGISTRY_PASSWORD'
+                        )]) {
+                            sh """
+                                echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
+                                docker push ${fullImageName}:${imageTag}
+                                docker push ${fullImageName}:latest
+                            """
+                        }
+                        
+                        // 로컬 이미지 정리
+                        sh """
+                            docker rmi ${fullImageName}:${imageTag} || true
+                            docker rmi ${fullImageName}:latest || true
+                        """
+                    } else {
+                        echo "Skipping Docker Build & Push - not main branch"
                     }
-                    
-                    // 로컬 이미지 정리
-                    sh """
-                        docker rmi ${fullImageName}:${imageTag} || true
-                        docker rmi ${fullImageName}:latest || true
-                    """
                 }
             }
         }
         
         stage('Deploy to NCP Server') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'origin/main'
-                }
-            }
             steps {
                 script {
-                    withCredentials([usernamePassword(
-                        credentialsId: "${REGISTRY_CREDENTIALS_ID}",
-                        usernameVariable: 'REGISTRY_USERNAME',
-                        passwordVariable: 'REGISTRY_PASSWORD'
-                    )]) {
-                        sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
-                            sh """
-                                ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
+                    def isMainBranch = env.BRANCH_NAME == 'main' || 
+                                     env.GIT_BRANCH == 'origin/main' || 
+                                     env.GIT_BRANCH == 'main' ||
+                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                    
+                    if (isMainBranch) {
+                        withCredentials([usernamePassword(
+                            credentialsId: "${REGISTRY_CREDENTIALS_ID}",
+                            usernameVariable: 'REGISTRY_USERNAME',
+                            passwordVariable: 'REGISTRY_PASSWORD'
+                        )]) {
+                            sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
+                                sh """
+                                    ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
 export REGISTRY_USERNAME="${REGISTRY_USERNAME}"
 export REGISTRY_PASSWORD="${REGISTRY_PASSWORD}"
 export REGISTRY_URL="${REGISTRY_URL}"
@@ -211,25 +214,28 @@ docker image prune -af --filter "until=24h"
 sleep 30
 docker ps
 EOF
-                            """
+                                """
+                            }
                         }
+                    } else {
+                        echo "Skipping Deploy to NCP Server - not main branch"
                     }
                 }
             }
         }
         
         stage('Health Check') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'origin/main'
-                }
-            }
             steps {
                 script {
-                    sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
+                    def isMainBranch = env.BRANCH_NAME == 'main' || 
+                                     env.GIT_BRANCH == 'origin/main' || 
+                                     env.GIT_BRANCH == 'main' ||
+                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                    
+                    if (isMainBranch) {
+                        sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
 # 헬스체크 (최대 5분 대기)
 for i in {1..10}; do
     if curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
@@ -242,7 +248,10 @@ done
 echo "Health check failed!"
 exit 1
 EOF
-                        """
+                            """
+                        }
+                    } else {
+                        echo "Skipping Health Check - not main branch"
                     }
                 }
             }
