@@ -18,7 +18,7 @@ pipeline {
         NCP_SERVER_HOST = "api.momuzzi.site"
         NCP_SERVER_USER = "ubuntu"
 
-        DEPLOY_PATH = "/home/ubuntu/17th-team3-Server"
+        DEPLOY_PATH = "/home/ubuntu/momuzzi-server"
         
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=1g"
