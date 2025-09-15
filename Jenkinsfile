@@ -3,6 +3,13 @@ pipeline {
 
     triggers {
         githubPush()
+        githubPullRequests(
+            triggerMode: 'HEAVY_HOOKS',
+            events: [
+                Open(),
+                UpdateBranch()
+            ]
+        )
     }
 
     environment {
