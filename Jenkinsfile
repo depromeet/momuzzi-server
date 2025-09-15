@@ -215,17 +215,18 @@ else
     echo "Registry login failed, will build locally"
 fi
 
-# 애플리케이션 서비스만 재시작 (Jenkins/Registry 제외)
+# 애플리케이션 서비스 재시작
 docker-compose -f docker-compose.prod.yml stop backend nginx || true
 docker-compose -f docker-compose.prod.yml rm -f backend nginx || true
 
 if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
-    # Registry 이미지로 배포
-    DOCKER_IMAGE=\${REGISTRY_URL}/\${IMAGE_NAME}:latest docker-compose -f docker-compose.prod.yml up -d backend nginx
-else
-    # 로컬 빌드 배포
-    docker-compose -f docker-compose.prod.yml up -d --build backend nginx
+    # Registry 이미지를 backend:latest로 태그 후 배포
+    docker pull \${REGISTRY_URL}/\${IMAGE_NAME}:latest
+    docker tag \${REGISTRY_URL}/\${IMAGE_NAME}:latest backend:latest
 fi
+
+# 애플리케이션 서비스만 시작
+docker-compose -f docker-compose.prod.yml up -d
 
 # 사용하지 않는 이미지 정리
 docker image prune -af --filter "until=24h"
