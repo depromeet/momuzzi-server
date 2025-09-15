@@ -70,6 +70,12 @@ pipeline {
         stage('Build Application') {
             steps {
                 script {
+                    // 브랜치 정보 디버깅
+                    echo "Current branch: ${env.BRANCH_NAME}"
+                    echo "Git branch: ${env.GIT_BRANCH}"
+                    sh 'echo "Git branch from command: $(git branch --show-current)"'
+                    sh 'echo "All git branches: $(git branch -a)"'
+                    
                     sh '''
                         # Kotlin 컴파일 최적화로 빌드
                             ./gradlew :module-api:clean :module-api:bootJar \
