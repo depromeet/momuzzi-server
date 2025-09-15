@@ -144,8 +144,8 @@ pipeline {
                                 
                                 # 네트워크 최적화 설정으로 Push
                                 export DOCKER_CLI_EXPERIMENTAL=enabled
-                                docker push ${fullImageName}:${imageTag} --disable-content-trust --max-concurrent-uploads=1
-                                docker push ${fullImageName}:latest --disable-content-trust --max-concurrent-uploads=1
+                                docker push ${fullImageName}:${imageTag} --disable-content-trust
+                                docker push ${fullImageName}:latest --disable-content-trust
                             """
                         }
                         
