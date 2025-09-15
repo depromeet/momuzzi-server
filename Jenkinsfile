@@ -2,14 +2,8 @@ pipeline {
     agent any
 
     triggers {
+        // GitHub push와 pull request 이벤트에 대한 트리거
         githubPush()
-        githubPullRequests(
-            triggerMode: 'HEAVY_HOOKS',
-            events: [
-                Open(),
-                UpdateBranch()
-            ]
-        )
     }
 
     environment {
