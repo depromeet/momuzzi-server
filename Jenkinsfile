@@ -117,12 +117,18 @@ pipeline {
                                      sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
                     
                     if (isMainBranch) {
+                        // Docker 캐시 정리 (손상된 레이어 제거)
+                        sh """
+                            docker system prune -af
+                            docker builder prune -af
+                        """
+                        
                         def imageTag = "${env.GIT_COMMIT_SHORT}"
                         def fullImageName = "${REGISTRY_URL}/${IMAGE_NAME}"
                         
-                        // Docker 이미지 빌드
+                        // Docker 이미지 빌드 (캐시 사용 안함)
                         sh """
-                            docker build -f module-api/Dockerfile -t ${fullImageName}:${imageTag} .
+                            docker build --no-cache -f module-api/Dockerfile -t ${fullImageName}:${imageTag} .
                             docker tag ${fullImageName}:${imageTag} ${fullImageName}:latest
                         """
                         
