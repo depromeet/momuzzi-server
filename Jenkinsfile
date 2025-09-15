@@ -133,10 +133,6 @@ pipeline {
                             passwordVariable: 'REGISTRY_PASSWORD'
                         )]) {
                             sh """
-                                # Docker daemon 재시작으로 네트워크 상태 초기화
-                                sudo systemctl restart docker
-                                sleep 10
-                                
                                 # Docker 로그아웃 후 재로그인
                                 docker logout ${REGISTRY_URL} || true
                                 
