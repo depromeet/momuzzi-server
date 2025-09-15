@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         // Registry 설정
-        REGISTRY_URL = "registry.momuzzi.site"
+        REGISTRY_URL = "registry:5000"  // 내부 Docker 네트워크 사용
         REGISTRY_CREDENTIALS_ID = "depromeet-registry"
         
         // Docker 이미지 설정
