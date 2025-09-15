@@ -1,6 +1,10 @@
 pipeline {
     agent any
-    
+
+    triggers {
+        githubPush()
+    }
+
     environment {
         // Registry 설정
         REGISTRY_URL = "registry.momuzzi.site"
