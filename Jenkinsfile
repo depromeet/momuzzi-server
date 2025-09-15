@@ -132,49 +132,25 @@ pipeline {
                             usernameVariable: 'REGISTRY_USERNAME',
                             passwordVariable: 'REGISTRY_PASSWORD'
                         )]) {
-                            timeout(time: 15, unit: 'MINUTES') {
-                                sh """
-                                    # Docker 로그아웃 후 재로그인
-                                    docker logout ${REGISTRY_URL} || true
-                                    
-                                    echo "Attempting login to ${REGISTRY_URL} with user: \$REGISTRY_USERNAME"
-                                    echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
-                                    
-                                    # 이미지 정보 확인
-                                    docker images | grep ${fullImageName}
-                                    
-                                    # Push 시도 (재시도 로직 추가)
-                                    for i in {1..3}; do
-                                        echo "Push attempt \$i/3..."
-                                        if docker push ${fullImageName}:${imageTag} --disable-content-trust; then
-                                            echo "Successfully pushed ${imageTag}"
-                                            break
-                                        else
-                                            echo "Push failed, retrying in 10 seconds..."
-                                            sleep 10
-                                        fi
-                                        if [ \$i -eq 3 ]; then
-                                            echo "All push attempts failed"
-                                            exit 1
-                                        fi
-                                    done
-                                    
-                                    for i in {1..3}; do
-                                        echo "Push latest attempt \$i/3..."
-                                        if docker push ${fullImageName}:latest --disable-content-trust; then
-                                            echo "Successfully pushed latest"
-                                            break
-                                        else
-                                            echo "Push failed, retrying in 10 seconds..."
-                                            sleep 10
-                                        fi
-                                        if [ \$i -eq 3 ]; then
-                                            echo "All push attempts failed"
-                                            exit 1
-                                        fi
-                                    done
-                                """
-                            }
+                            sh """
+                                # Docker daemon 재시작으로 네트워크 상태 초기화
+                                sudo systemctl restart docker
+                                sleep 10
+                                
+                                # Docker 로그아웃 후 재로그인
+                                docker logout ${REGISTRY_URL} || true
+                                
+                                echo "Attempting login to ${REGISTRY_URL} with user: \$REGISTRY_USERNAME"
+                                echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
+                                
+                                # 이미지 정보 확인
+                                docker images | grep ${fullImageName}
+                                
+                                # 네트워크 최적화 설정으로 Push
+                                export DOCKER_CLI_EXPERIMENTAL=enabled
+                                docker push ${fullImageName}:${imageTag} --disable-content-trust --max-concurrent-uploads=1
+                                docker push ${fullImageName}:latest --disable-content-trust --max-concurrent-uploads=1
+                            """
                         }
                         
                         // 로컬 이미지 정리

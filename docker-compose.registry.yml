@@ -12,6 +12,16 @@ services:
       REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
       REGISTRY_CATALOG_MAXENTRIES: 5000
+      # HTTP 설정 (업로드 안정성 향상)
+      REGISTRY_HTTP_SECRET: "a-very-long-random-string-for-http-secret"
+      REGISTRY_HTTP_TIMEOUT_READ: "300s"
+      REGISTRY_HTTP_TIMEOUT_WRITE: "300s"
+      REGISTRY_HTTP_TIMEOUT_IDLE: "900s"
+      # 스토리지 설정 (업로드 청크 크기 최적화)
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR: "inmemory"
+      # 로그 레벨
+      REGISTRY_LOG_LEVEL: "info"
     volumes:
       - registry_data:/var/lib/registry
       - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
