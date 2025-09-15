@@ -2,6 +2,7 @@ dependencies {
     implementation(project(":module-global-utils"))
     implementation(project(":module-domain"))
 
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("com.linecorp.kotlin-jdsl:jpql-dsl:3.5.5")

@@ -10,10 +10,17 @@ spring:
     url: ${MYSQL_URL}
     username: ${MYSQL_USER}
     password: ${MYSQL_PASSWORD}
-    
+
   jpa:
     hibernate:
       ddl-auto: update      # 추후 validate
+
+
+app:
+  env: prod
+
+kakao:
+  redirect-uri: # 프론트 도메인
 
 api:
   naver:

@@ -11,7 +11,7 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    
+
   jpa:
     hibernate:
       ddl-auto: create
@@ -28,6 +28,23 @@ management:
   health:
     defaults:
       enabled: true
+
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity: 3600000   # 1시간
+  refresh-token-validity: 604800000   # 1주일
+
+# 앱 설정
+app:
+  env: local
+
+# 카카오 OAuth 설정
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me
 
 api:
   naver:
