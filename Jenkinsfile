@@ -50,6 +50,10 @@ pipeline {
                     // Kotlin daemon 중지 (기존 데몬으로 인한 충돌 방지)
                     sh './gradlew --stop || true'
                     sh 'pkill -f "KotlinCompileDaemon" || true'
+                    
+                    // Docker 정리
+                    sh 'docker system prune -f || true'
+                    sh 'docker builder prune -f || true'
                 }
             }
         }
@@ -129,9 +133,18 @@ pipeline {
                             passwordVariable: 'REGISTRY_PASSWORD'
                         )]) {
                             sh """
+                                # Docker 로그아웃 후 재로그인
+                                docker logout ${REGISTRY_URL} || true
+                                
+                                echo "Attempting login to ${REGISTRY_URL} with user: \$REGISTRY_USERNAME"
                                 echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
-                                docker push ${fullImageName}:${imageTag}
-                                docker push ${fullImageName}:latest
+                                
+                                # 이미지 정보 확인
+                                docker images | grep ${fullImageName}
+                                
+                                # Push 시도 (더 안정적인 방식)
+                                docker push ${fullImageName}:${imageTag} --disable-content-trust
+                                docker push ${fullImageName}:latest --disable-content-trust
                             """
                         }
                         
