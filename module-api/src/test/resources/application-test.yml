@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: team3-api-test
+
+  # 테스트용 인메모리 H2 DB 설정
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  h2:
+    console:
+      enabled: true
+
+# JWT 테스트 설정
+jwt:
+  secret: test-secret-key-for-jwt-token-generation-minimum-256-bits-long
+  access-token-validity: 3600000   # 1시간
+  refresh-token-validity: 604800000   # 1주일
+
+# 앱 설정
+app:
+  env: test
+
+# 카카오 테스트 설정
+kakao:
+  client-id: test-kakao-client-id
+  redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me
+
+# 로깅 설정
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.depromeet.team3: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
