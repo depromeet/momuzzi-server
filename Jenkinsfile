@@ -205,7 +205,7 @@ REGISTRY_IMAGE_EXISTS=false
 
 # Registry에 로그인 시도
 if echo "\${REGISTRY_PASSWORD}" | docker login \${REGISTRY_URL} -u "\${REGISTRY_USERNAME}" --password-stdin; then
-    # 이미지 존재 여부 확인
+    # 이미지 존재 여부 확인 (HTTPS 사용)
     if docker pull \${REGISTRY_URL}/\${IMAGE_NAME}:latest > /dev/null 2>&1; then
         echo "Registry image found, using registry image"
         REGISTRY_IMAGE_EXISTS=true
@@ -241,39 +241,6 @@ EOF
                         }
                     } else {
                         echo "Skipping Deploy to NCP Server - not main branch"
-                    }
-                }
-            }
-        }
-        
-        stage('Health Check') {
-            steps {
-                script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' || 
-                                     env.GIT_BRANCH == 'origin/main' || 
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-                    
-                    if (isMainBranch) {
-                        sshagent(credentials: ["${NCP_SERVER_CREDENTIALS_ID}"]) {
-                            sh """
-                                ssh -o StrictHostKeyChecking=no ${NCP_SERVER_USER}@${NCP_SERVER_HOST} << 'EOF'
-# 헬스체크 (최대 5분 대기)
-for i in {1..10}; do
-    if curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo "Health check passed!"
-        exit 0
-    fi
-    echo "Waiting for application to start... (attempt \$i/10)"
-    sleep 30
-done
-echo "Health check failed!"
-exit 1
-EOF
-                            """
-                        }
-                    } else {
-                        echo "Skipping Health Check - not main branch"
                     }
                 }
             }
