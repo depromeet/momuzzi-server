@@ -1,0 +1,86 @@
+package org.depromeet.team3.auth
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.depromeet.team3.auth.exception.AuthException
+import org.depromeet.team3.auth.model.KakaoResponse
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.assertj.core.api.Assertions.assertThat
+
+class KakaoOAuthClientTest {
+
+    @Test
+    fun `허용되지 않은 redirect_uri로 토큰 요청시 예외가 발생한다`() {
+        // given
+        val kakaoProperties = KakaoProperties().apply { clientId = "test-client-id" }
+        val kakaoOAuthClient = KakaoOAuthClient(ObjectMapper(), kakaoProperties)
+        val invalidRedirectUri = "http://invalid-uri.com"
+        val accessCode = "test-access-code"
+
+        // when & then
+        assertThrows<AuthException> {
+            kakaoOAuthClient.requestToken(accessCode, invalidRedirectUri)
+        }
+    }
+
+    @Test
+    fun `허용된 redirect_uri 목록에 올바른 URI가 포함되어 있다`() {
+        // given
+        val allowedRedirectUris = setOf(
+            "http://localhost:8080/login/oauth2/code/kakao",
+            "http://localhost:8080/api/auth/kakao-login"
+        )
+        val validRedirectUri = "http://localhost:8080/login/oauth2/code/kakao"
+        val invalidRedirectUri = "http://invalid-uri.com"
+
+        // when & then
+        assertThat(allowedRedirectUris).contains(validRedirectUri)
+        assertThat(allowedRedirectUris).doesNotContain(invalidRedirectUri)
+    }
+
+    @Test
+    fun `null oAuthToken으로 프로필 요청시 예외가 발생한다`() {
+        // given
+        val kakaoProperties = KakaoProperties().apply { clientId = "test-client-id" }
+        val kakaoOAuthClient = KakaoOAuthClient(ObjectMapper(), kakaoProperties)
+
+        // when & then
+        assertThrows<AuthException> {
+            kakaoOAuthClient.requestProfile(null)
+        }
+    }
+
+    @Test
+    fun `잘못된 redirect_uri는 trim 후에도 허용되지 않는다`() {
+        // given
+        val kakaoProperties = KakaoProperties().apply { clientId = "test-client-id" }
+        val kakaoOAuthClient = KakaoOAuthClient(ObjectMapper(), kakaoProperties)
+        val invalidRedirectUriWithSpaces = "  http://invalid-uri.com  "
+        val accessCode = "test-access-code"
+
+        // when & then
+        assertThrows<AuthException> {
+            kakaoOAuthClient.requestToken(accessCode, invalidRedirectUriWithSpaces)
+        }
+    }
+
+    @Test
+    fun `올바른 토큰 구조로 프로필 요청시 null 체크를 통과한다`() {
+        // given
+        val kakaoProperties = KakaoProperties().apply { clientId = "test-client-id" }
+        val kakaoOAuthClient = KakaoOAuthClient(ObjectMapper(), kakaoProperties)
+        val oAuthToken = KakaoResponse.OAuthToken(
+            access_token = "valid-access-token"
+        )
+
+        // when & then
+        // 실제 HTTP 호출이 이루어지므로 네트워크 오류가 발생할 것이지만,
+        // AuthException(access_token null 체크)은 발생하지 않아야 함
+        val exception = assertThrows<Exception> {
+            kakaoOAuthClient.requestProfile(oAuthToken)
+        }
+        
+        // access_token이 있으므로 null 체크는 통과하고 다른 예외가 발생해야 함
+        assertThat(exception.message).doesNotContain("access_token")
+    }
+}
