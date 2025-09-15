@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         // Registry 설정
-        REGISTRY_URL = "registry:5000"  // 내부 Docker 네트워크 사용
+        REGISTRY_URL = "registry.momuzzi.site"
         REGISTRY_CREDENTIALS_ID = "depromeet-registry"
         
         // Docker 이미지 설정
@@ -142,10 +142,9 @@ pipeline {
                                 # 이미지 정보 확인
                                 docker images | grep ${fullImageName}
                                 
-                                # 네트워크 최적화 설정으로 Push
-                                export DOCKER_CLI_EXPERIMENTAL=enabled
-                                docker push ${fullImageName}:${imageTag} --disable-content-trust
-                                docker push ${fullImageName}:latest --disable-content-trust
+                                # Push 시도
+                                docker push ${fullImageName}:${imageTag}
+                                docker push ${fullImageName}:latest
                             """
                         }
                         
