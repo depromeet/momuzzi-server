@@ -25,6 +25,12 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.8.20")
     
     runtimeOnly("com.mysql:mysql-connector-j")
+    
+    // 테스트용 H2 데이터베이스
+    testRuntimeOnly("com.h2database:h2")
+    testImplementation("org.springframework.boot:spring-boot-starter-test") {
+        exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
+    }
 }
 
 tasks {

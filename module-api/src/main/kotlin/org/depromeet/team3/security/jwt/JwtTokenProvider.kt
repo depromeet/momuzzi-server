@@ -5,8 +5,7 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.depromeet.team3.util.CookieUtil
-import org.springframework.beans.factory.annotation.Value
+import org.depromeet.team3.security.util.CookieUtil
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -27,10 +26,10 @@ class JwtTokenProvider(
     }
 
     /**
-     * 카카오 로그인용 Access Token 생성
+     * Access Token 생성
      */
     fun generateAccessToken(
-        kakaoUserId: Long,
+        userId: Long,
         email: String? = null,
         authorities: Collection<String> = listOf("ROLE_USER")
     ): String {
@@ -38,7 +37,7 @@ class JwtTokenProvider(
         val expiryDate = Date(now.time + jwtProperties.accessTokenExpiration)
 
         return Jwts.builder()
-            .subject(kakaoUserId.toString())
+            .subject(userId.toString())
             .claim("authorities", authorities.joinToString(","))
             .claim("tokenType", "ACCESS")
             .apply {
@@ -51,14 +50,14 @@ class JwtTokenProvider(
     }
 
     /**
-     * 카카오 로그인용 Refresh Token 생성
+     * Refresh Token 생성
      */
-    fun generateRefreshToken(kakaoUserId: Long): String {
+    fun generateRefreshToken(userId: Long): String {
         val now = Date()
         val expiryDate = Date(now.time + jwtProperties.refreshTokenExpiration)
 
         return Jwts.builder()
-            .subject(kakaoUserId.toString())
+            .subject(userId.toString())
             .claim("tokenType", "REFRESH")
             .issuedAt(now)
             .expiration(expiryDate)
@@ -67,15 +66,15 @@ class JwtTokenProvider(
     }
 
     /**
-     * 카카오 로그인 성공 시 토큰 쿠키 설정
+     * 로그인 성공 시 토큰 쿠키 설정
      */
     fun setTokenCookies(
         response: HttpServletResponse,
-        kakaoUserId: Long,
+        userId: Long,
         email: String? = null
     ) {
-        val accessToken = generateAccessToken(kakaoUserId, email)
-        val refreshToken = generateRefreshToken(kakaoUserId)
+        val accessToken = generateAccessToken(userId, email)
+        val refreshToken = generateRefreshToken(userId)
 
         cookieUtil.createAccessTokenCookie(response, accessToken)
         cookieUtil.createRefreshTokenCookie(response, refreshToken)
@@ -91,7 +90,7 @@ class JwtTokenProvider(
             return tokenFromCookie
         }
 
-        // 2. Authorization 헤더에서 토큰 확인
+        // 2. Authorization 헤더에서 토큰 확인 (API 호출 지원)
         val bearerToken = request.getHeader("Authorization")
         return if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             bearerToken.substring(7)
@@ -101,7 +100,27 @@ class JwtTokenProvider(
     }
 
     /**
-     * JWT 토큰에서 사용자 ID 추출 (카카오 사용자 ID)
+     * 요청에서 Refresh Token 추출 (쿠키에서)
+     */
+    fun extractRefreshToken(request: HttpServletRequest): String? {
+        return CookieUtil.getCookieValue(request, CookieUtil.REFRESH_TOKEN_COOKIE_NAME)
+    }
+
+    /**
+     * Refresh Token 유효성 검증
+     */
+    fun validateRefreshToken(token: String): Boolean {
+        return try {
+            val claims = getClaims(token)
+            val tokenType = claims.get("tokenType", String::class.java)
+            tokenType == "REFRESH" && claims.expiration.after(Date())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * JWT 토큰에서 사용자 ID 추출
      */
     fun getUserIdFromToken(token: String): String? {
         return try {
@@ -113,7 +132,22 @@ class JwtTokenProvider(
     }
 
     /**
-     * JWT 토큰에서 이메일 추출
+     * Access Token 유효성 검증
+     */
+    fun validateAccessToken(token: String): Boolean {
+        return try {
+            val claims = getClaims(token)
+            val tokenType = claims.get("tokenType", String::class.java)
+            tokenType == "ACCESS" && claims.expiration.after(Date())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    // === 추후 확장용 메서드들 ===
+
+    /**
+     * 토큰에서 이메일 추출 (추후 사용 예정)
      */
     fun getEmailFromToken(token: String): String? {
         return try {
@@ -125,9 +159,41 @@ class JwtTokenProvider(
     }
 
     /**
-     * JWT 토큰에서 권한 정보 추출
+     * Refresh Token 기능 (추후 확장용)
      */
-    fun getAuthoritiesFromToken(token: String): Collection<String> {
+    fun refreshAccessToken(refreshToken: String): String? {
+        return try {
+            val claims = getClaims(refreshToken)
+            val tokenType = claims.get("tokenType", String::class.java)
+            
+            if (tokenType == "REFRESH" && claims.expiration.after(Date())) {
+                val userId = claims.subject.toLongOrNull()
+                userId?.let { generateAccessToken(it) }
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 로그아웃 시 쿠키 제거 (추후 로그아웃 기능용)
+     */
+    fun clearTokenCookies(response: HttpServletResponse) {
+        cookieUtil.deleteAllAuthCookies(response)
+    }
+
+    /**
+     * Authentication 객체 생성 (추후 권한 관리 확장용)
+     */
+    fun getAuthentication(token: String): Authentication? {
+        val userId = getUserIdFromToken(token) ?: return null
+        val authorities = getAuthoritiesFromToken(token).map { SimpleGrantedAuthority(it) }
+        
+        val principal = User(userId, "", authorities)
+        return UsernamePasswordAuthenticationToken(principal, token, authorities)
+    }
+
+    private fun getAuthoritiesFromToken(token: String): Collection<String> {
         return try {
             val claims = getClaims(token)
             val authoritiesString = claims.get("authorities", String::class.java)
@@ -135,76 +201,6 @@ class JwtTokenProvider(
         } catch (e: Exception) {
             listOf("ROLE_USER")
         }
-    }
-
-    /**
-     * 토큰 타입 확인 (ACCESS 또는 REFRESH)
-     */
-    fun getTokenType(token: String): String? {
-        return try {
-            val claims = getClaims(token)
-            claims.get("tokenType", String::class.java)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
-     * JWT 토큰 유효성 검증
-     */
-    fun validateToken(token: String): Boolean {
-        return try {
-            val claims = getClaims(token)
-            // 토큰이 만료되지 않았는지 확인
-            claims.expiration.after(Date())
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    /**
-     * Access Token 유효성 검증
-     */
-    fun validateAccessToken(token: String): Boolean {
-        return validateToken(token) && getTokenType(token) == "ACCESS"
-    }
-
-    /**
-     * Refresh Token 유효성 검증
-     */
-    fun validateRefreshToken(token: String): Boolean {
-        return validateToken(token) && getTokenType(token) == "REFRESH"
-    }
-
-    /**
-     * JWT 토큰에서 Authentication 객체 생성
-     */
-    fun getAuthentication(token: String): Authentication? {
-        val userId = getUserIdFromToken(token) ?: return null
-        val authorities = getAuthoritiesFromToken(token)
-            .map { SimpleGrantedAuthority(it) }
-        
-        val principal = User(userId, "", authorities)
-        return UsernamePasswordAuthenticationToken(principal, token, authorities)
-    }
-
-    /**
-     * Refresh Token으로 새로운 Access Token 생성
-     */
-    fun refreshAccessToken(refreshToken: String): String? {
-        return if (validateRefreshToken(refreshToken)) {
-            val userId = getUserIdFromToken(refreshToken)?.toLongOrNull()
-            if (userId != null) {
-                generateAccessToken(userId)
-            } else null
-        } else null
-    }
-
-    /**
-     * 로그아웃 시 쿠키에서 토큰 제거
-     */
-    fun clearTokenCookies(response: HttpServletResponse) {
-        cookieUtil.deleteAllAuthCookies(response)
     }
 
     private fun getClaims(token: String): Claims {

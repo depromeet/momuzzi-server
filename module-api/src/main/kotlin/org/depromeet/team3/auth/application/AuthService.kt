@@ -1,13 +1,15 @@
 package org.depromeet.team3.auth.application
 
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.depromeet.team3.auth.KakaoOAuthClient
-import org.depromeet.team3.auth.application.response.UserResponse
-import org.depromeet.team3.auth.model.KakaoResponse
+import org.depromeet.team3.auth.KakaoProperties
+import org.depromeet.team3.auth.application.response.UserProfileResponse
+import org.depromeet.team3.auth.exception.AuthException
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.security.jwt.JwtTokenProvider
 import org.depromeet.team3.user.UserEntity
 import org.depromeet.team3.user.UserRepository
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -15,131 +17,120 @@ import org.springframework.transaction.annotation.Transactional
 class AuthService(
     private val kakaoOAuthClient: KakaoOAuthClient,
     private val userRepository: UserRepository,
-    private val jwtTokenProvider: JwtTokenProvider
-){
-
-    @Value("\${kakao.redirect-uri}")
-    private val kakaoRedirectUri: String? = null
+    private val jwtTokenProvider: JwtTokenProvider,
+    private val kakaoProperties: KakaoProperties
+) {
 
     @Transactional
     fun oAuthKakaoLoginWithCode(
         code: String,
         response: HttpServletResponse
-    ): UserResponse {
-        // 1. 인가코드로 액세스 토큰 교환
-        val oAuthToken = kakaoOAuthClient.requestToken(code, kakaoRedirectUri!!)
-        
-        // 2. 액세스 토큰으로 프로필 요청
+    ): UserProfileResponse {
+        // 1. 카카오 OAuth 토큰 요청 및 프로필 조회
+        val oAuthToken = kakaoOAuthClient.requestToken(code, kakaoProperties.redirectUri)
         val kakaoProfile = kakaoOAuthClient.requestProfile(oAuthToken)
 
+        // 2. 카카오 프로필 정보 추출
         val socialId = kakaoProfile.id.toString()
         val email = kakaoProfile.kakao_account.email
         val nickname = kakaoProfile.kakao_account.profile.nickname
         val profileImage = kakaoProfile.kakao_account.profile.profile_image_url
 
-        val userEntity = userRepository.findByEmail(email)
-            ?.also { existingUser ->
-                // 프로필 이미지 업데이트
-                existingUser.profileImage = profileImage
-            }
-            ?: createNewUserEntity(email, nickname, profileImage, socialId)
+        // 3. 사용자 조회 또는 생성
+        val userEntity = findOrCreateUser(email, nickname, profileImage, socialId)
 
-        // JWT 토큰을 쿠키로 설정
-        jwtTokenProvider.setTokenCookies(response, userEntity.id!!, email)
+        // 4. JWT 토큰 생성 및 쿠키 설정
+        setAuthenticationTokens(response, userEntity)
 
-        // 응답용 토큰 생성
-        val accessToken = jwtTokenProvider.generateAccessToken(userEntity.id!!, email)
-        val refreshToken = jwtTokenProvider.generateRefreshToken(userEntity.id!!)
-
-        // Refresh Token 저장
-        userEntity.refreshToken = refreshToken
-        userRepository.save(userEntity)
-
-        return UserResponse(
+        return UserProfileResponse(
             email = userEntity.email,
             nickname = userEntity.nickname,
-            profileImage = userEntity.profileImage,
-            accessToken = accessToken,
-            refreshToken = refreshToken
+            profileImage = userEntity.profileImage
         )
     }
 
     @Transactional
-    fun oAuthKakaoLoginWithAccessToken(
-        kakaoAccessToken: String,
+    fun refreshTokens(
+        request: HttpServletRequest,
         response: HttpServletResponse
-    ): UserResponse {
+    ): Map<String, String> {
+        // 1. Refresh Token 추출 및 검증
+        val refreshToken = jwtTokenProvider.extractRefreshToken(request)
+            ?: throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "Refresh Token이 없습니다")
 
-        // KakaoOAuthClient를 통해 프로필 요청 (accessToken 사용)
-        val kakaoProfile = requestProfileWithAccessToken(kakaoAccessToken)
-
-        val socialId = kakaoProfile.id.toString()
-        val email = kakaoProfile.kakao_account.email
-        val nickname = kakaoProfile.kakao_account.profile.nickname
-        val profileImage = kakaoProfile.kakao_account.profile.profile_image_url
-
-        val userEntity = userRepository.findByEmail(email)
-            ?.also { existingUser ->
-                // 프로필 이미지 업데이트
-                existingUser.profileImage = profileImage
-            }
-            ?: createNewUserEntity(email, nickname, profileImage, socialId)
-
-        // JWT 토큰을 쿠키로 설정
-        jwtTokenProvider.setTokenCookies(response, userEntity.id!!, email)
-
-        // 응답용 토큰 생성
-        val accessToken = jwtTokenProvider.generateAccessToken(userEntity.id!!, email)
-        val refreshToken = jwtTokenProvider.generateRefreshToken(userEntity.id!!)
-
-        // Refresh Token 저장
-        userEntity.refreshToken = refreshToken
-        userRepository.save(userEntity)
-
-        return UserResponse(
-            email = userEntity.email,
-            nickname = userEntity.nickname,
-            profileImage = userEntity.profileImage,
-            accessToken = accessToken,
-            refreshToken = refreshToken
-        )
-    }
-
-    fun testKakaoToken(code: String, redirectUri: String): String {
-        return try {
-            val oAuthToken = kakaoOAuthClient.requestToken(code, redirectUri)
-            "토큰 요청 성공: ${oAuthToken.access_token?.substring(0, 20)}..."
-        } catch (e: Exception) {
-            "토큰 요청 실패: ${e.message}"
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "Refresh Token이 유효하지 않습니다")
         }
-    }
 
-    private fun requestProfileWithAccessToken(accessToken: String): KakaoResponse.KakaoProfile {
-        // 임시 OAuthToken 객체 생성
-        val oAuthToken = KakaoResponse.OAuthToken(
-            access_token = accessToken,
-            token_type = "bearer",
-            refresh_token = null,
-            expires_in = null,
-            scope = null,
-            refresh_token_expires_in = null
+        // 2. 사용자 정보 조회 및 토큰 일치성 검증
+        val userId = jwtTokenProvider.getUserIdFromToken(refreshToken)?.toLongOrNull()
+            ?: throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "사용자 정보를 찾을 수 없습니다")
+
+        val userEntity = userRepository.findById(userId).orElseThrow {
+            AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "사용자를 찾을 수 없습니다")
+        }
+
+        if (userEntity.refreshToken != refreshToken) {
+            throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "Refresh Token이 일치하지 않습니다")
+        }
+
+        // 3. 새로운 토큰 생성 및 설정
+        setAuthenticationTokens(response, userEntity)
+
+        return mapOf(
+            "message" to "토큰이 성공적으로 갱신되었습니다",
+            "status" to "success"
         )
-        return kakaoOAuthClient.requestProfile(oAuthToken)
     }
 
-    private fun createNewUserEntity(
+    /**
+     * 사용자 조회 또는 신규 생성
+     */
+    private fun findOrCreateUser(
         email: String,
         nickname: String,
         profileImage: String?,
         socialId: String
     ): UserEntity {
-        val newUserEntity = UserEntity().apply {
-            this.email = email
-            this.nickname = nickname
-            this.profileImage = profileImage
-            this.socialId = socialId
-            this.refreshToken = null
-        }
-        return userRepository.save(newUserEntity)
+        return userRepository.findByEmail(email)
+            ?.apply {
+                // 기존 사용자의 프로필 이미지만 업데이트
+                this.profileImage = profileImage
+            }
+            ?: createNewUser(email, nickname, profileImage, socialId)
+    }
+
+    /**
+     * 신규 사용자 생성
+     */
+    private fun createNewUser(
+        email: String,
+        nickname: String,
+        profileImage: String?,
+        socialId: String
+    ): UserEntity {
+        val newUser = UserEntity(
+            socialId = socialId,
+            email = email,
+            profileImage = profileImage,
+            refreshToken = null,
+            nickname = nickname
+        )
+        return userRepository.save(newUser)
+    }
+
+    /**
+     * JWT 토큰 생성 및 쿠키 설정, DB 저장
+     */
+    private fun setAuthenticationTokens(response: HttpServletResponse, userEntity: UserEntity) {
+        val userId = userEntity.id!!
+        
+        // 토큰 생성 및 쿠키 설정
+        jwtTokenProvider.setTokenCookies(response, userId, userEntity.email)
+        
+        // Refresh Token을 DB에 저장
+        val refreshToken = jwtTokenProvider.generateRefreshToken(userId)
+        userEntity.refreshToken = refreshToken
+        userRepository.save(userEntity)
     }
 }

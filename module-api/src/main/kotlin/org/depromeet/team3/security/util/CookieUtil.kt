@@ -1,17 +1,16 @@
-package org.depromeet.team3.util
+package org.depromeet.team3.security.util
 
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.beans.factory.annotation.Value
+import org.depromeet.team3.security.jwt.AppProperties
 import org.springframework.stereotype.Component
 import java.util.*
 
 @Component
-class CookieUtil {
-
-    @Value("\${spring.profiles.active:local}")
-    private lateinit var activeProfile: String
+class CookieUtil(
+    private val appProperties: AppProperties
+) {
 
     companion object {
         const val ACCESS_TOKEN_COOKIE_NAME = "accessToken"
@@ -41,7 +40,7 @@ class CookieUtil {
      * 로컬 환경 여부 확인
      */
     private fun isLocal(): Boolean {
-        return activeProfile == "local" || activeProfile == "prod"
+        return appProperties.env == "local" || appProperties.env == "prod"
     }
 
     /**

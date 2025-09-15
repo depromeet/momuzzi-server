@@ -1,12 +1,13 @@
 package org.depromeet.team3.auth
 
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component
 
 @Component
-class KakaoProperties(
-    @Value("\${kakao.client-id}")
-    val clientId: String,
-    @Value("\${kakao.client-secret:}")
-    val clientSecret: String?
+@ConfigurationProperties(prefix = "kakao")
+data class KakaoProperties(
+    var clientId: String = "",
+    var redirectUri: String = "",
+    var tokenUri: String = "https://kauth.kakao.com/oauth/token",
+    var userInfoUri: String = "https://kapi.kakao.com/v2/user/me"
 )
