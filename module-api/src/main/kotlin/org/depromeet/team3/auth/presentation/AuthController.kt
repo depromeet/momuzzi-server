@@ -5,11 +5,12 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.depromeet.team3.auth.application.AuthService
 import org.depromeet.team3.auth.application.response.UserProfileResponse
+import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("${ContextConstants.API_VERSION_V1}/auth")
 class AuthController(
     private val authService: AuthService
 ) {
