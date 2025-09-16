@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import org.depromeet.team3.common.ContextConstants
+import org.depromeet.team3.common.annotation.UserId
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.depromeet.team3.meeting.application.CreateMeetingService
 import org.depromeet.team3.meeting.application.GetMeetingService
@@ -26,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Tag(name = "모임", description = "모임 관련 API")
 @RestController
-@RequestMapping("/meetings")
+@RequestMapping("${ContextConstants.API_VERSION_V1}/meetings")
 class MeetingController(
     private val creteMeetingService: CreateMeetingService,
     private val getMeetingService: GetMeetingService,
@@ -44,7 +46,7 @@ class MeetingController(
     @GetMapping
     fun getMeeting(
         @Parameter(description = "사용자 ID", example = "123")
-        userId: Long
+        @UserId userId: Long
     ) : DpmApiResponse<List<MeetingResponse>> {
         val response = getMeetingService(userId)
 
@@ -78,7 +80,7 @@ class MeetingController(
     @PostMapping
     fun create(
         @Parameter(description = "사용자 ID", example = "123")
-        userId: Long,
+        @UserId userId: Long,
         @RequestBody @Valid request: CreateMeetingRequest,
     ) : DpmApiResponse<Unit> {
         creteMeetingService(request, userId)
@@ -119,7 +121,7 @@ class MeetingController(
         @Parameter(description = "모임 ID", example = "1")
         @PathVariable("meetingId") meetingId: Long,
         @Parameter(description = "사용자 ID", example = "123")
-        userId: Long,
+        @UserId userId: Long
     ) : DpmApiResponse<Unit> {
         joinMeetingService.invoke(meetingId, userId)
 
