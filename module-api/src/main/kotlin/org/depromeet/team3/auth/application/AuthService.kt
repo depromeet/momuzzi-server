@@ -92,12 +92,17 @@ class AuthService(
         profileImage: String?,
         socialId: String
     ): UserEntity {
-        return userRepository.findByEmail(email)
-            ?.apply {
-                // 기존 사용자의 프로필 이미지만 업데이트
-                this.profileImage = profileImage
-            }
-            ?: createNewUser(email, nickname, profileImage, socialId)
+        println("DEBUG: 사용자 조회 시작 - email: $email, socialId: $socialId")
+        
+        val existingUser = userRepository.findByEmail(email)
+        if (existingUser != null) {
+            println("DEBUG: 기존 사용자 발견 - id: ${existingUser.id}")
+            existingUser.profileImage = profileImage
+            return userRepository.save(existingUser)
+        }
+        
+        println("DEBUG: 신규 사용자 생성")
+        return createNewUser(email, nickname, profileImage, socialId)
     }
 
     /**
@@ -109,6 +114,8 @@ class AuthService(
         profileImage: String?,
         socialId: String
     ): UserEntity {
+        println("DEBUG: 신규 사용자 생성 시작 - email: $email, socialId: $socialId, nickname: $nickname")
+        
         val newUser = UserEntity(
             socialId = socialId,
             email = email,
@@ -116,7 +123,10 @@ class AuthService(
             refreshToken = null,
             nickname = nickname
         )
-        return userRepository.save(newUser)
+        
+        val savedUser = userRepository.save(newUser)
+        println("DEBUG: 사용자 저장 완료 - id: ${savedUser.id}")
+        return savedUser
     }
 
     /**
