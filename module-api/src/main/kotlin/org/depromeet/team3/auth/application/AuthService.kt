@@ -94,15 +94,26 @@ class AuthService(
     ): UserEntity {
         println("DEBUG: 사용자 조회 시작 - email: $email, socialId: $socialId")
         
-        val existingUser = userRepository.findByEmail(email)
-        if (existingUser != null) {
-            println("DEBUG: 기존 사용자 발견 - id: ${existingUser.id}")
-            existingUser.profileImage = profileImage
-            return userRepository.save(existingUser)
+        try {
+            val existingUser = userRepository.findByEmail(email)
+            println("DEBUG: DB 조회 완료 - 결과: ${if (existingUser != null) "사용자 발견 (id: ${existingUser.id})" else "사용자 없음"}")
+            
+            if (existingUser != null) {
+                println("DEBUG: 기존 사용자 프로필 업데이트 중")
+                existingUser.profileImage = profileImage
+                val updated = userRepository.save(existingUser)
+                println("DEBUG: 기존 사용자 업데이트 완료 - id: ${updated.id}")
+                return updated
+            }
+            
+            println("DEBUG: 신규 사용자 생성")
+            return createNewUser(email, nickname, profileImage, socialId)
+            
+        } catch (e: Exception) {
+            println("ERROR: 사용자 조회 중 오류 발생: ${e.message}")
+            println("ERROR: 스택트레이스: ${e.stackTrace.joinToString("\n")}")
+            throw e
         }
-        
-        println("DEBUG: 신규 사용자 생성")
-        return createNewUser(email, nickname, profileImage, socialId)
     }
 
     /**
