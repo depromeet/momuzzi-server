@@ -24,7 +24,7 @@ class UserEntity(
     var refreshToken: String? = null,
 
     @Column(nullable = false)
-    val nickname: String,
+    var nickname: String = "",
 
     @OneToMany(mappedBy = "hostUser", fetch = FetchType.LAZY)
     val meetings: MutableList<MeetingEntity> = mutableListOf()
