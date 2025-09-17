@@ -22,22 +22,17 @@ class KakaoOAuthClient(
 ) {
     private val log = LoggerFactory.getLogger(KakaoOAuthClient::class.java)
 
-    private val allowedRedirectUris = setOf(
-        "http://localhost:3000/auth/callback",
-        "http://localhost:8080/auth/callback",
-        "https://api.momuzzi.site/auth/callback",
-        "https://www.momuzzi.site/auth/callback"
-    )
-
     /**
      * 인가 코드를 이용해 카카오 서버로부터 OAuth 토큰 반환 받음.
      * 추후 OAuth Token 을 이용해, 카카오 서버로부터 사용자 정보 반환 => DB 저장 및 자체 인증/인가 로직
      */
     fun requestToken(accessCode: String, redirectUri: String): KakaoResponse.OAuthToken {
         val trimmedRedirectUri = redirectUri.trim()
+        val allowedRedirectUris = kakaoProperties.getAllowedRedirectUris()
 
         if (!allowedRedirectUris.contains(trimmedRedirectUri)) {
             log.error("허용되지 않은 redirect_uri: {}", trimmedRedirectUri)
+            log.error("허용된 redirect_uri 목록: {}", allowedRedirectUris)
             throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
         }
 
