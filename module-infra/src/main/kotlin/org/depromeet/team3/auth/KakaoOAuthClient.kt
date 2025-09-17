@@ -24,7 +24,8 @@ class KakaoOAuthClient(
 
     private val allowedRedirectUris = setOf(
         "http://localhost:8080/login/oauth2/code/kakao",
-        "https://api.momuzzi.site/login/oauth2/code/kakao"
+        "https://api.momuzzi.site/login/oauth2/code/kakao",
+        "https://www.momuzzi.site/login/oauth2/code/kakao"
     )
 
     /**

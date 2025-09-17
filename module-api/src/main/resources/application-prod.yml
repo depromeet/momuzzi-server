@@ -20,7 +20,9 @@ app:
   env: prod
 
 kakao:
-  redirect-uri: https://api.momuzzi.site/login/oauth2/code/kakao
+  redirect-uri:
+    - https://api.momuzzi.site/login/oauth2/code/kakao
+    - https://www.momuzzi.site/login/oauth2/code/kakao
 
 api:
   naver:
