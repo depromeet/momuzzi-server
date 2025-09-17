@@ -27,7 +27,7 @@ class AuthService(
         response: HttpServletResponse
     ): UserProfileResponse {
         // 1. 카카오 OAuth 토큰 요청 및 프로필 조회
-        val oAuthToken = kakaoOAuthClient.requestToken(code, kakaoProperties.getRedirectUri())
+        val oAuthToken = kakaoOAuthClient.requestToken(code, kakaoProperties.redirectUri)
         val kakaoProfile = kakaoOAuthClient.requestProfile(oAuthToken)
 
         // 2. 카카오 프로필 정보 추출
