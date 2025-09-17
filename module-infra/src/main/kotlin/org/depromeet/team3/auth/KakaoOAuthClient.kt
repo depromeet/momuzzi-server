@@ -41,6 +41,7 @@ class KakaoOAuthClient(
             throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
         }
 
+
         val decodedAccessCode = accessCode
 
         // 요청 헤더 및 파라미터 구성
