@@ -23,6 +23,7 @@ class KakaoOAuthClient(
     private val log = LoggerFactory.getLogger(KakaoOAuthClient::class.java)
 
     private val allowedRedirectUris = setOf(
+        "http://localhost:3000/login/oauth2/code/kakao",
         "http://localhost:8080/login/oauth2/code/kakao",
         "https://api.momuzzi.site/login/oauth2/code/kakao",
         "https://www.momuzzi.site/login/oauth2/code/kakao"
