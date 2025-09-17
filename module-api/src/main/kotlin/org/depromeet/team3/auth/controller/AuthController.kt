@@ -1,6 +1,7 @@
-package org.depromeet.team3.auth.presentation
+package org.depromeet.team3.auth.controller
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.depromeet.team3.auth.application.AuthService
@@ -9,6 +10,7 @@ import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.springframework.web.bind.annotation.*
 
+@Tag(name = "로그인/회원가입", description = "사용자 로그인 관련 API")
 @RestController
 @RequestMapping("${ContextConstants.API_VERSION_V1}/auth")
 class AuthController(
