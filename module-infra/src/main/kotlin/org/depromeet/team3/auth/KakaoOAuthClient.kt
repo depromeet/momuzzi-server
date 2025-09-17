@@ -57,6 +57,9 @@ class KakaoOAuthClient(
             add("code", decodedAccessCode)
         }
 
+        log.info("카카오 토큰 요청 - redirect_uri: {}", trimmedRedirectUri)
+        log.info("카카오 토큰 요청 - client_id: {}", kakaoProperties.clientId)
+
 
         val kakaoTokenRequest = HttpEntity(params, headers)
 
