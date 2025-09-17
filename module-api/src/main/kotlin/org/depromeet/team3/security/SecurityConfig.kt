@@ -37,7 +37,7 @@ class SecurityConfig(
                 it.requestMatchers(
                     "/",
                     "/api/auth/**",
-                    "/login/oauth2/code/**",  // 카카오 OAuth 콜백 경로 추가
+                    "/auth/callback/**",  // 카카오 OAuth 콜백 경로 추가
                     "/swagger", "/swagger/", "/swagger-ui/**", "/v3/api-docs/**",
                     "/index.html", "/static/**", "/favicon.ico"
                 ).permitAll()
