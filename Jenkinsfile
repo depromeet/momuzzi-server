@@ -110,14 +110,17 @@ pipeline {
         }
         
         stage('Docker Build & Push') {
+            when {
+                branch 'dev'
+            }
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' || 
-                                     env.GIT_BRANCH == 'origin/main' || 
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                    def isDev = env.BRANCH_NAME == 'dev' || 
+                              env.GIT_BRANCH == 'origin/dev' || 
+                              env.GIT_BRANCH == 'dev' ||
+                              sh(script: 'git branch --show-current', returnStdout: true).trim() == 'dev'
                     
-                    if (isMainBranch) {
+                    if (isDev) {
                         // Docker 캐시 정리 (손상된 레이어 제거)
                         sh """
                             docker system prune -af
@@ -161,21 +164,24 @@ pipeline {
                             docker rmi ${fullImageName}:latest || true
                         """
                     } else {
-                        echo "Skipping Docker Build & Push - not main branch"
+                        echo "Skipping Docker Build & Push - not dev branch"
                     }
                 }
             }
         }
         
         stage('Deploy to NCP Server') {
+            when {
+                branch 'dev'
+            }
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' || 
-                                     env.GIT_BRANCH == 'origin/main' || 
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                    def isDev = env.BRANCH_NAME == 'dev' || 
+                              env.GIT_BRANCH == 'origin/dev' || 
+                              env.GIT_BRANCH == 'dev' ||
+                              sh(script: 'git branch --show-current', returnStdout: true).trim() == 'dev'
                     
-                    if (isMainBranch) {
+                    if (isDev) {
                         withCredentials([usernamePassword(
                             credentialsId: "${REGISTRY_CREDENTIALS_ID}",
                             usernameVariable: 'REGISTRY_USERNAME',
@@ -240,7 +246,7 @@ EOF
                             }
                         }
                     } else {
-                        echo "Skipping Deploy to NCP Server - not main branch"
+                        echo "Skipping Deploy to NCP Server - not dev branch"
                     }
                 }
             }
