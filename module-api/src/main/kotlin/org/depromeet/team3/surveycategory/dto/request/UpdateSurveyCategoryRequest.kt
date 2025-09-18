@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull
 import org.depromeet.team3.survey_category.SurveyCategoryType
 import org.depromeet.team3.survey_category.SurveyCategoryLevel
 
-@Schema(description = "설문 카테고리 생성 요청 DTO")
-data class CreateSurveyCategoryRequest(
+@Schema(description = "설문 카테고리 수정 요청 DTO")
+data class UpdateSurveyCategoryRequest(
 
     @Schema(description = "상위 카테고리 ID", example = "1", nullable = true)
     val parentId: Long? = null,
@@ -25,5 +25,6 @@ data class CreateSurveyCategoryRequest(
     val name: String,
 
     @Schema(description = "카테고리 순서", example = "1")
+    @field:NotNull(message = "카테고리 순서는 필수입니다")
     val order: Int
 )
