@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository
 interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long> {
     
     fun findByIsDeletedFalse(): List<SurveyCategoryEntity>
+
+    fun existsByParentIdAndIsDeletedFalse(parentId: Long): Boolean
 }

@@ -14,8 +14,18 @@ class SurveyCategoryQuery (
         return surveyCategoryMapper.toDomain(surveyCategoryJpaRepository.save(entity))
     }
 
+    override fun findById(id: Long): SurveyCategory? {
+        return surveyCategoryJpaRepository.findById(id)
+            .map { surveyCategoryMapper.toDomain(it) }
+            .orElse(null)
+    }
+
     override fun findActive(): List<SurveyCategory> {
         return surveyCategoryJpaRepository.findByIsDeletedFalse()
             .map { surveyCategoryMapper.toDomain(it) }
+    }
+
+    override fun existsByParentIdAndIsDeletedFalse(parentId: Long): Boolean {
+        return surveyCategoryJpaRepository.existsByParentIdAndIsDeletedFalse(parentId)
     }
 }
