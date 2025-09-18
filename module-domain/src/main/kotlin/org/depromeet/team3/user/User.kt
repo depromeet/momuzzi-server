@@ -6,9 +6,11 @@ import java.time.LocalDateTime
 
 data class User(
     val id: Long? = null,
-    val kakaoId: String,
     val email: String,
     val nickname: String,
+    var profileImage: String?,
+    val socialId: String,
+    var refreshToken: String?,
     val meetings: MutableList<Meeting> = mutableListOf(),
     override val createdAt: LocalDateTime,
     override val updatedAt: LocalDateTime? = null,

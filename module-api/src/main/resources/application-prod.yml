@@ -10,7 +10,20 @@ spring:
     url: ${MYSQL_URL}
     username: ${MYSQL_USER}
     password: ${MYSQL_PASSWORD}
-    
+
   jpa:
     hibernate:
       ddl-auto: update      # 추후 validate
+
+
+app:
+  env: prod
+
+kakao:
+  redirect-uri: https://api.momuzzi.site/auth/callback
+
+api:
+  naver:
+    map:
+      client-id: ${CLIENT_ID}
+      client-secret: ${CLIENT_SECRET}

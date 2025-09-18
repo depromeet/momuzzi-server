@@ -1,39 +1,35 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.user.User
 import org.depromeet.team3.user.UserEntity
 import org.springframework.stereotype.Component
 
 @Component
-class UserMapper(
-    private val meetingJpaRepository: MeetingJpaRepository,
-    private val meetingMapper: MeetingMapper
-) : DomainMapper<User, UserEntity> {
-    
-    override fun toDomain(entity: UserEntity): User {
-        val meetings = entity.meetings.map { meetingMapper.toDomain(it) }.toMutableList()
+class UserMapper : DomainMapper<User, UserEntity> {
 
+    override fun toDomain(entity: UserEntity): User {
         return User(
             id = entity.id,
-            kakaoId = entity.kakaoId,
             email = entity.email,
             nickname = entity.nickname,
-            meetings = meetings,
+            profileImage = entity.profileImage,
+            socialId = entity.socialId,
+            refreshToken = entity.refreshToken,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
         )
     }
-    
-    override fun toEntity(domain: User): UserEntity {
-        val meetingEntities = domain.id?.let(meetingJpaRepository::findByHostUserId) ?: emptyList()
 
+    override fun toEntity(domain: User): UserEntity {
         return UserEntity(
             id = domain.id,
-            kakaoId = domain.kakaoId,
+            socialId = domain.socialId,
             email = domain.email,
             nickname = domain.nickname,
-            meetings = meetingEntities.toMutableList()
-        )
+            profileImage = domain.profileImage,
+            refreshToken = domain.refreshToken
+        ).also {
+            // BaseTimeEntity의 createdAt, updatedAt 처리는 자동으로 됨
+        }
     }
 }

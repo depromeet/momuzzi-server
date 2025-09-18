@@ -37,6 +37,9 @@ services:
     networks:
       - depromeet_network
     restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-kf", "http://localhost" ]
       interval: 30s
@@ -45,4 +48,4 @@ services:
 
 networks:
   depromeet_network:
-    driver: bridge
+    external: true

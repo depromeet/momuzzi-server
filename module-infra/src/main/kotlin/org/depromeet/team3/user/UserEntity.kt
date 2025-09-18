@@ -9,17 +9,23 @@ import org.depromeet.team3.meeting.MeetingEntity
 class UserEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
-    
-    @Column(name = "kakao_id", nullable = false, unique = true)
-    val kakaoId: String,
-    
+    var id: Long? = null,
+
+    @Column(name = "social_id", nullable = false, unique = true)
+    var socialId: String = "",
+
+    @Column(nullable = false, unique = true)
+    var email: String = "",
+
+    @Column(name = "profile_image")
+    var profileImage: String? = null,
+
+    @Column(name = "refresh_token")
+    var refreshToken: String? = null,
+
     @Column(nullable = false)
-    val email: String,
-    
-    @Column(nullable = false)
-    val nickname: String,
-    
+    var nickname: String = "",
+
     @OneToMany(mappedBy = "hostUser", fetch = FetchType.LAZY)
     val meetings: MutableList<MeetingEntity> = mutableListOf()
 ) : BaseTimeEntity()

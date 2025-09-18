@@ -24,5 +24,13 @@ enum class ErrorCode(
     // 5xx Server Errors
     INTERNAL_SERVER_ERROR("S001", "서버 내부 오류가 발생했습니다.", 500),
     DATABASE_ERROR("S002", "데이터베이스 오류가 발생했습니다.", 500),
-    EXTERNAL_API_ERROR("S003", "외부 API 호출 중 오류가 발생했습니다.", 500)
+    EXTERNAL_API_ERROR("S003", "외부 API 호출 중 오류가 발생했습니다.", 500),
+
+    // OAuth 관련 에러
+    KAKAO_INVALID_GRANT("O001", "카카오 인증 코드가 유효하지 않습니다.", 401),
+    KAKAO_AUTH_FAILED("O002", "카카오 인증에 실패했습니다.", 401),
+    KAKAO_JSON_PARSE_ERROR("O003", "카카오 응답 데이터 파싱에 실패했습니다.", 500),
+    KAKAO_API_ERROR("O004", "카카오 API 호출 중 오류가 발생했습니다.", 500),
+    SOCIAL_LOGIN_INVALID_STATE("O005", "OAuth state 값이 유효하지 않습니다.", 400),
+    ALREADY_REGISTERED_WITH_OTHER_LOGIN("O006", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409)
 }
