@@ -124,27 +124,63 @@ class SurveyCategoryTest {
     }
 
     @Test
-    fun `다른 레벨의 SurveyCategory는 같지 않다`() {
+    fun `SurveyCategory copy로 수정한다`() {
         // given
         val now = LocalDateTime.now()
-        val branchCategory = SurveyCategory(
+        val originalCategory = SurveyCategory(
+            id = 1L,
+            parentId = null,
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             order = 1,
-            createdAt = now
+            isDeleted = false,
+            createdAt = now,
+            updatedAt = null
         )
 
-        val leafCategory = SurveyCategory(
+        // when
+        val updatedCategory = originalCategory.copy(
+            name = "전통한식",
+            order = 2,
+            updatedAt = now
+        )
+
+        // then
+        assertEquals(originalCategory.id, updatedCategory.id)
+        assertEquals(originalCategory.parentId, updatedCategory.parentId)
+        assertEquals(originalCategory.type, updatedCategory.type)
+        assertEquals(originalCategory.level, updatedCategory.level)
+        assertEquals("전통한식", updatedCategory.name)
+        assertEquals(2, updatedCategory.order)
+        assertEquals(originalCategory.isDeleted, updatedCategory.isDeleted)
+        assertEquals(originalCategory.createdAt, updatedCategory.createdAt)
+        assertEquals(now, updatedCategory.updatedAt)
+    }
+
+    @Test
+    fun `SurveyCategory soft delete 처리한다`() {
+        // given
+        val now = LocalDateTime.now()
+        val activeCategory = SurveyCategory(
+            id = 1L,
+            parentId = null,
             type = SurveyCategoryType.CUISINE,
-            level = SurveyCategoryLevel.LEAF,
-            name = "비빔밥",
+            level = SurveyCategoryLevel.BRANCH,
+            name = "한식",
             order = 1,
-            createdAt = now
+            isDeleted = false,
+            createdAt = now,
+            updatedAt = null
         )
 
-        // when & then
-        assert(!branchCategory.equals(leafCategory))
-        assert(branchCategory.hashCode() != leafCategory.hashCode())
+        // when
+        val deletedCategory = activeCategory.copy(isDeleted = true)
+
+        // then
+        assertEquals(activeCategory.id, deletedCategory.id)
+        assertEquals(activeCategory.name, deletedCategory.name)
+        assertEquals(true, deletedCategory.isDeleted)
+        assertEquals(activeCategory.createdAt, deletedCategory.createdAt)
     }
 }
