@@ -1,5 +1,6 @@
 package org.depromeet.team3.surveycategory
 
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.mapper.SurveyCategoryMapper
 import org.springframework.stereotype.Repository
 
@@ -44,5 +45,10 @@ class SurveyCategoryQuery (
     
     override fun countChildrenByParentIdAndIsDeletedFalse(parentId: Long): Long {
         return surveyCategoryJpaRepository.countByParentIdAndIsDeletedFalse(parentId)
+    }
+
+    override fun findByNameAndType(name: String, type: SurveyCategoryType): SurveyCategory? {
+        return surveyCategoryJpaRepository.findByNameAndTypeAndIsDeletedFalse(name, type)
+            ?.let { surveyCategoryMapper.toDomain(it) }
     }
 }
