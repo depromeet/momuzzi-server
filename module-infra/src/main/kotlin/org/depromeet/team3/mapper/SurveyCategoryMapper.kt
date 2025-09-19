@@ -17,7 +17,7 @@ class SurveyCategoryMapper(
             type = entity.type,
             level = entity.level,
             name = entity.name,
-            order = entity.order,
+            sortOrder = entity.sortOrder,
             isDeleted = entity.isDeleted,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
@@ -36,7 +36,7 @@ class SurveyCategoryMapper(
             type = domain.type,
             level = domain.level,
             name = domain.name,
-            order = domain.order,
+            sortOrder = domain.sortOrder,
             isDeleted = domain.isDeleted
         )
     }

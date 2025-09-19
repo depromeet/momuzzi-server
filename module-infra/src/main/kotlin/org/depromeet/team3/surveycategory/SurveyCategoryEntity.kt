@@ -13,7 +13,7 @@ import org.depromeet.team3.common.BaseTimeEntity
         ),
         UniqueConstraint(
             name = "uk_survey_category_order_parent", 
-            columnNames = ["`order`", "parent_id"]
+            columnNames = ["sort_order", "parent_id"]
         )
     ]
 )
@@ -38,8 +38,8 @@ class SurveyCategoryEntity(
     @Column(name = "name", nullable = false)
     val name: String,
 
-    @Column(name = "`order`", nullable = false) // order는 예약어이므로 백틱 처리
-    val order: Int,
+    @Column(name = "sort_order", nullable = false)
+    val sortOrder: Int,
 
     @Column(name = "is_deleted", nullable = false)
     val isDeleted: Boolean = false

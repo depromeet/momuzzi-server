@@ -9,7 +9,7 @@ data class SurveyCategory (
     val type: SurveyCategoryType,
     val level: SurveyCategoryLevel,
     val name: String,
-    val order: Int,
+    val sortOrder: Int,
     val isDeleted: Boolean = false,
     override val createdAt: LocalDateTime? = null,
     override val updatedAt: LocalDateTime? = null,

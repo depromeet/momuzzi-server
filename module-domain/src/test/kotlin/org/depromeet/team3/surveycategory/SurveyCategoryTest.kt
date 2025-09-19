@@ -18,14 +18,14 @@ class SurveyCategoryTest {
         val type = SurveyCategoryType.CUISINE
         val level = SurveyCategoryLevel.BRANCH
         val name = "한식"
-        val order = 1
+        val sortOrder = 1
 
         // when
         val surveyCategory = SurveyCategory(
             type = type,
             level = level,
             name = name,
-            order = order,
+            sortOrder = sortOrder,
             createdAt = now
         )
 
@@ -34,7 +34,7 @@ class SurveyCategoryTest {
         assertEquals(type, surveyCategory.type)
         assertEquals(level, surveyCategory.level)
         assertEquals(name, surveyCategory.name)
-        assertEquals(order, surveyCategory.order)
+        assertEquals(sortOrder, surveyCategory.sortOrder)
         assertEquals(false, surveyCategory.isDeleted)
         assertEquals(now, surveyCategory.createdAt)
         assertNull(surveyCategory.updatedAt)
@@ -48,7 +48,7 @@ class SurveyCategoryTest {
         val type = SurveyCategoryType.CUISINE
         val level = SurveyCategoryLevel.LEAF
         val name = "비빔밥"
-        val order = 1
+        val sortOrder = 1
 
         // when
         val surveyCategory = SurveyCategory(
@@ -56,7 +56,7 @@ class SurveyCategoryTest {
             type = type,
             level = level,
             name = name,
-            order = order,
+            sortOrder = sortOrder,
             createdAt = now
         )
 
@@ -66,7 +66,7 @@ class SurveyCategoryTest {
         assertEquals(type, surveyCategory.type)
         assertEquals(level, surveyCategory.level)
         assertEquals(name, surveyCategory.name)
-        assertEquals(order, surveyCategory.order)
+        assertEquals(sortOrder, surveyCategory.sortOrder)
         assertEquals(false, surveyCategory.isDeleted)
         assertEquals(now, surveyCategory.createdAt)
     }
@@ -152,7 +152,7 @@ class SurveyCategoryTest {
         assertEquals(originalCategory.type, updatedCategory.type)
         assertEquals(originalCategory.level, updatedCategory.level)
         assertEquals("전통한식", updatedCategory.name)
-        assertEquals(2, updatedCategory.order)
+        assertEquals(2, updatedCategory.sortOrder)
         assertEquals(originalCategory.isDeleted, updatedCategory.isDeleted)
         assertEquals(originalCategory.createdAt, updatedCategory.createdAt)
         assertEquals(now, updatedCategory.updatedAt)

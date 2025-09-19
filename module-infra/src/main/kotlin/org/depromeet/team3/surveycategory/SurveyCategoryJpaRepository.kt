@@ -31,13 +31,13 @@ interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long
     @Query("""
         SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END 
         FROM SurveyCategoryEntity c 
-        WHERE c.order = :order 
+        WHERE c.sortOrder = :sortOrder 
         AND (:parentId IS NULL AND c.parent IS NULL OR c.parent.id = :parentId)
         AND c.isDeleted = false
         AND (:excludeId IS NULL OR c.id != :excludeId)
     """)
-    fun existsByOrderAndParentIdAndIsDeletedFalse(
-        @Param("order") order: Int, 
+    fun existsBySortOrderAndParentIdAndIsDeletedFalse(
+        @Param("sortOrder") sortOrder: Int, 
         @Param("parentId") parentId: Long?, 
         @Param("excludeId") excludeId: Long?
     ): Boolean

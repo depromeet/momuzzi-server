@@ -38,8 +38,8 @@ class SurveyCategoryQuery (
         return surveyCategoryJpaRepository.existsByNameAndParentIdAndIsDeletedFalse(name, parentId, excludeId)
     }
     
-    override fun existsByOrderAndParentIdAndIsDeletedFalse(order: Int, parentId: Long?, excludeId: Long?): Boolean {
-        return surveyCategoryJpaRepository.existsByOrderAndParentIdAndIsDeletedFalse(order, parentId, excludeId)
+    override fun existsBySortOrderAndParentIdAndIsDeletedFalse(sortOrder: Int, parentId: Long?, excludeId: Long?): Boolean {
+        return surveyCategoryJpaRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(sortOrder, parentId, excludeId)
     }
     
     override fun countChildrenByParentIdAndIsDeletedFalse(parentId: Long): Long {
