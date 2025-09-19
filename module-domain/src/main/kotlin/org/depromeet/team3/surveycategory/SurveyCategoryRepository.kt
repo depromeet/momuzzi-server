@@ -9,4 +9,12 @@ interface SurveyCategoryRepository {
     fun findActive(): List<SurveyCategory>
 
     fun existsByParentIdAndIsDeletedFalse(parentId: Long): Boolean
+    
+    fun findByIdAndIsDeletedFalse(id: Long): SurveyCategory?
+    
+    fun existsByNameAndParentIdAndIsDeletedFalse(name: String, parentId: Long?, excludeId: Long? = null): Boolean
+    
+    fun existsByOrderAndParentIdAndIsDeletedFalse(order: Int, parentId: Long?, excludeId: Long? = null): Boolean
+    
+    fun countChildrenByParentIdAndIsDeletedFalse(parentId: Long): Long
 }

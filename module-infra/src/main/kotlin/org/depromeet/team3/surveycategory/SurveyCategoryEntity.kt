@@ -4,7 +4,19 @@ import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
 
 @Entity
-@Table(name = "tb_survey_category_master")
+@Table(
+    name = "tb_survey_category_master",
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_survey_category_name_parent",
+            columnNames = ["name", "parent_id"]
+        ),
+        UniqueConstraint(
+            name = "uk_survey_category_order_parent", 
+            columnNames = ["`order`", "parent_id"]
+        )
+    ]
+)
 class SurveyCategoryEntity(
 
     @Id
