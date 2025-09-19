@@ -1,7 +1,7 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.meeting.MeetingAttendee
-import org.depromeet.team3.meeting.MeetingAttendeeEntity
+import org.depromeet.team3.meetingattendee.MeetingAttendee
+import org.depromeet.team3.meetingattendee.MeetingAttendeeEntity
 import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.user.UserRepository
 import org.springframework.stereotype.Component
@@ -17,6 +17,7 @@ class MeetingAttendeeMapper(
             id = entity.id,
             meetingId = entity.meeting.id!!,
             userId = entity.user.id!!,
+            meetingNickname = entity.meetingNickname,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
         )
@@ -32,6 +33,7 @@ class MeetingAttendeeMapper(
         return MeetingAttendeeEntity(
             id = domain.id,
             meeting = meetingEntity,
+            meetingNickname = domain.meetingNickname,
             user = userEntity
         )
     }
