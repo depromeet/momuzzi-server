@@ -56,8 +56,8 @@ class UpdateSurveyCategoryService(
         }
 
         // 6. 형제 카테고리 내 순서 중복 검증
-        if (surveyCategoryRepository.existsByOrderAndParentIdAndIsDeletedFalse(request.order, request.parentId, id)) {
-            throw SurveyCategoryException(ErrorCode.DUPLICATE_CATEGORY_ORDER, mapOf("order" to request.order, "parentId" to request.parentId))
+        if (surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(request.sortOrder, request.parentId, id)) {
+            throw SurveyCategoryException(ErrorCode.DUPLICATE_CATEGORY_ORDER, mapOf("sortOrder" to request.sortOrder, "parentId" to request.parentId))
         }
 
         // 7. 업데이트된 카테고리 생성
@@ -66,7 +66,7 @@ class UpdateSurveyCategoryService(
             type = request.type,
             level = request.level,
             name = request.name,
-            order = request.order
+            sortOrder = request.sortOrder
         )
 
         // 8. 저장

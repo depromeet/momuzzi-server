@@ -68,7 +68,7 @@ class SurveyCategoryControllerTest {
                 SurveyCategoryItem(
                     level = SurveyCategoryLevel.BRANCH,
                     name = "한식",
-                    order = 1,
+                    sortOrder = 1,
                     children = emptyList()
                 )
             ),
@@ -97,7 +97,7 @@ class SurveyCategoryControllerTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1
+            sortOrder = 1
         )
 
         // Mock 설정 - 실제 서비스 호출을 방지
@@ -125,7 +125,7 @@ class SurveyCategoryControllerTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
-            order = 2
+            sortOrder = 2
         )
 
         // Mock 설정 - 실제 서비스 호출을 방지
@@ -170,7 +170,7 @@ class SurveyCategoryControllerTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
-            order = 2
+            sortOrder = 2
         )
 
         // Mock 설정 - 예외 발생 시뮬레이션
@@ -217,7 +217,7 @@ class SurveyCategoryControllerTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "", // 빈 문자열 - 유효성 검사 실패
-            order = 1
+            sortOrder = 1
         )
 
         // when & then

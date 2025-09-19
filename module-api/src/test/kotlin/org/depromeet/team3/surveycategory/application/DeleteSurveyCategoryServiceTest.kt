@@ -42,7 +42,7 @@ class DeleteSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.LEAF,
             name = "김치찌개",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = LocalDateTime.now(),
             updatedAt = null
@@ -87,7 +87,7 @@ class DeleteSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = LocalDateTime.now(),
             updatedAt = null
@@ -113,7 +113,7 @@ class DeleteSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.LEAF,
             name = "김치찌개",
-            order = 1,
+            sortOrder = 1,
             isDeleted = true, // 이미 삭제된 상태
             createdAt = LocalDateTime.now(),
             updatedAt = null

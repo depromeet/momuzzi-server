@@ -26,5 +26,5 @@ data class UpdateSurveyCategoryRequest(
 
     @Schema(description = "카테고리 순서", example = "1")
     @field:NotNull(message = "카테고리 순서는 필수입니다")
-    val order: Int
+    val sortOrder: Int
 )

@@ -43,7 +43,7 @@ class UpdateSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = LocalDateTime.now(),
             updatedAt = null
@@ -54,7 +54,7 @@ class UpdateSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
-            order = 2
+            sortOrder = 2
         )
 
         `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(existingCategory)
@@ -67,7 +67,7 @@ class UpdateSurveyCategoryServiceTest {
         verify(surveyCategoryRepository).save(
             existingCategory.copy(
                 name = "전통한식",
-                order = 2
+                sortOrder = 2
             )
         )
     }
@@ -82,7 +82,7 @@ class UpdateSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
-            order = 2
+            sortOrder = 2
         )
 
         `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(null)
@@ -104,7 +104,7 @@ class UpdateSurveyCategoryServiceTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = LocalDateTime.now(),
             updatedAt = null
@@ -115,7 +115,7 @@ class UpdateSurveyCategoryServiceTest {
             type = SurveyCategoryType.AVOID_INGREDIENT,
             level = SurveyCategoryLevel.LEAF,
             name = "피해야할 재료",
-            order = 5
+            sortOrder = 5
         )
 
         val parentCategory = SurveyCategory(
@@ -124,7 +124,7 @@ class UpdateSurveyCategoryServiceTest {
             type = SurveyCategoryType.AVOID_INGREDIENT,
             level = SurveyCategoryLevel.BRANCH,
             name = "부모 카테고리",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = LocalDateTime.now(),
             updatedAt = null
@@ -134,7 +134,7 @@ class UpdateSurveyCategoryServiceTest {
         `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(2L)).thenReturn(parentCategory)
         `when`(surveyCategoryRepository.countChildrenByParentIdAndIsDeletedFalse(categoryId)).thenReturn(0L)
         `when`(surveyCategoryRepository.existsByNameAndParentIdAndIsDeletedFalse("피해야할 재료", 2L, categoryId)).thenReturn(false)
-        `when`(surveyCategoryRepository.existsByOrderAndParentIdAndIsDeletedFalse(5, 2L, categoryId)).thenReturn(false)
+        `when`(surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(5, 2L, categoryId)).thenReturn(false)
 
         // when
         updateSurveyCategoryService(categoryId, updateRequest)
@@ -146,7 +146,7 @@ class UpdateSurveyCategoryServiceTest {
                 type = SurveyCategoryType.AVOID_INGREDIENT,
                 level = SurveyCategoryLevel.LEAF,
                 name = "피해야할 재료",
-                order = 5
+                sortOrder = 5
             )
         )
     }

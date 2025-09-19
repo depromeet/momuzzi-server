@@ -12,7 +12,7 @@ data class SurveyCategoryItem(
     val name: String,
     
     @Schema(description = "카테고리 순서", example = "1")
-    val order: Int,
+    val sortOrder: Int,
     
     @Schema(description = "하위 카테고리 목록")
     val children: List<SurveyCategoryItem> = emptyList()

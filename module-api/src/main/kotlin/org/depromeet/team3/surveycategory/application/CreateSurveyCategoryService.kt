@@ -18,7 +18,7 @@ class CreateSurveyCategoryService(
             type = request.type,
             level = request.level,
             name = request.name,
-            order = request.order,
+            sortOrder = request.sortOrder,
             isDeleted = false
         )
 

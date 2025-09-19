@@ -37,7 +37,7 @@ class GetSurveyCategoryService(
     private fun buildHierarchyFromDatabase(categories: List<SurveyCategory>): List<SurveyCategoryItem> {
         val categoryMap = categories.associateBy { it.id }
         val rootCategories = categories.filter { it.parentId == null }
-            .sortedBy { it.order }
+            .sortedBy { it.sortOrder }
         
         return rootCategories.map { category ->
             buildCategoryItem(category, categoryMap)
@@ -47,13 +47,13 @@ class GetSurveyCategoryService(
     private fun buildCategoryItem(category: SurveyCategory, categoryMap: Map<Long?, SurveyCategory>): SurveyCategoryItem {
         val children = categoryMap.values
             .filter { it.parentId == category.id }
-            .sortedBy { it.order }
+            .sortedBy { it.sortOrder }
             .map { buildCategoryItem(it, categoryMap) }
         
         return SurveyCategoryItem(
             level = category.level,
             name = category.name,
-            order = category.order,
+            sortOrder = category.sortOrder,
             children = children
         )
     }
