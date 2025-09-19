@@ -5,8 +5,9 @@ import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
-import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
+import org.depromeet.team3.survey.util.SurveyTestDataFactory
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -36,16 +37,12 @@ class DeleteSurveyCategoryServiceTest {
     fun `하위 카테고리가 없는 카테고리를 성공적으로 삭제한다`() {
         // given
         val categoryId = 1L
-        val categoryToDelete = SurveyCategory(
+        val categoryToDelete = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            parentId = null,
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.LEAF,
             name = "김치찌개",
-            sortOrder = 1,
-            isDeleted = false,
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            sortOrder = 1
         )
 
         `when`(surveyCategoryRepository.findById(categoryId)).thenReturn(categoryToDelete)
@@ -81,16 +78,12 @@ class DeleteSurveyCategoryServiceTest {
     fun `하위 카테고리가 있는 카테고리 삭제 시 예외가 발생한다`() {
         // given
         val categoryId = 1L
-        val categoryToDelete = SurveyCategory(
+        val categoryToDelete = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            parentId = null,
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            sortOrder = 1,
-            isDeleted = false,
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            sortOrder = 1
         )
 
         `when`(surveyCategoryRepository.findById(categoryId)).thenReturn(categoryToDelete)
@@ -107,16 +100,13 @@ class DeleteSurveyCategoryServiceTest {
     fun `이미 삭제된 카테고리도 정상적으로 처리된다`() {
         // given
         val categoryId = 1L
-        val alreadyDeletedCategory = SurveyCategory(
+        val alreadyDeletedCategory = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            parentId = null,
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.LEAF,
             name = "김치찌개",
             sortOrder = 1,
-            isDeleted = true, // 이미 삭제된 상태
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            isDeleted = true
         )
 
         `when`(surveyCategoryRepository.findById(categoryId)).thenReturn(alreadyDeletedCategory)

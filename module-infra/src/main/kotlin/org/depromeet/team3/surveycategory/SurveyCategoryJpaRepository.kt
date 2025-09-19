@@ -1,5 +1,6 @@
 package org.depromeet.team3.surveycategory
 
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -45,4 +46,6 @@ interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long
     ): Boolean
     
     fun countByParentIdAndIsDeletedFalse(parentId: Long): Long
+    
+    fun findByNameAndTypeAndIsDeletedFalse(name: String, type: SurveyCategoryType): SurveyCategoryEntity?
 }
