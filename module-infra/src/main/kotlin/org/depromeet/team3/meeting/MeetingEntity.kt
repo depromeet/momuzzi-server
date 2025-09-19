@@ -2,6 +2,7 @@ package org.depromeet.team3.meeting
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
+import org.depromeet.team3.meetingattendee.MeetingAttendeeEntity
 import org.depromeet.team3.station.StationEntity
 import org.depromeet.team3.user.UserEntity
 import java.time.LocalDateTime

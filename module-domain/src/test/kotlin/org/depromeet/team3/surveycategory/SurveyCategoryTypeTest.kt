@@ -1,5 +1,6 @@
 package org.depromeet.team3.surveycategory
 
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
