@@ -17,8 +17,9 @@ interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long
     @Query("""
         SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END 
         FROM SurveyCategoryEntity c 
+        LEFT JOIN c.parent p
         WHERE c.name = :name 
-        AND (:parentId IS NULL AND c.parent IS NULL OR c.parent.id = :parentId)
+        AND (:parentId IS NULL AND p IS NULL OR p.id = :parentId)
         AND c.isDeleted = false
         AND (:excludeId IS NULL OR c.id != :excludeId)
     """)
@@ -31,8 +32,9 @@ interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long
     @Query("""
         SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END 
         FROM SurveyCategoryEntity c 
+        LEFT JOIN c.parent p
         WHERE c.sortOrder = :sortOrder 
-        AND (:parentId IS NULL AND c.parent IS NULL OR c.parent.id = :parentId)
+        AND (:parentId IS NULL AND p IS NULL OR p.id = :parentId)
         AND c.isDeleted = false
         AND (:excludeId IS NULL OR c.id != :excludeId)
     """)
