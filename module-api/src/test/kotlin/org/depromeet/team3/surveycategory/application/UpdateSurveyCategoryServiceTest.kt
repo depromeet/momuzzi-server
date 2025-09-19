@@ -2,6 +2,8 @@ package org.depromeet.team3.survey_category.application
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.depromeet.team3.common.exception.DpmException
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.survey_category.SurveyCategory
 import org.depromeet.team3.survey_category.SurveyCategoryLevel
 import org.depromeet.team3.survey_category.SurveyCategoryRepository
@@ -88,8 +90,8 @@ class UpdateSurveyCategoryServiceTest {
 
         // when & then
         assertThatThrownBy { updateSurveyCategoryService(categoryId, updateRequest) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessage("카테고리를 찾을 수 없습니다. ID: $categoryId")
+            .isInstanceOf(DpmException::class.java)
+            .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CATEGORY_NOT_FOUND)
     }
 
     @Test

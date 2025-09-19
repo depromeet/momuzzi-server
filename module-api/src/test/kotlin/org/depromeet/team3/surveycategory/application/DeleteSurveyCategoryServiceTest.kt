@@ -1,6 +1,8 @@
 package org.depromeet.team3.survey_category.application
 
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.depromeet.team3.common.exception.DpmException
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.survey_category.SurveyCategory
 import org.depromeet.team3.survey_category.SurveyCategoryLevel
 import org.depromeet.team3.survey_category.SurveyCategoryRepository
@@ -70,8 +72,8 @@ class DeleteSurveyCategoryServiceTest {
 
         // when & then
         assertThatThrownBy { deleteSurveyCategoryService(categoryId) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessage("카테고리를 찾을 수 없습니다. ID: $categoryId")
+            .isInstanceOf(DpmException::class.java)
+            .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CATEGORY_NOT_FOUND)
     }
 
     @Test
@@ -96,10 +98,8 @@ class DeleteSurveyCategoryServiceTest {
 
         // when & then
         assertThatThrownBy { deleteSurveyCategoryService(categoryId) }
-            .isInstanceOf(IllegalStateException::class.java)
-            .hasMessageContaining("하위 카테고리가 존재하는 카테고리는 삭제할 수 없습니다")
-            .hasMessageContaining("먼저 하위 카테고리를 삭제해주세요")
-            .hasMessageContaining("카테고리명: 한식")
+            .isInstanceOf(DpmException::class.java)
+            .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CATEGORY_HAS_CHILDREN)
     }
 
     @Test

@@ -1,6 +1,8 @@
 package org.depromeet.team3.survey_category.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.depromeet.team3.common.exception.DpmException
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.config.SecurityTestConfig
 import org.depromeet.team3.survey_category.SurveyCategoryLevel
 import org.depromeet.team3.survey_category.SurveyCategoryType
@@ -158,8 +160,8 @@ class SurveyCategoryControllerTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 카테고리 수정 시 500 에러가 발생한다")
-    fun `존재하지 않는 카테고리 수정 시 500 에러가 발생한다`() {
+    @DisplayName("존재하지 않는 카테고리 수정 시 404 에러가 발생한다")
+    fun `존재하지 않는 카테고리 수정 시 404 에러가 발생한다`() {
         // given
         val categoryId = 999L
         val request = UpdateSurveyCategoryRequest(
@@ -171,7 +173,7 @@ class SurveyCategoryControllerTest {
         )
 
         // Mock 설정 - 예외 발생 시뮬레이션
-        doThrow(IllegalArgumentException("카테고리를 찾을 수 없습니다. ID: $categoryId"))
+        doThrow(DpmException(ErrorCode.CATEGORY_NOT_FOUND, mapOf("id" to categoryId)))
             .`when`(updateSurveyCategoryService).invoke(any(), any())
 
         // when & then
@@ -181,28 +183,28 @@ class SurveyCategoryControllerTest {
                 .content(objectMapper.writeValueAsString(request))
                 .with(csrf())
         )
-            .andExpect(status().isInternalServerError)
+            .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.error").exists())
-            .andExpect(jsonPath("$.error.code").value("S001"))
+            .andExpect(jsonPath("$.error.code").value("C4041"))
     }
 
     @Test
-    @DisplayName("하위 카테고리가 있는 카테고리 삭제 시 500 에러가 발생한다")
-    fun `하위 카테고리가 있는 카테고리 삭제 시 500 에러가 발생한다`() {
+    @DisplayName("하위 카테고리가 있는 카테고리 삭제 시 409 에러가 발생한다")
+    fun `하위 카테고리가 있는 카테고리 삭제 시 409 에러가 발생한다`() {
         // given
         val categoryId = 1L
 
-        doThrow(IllegalStateException("하위 카테고리가 존재하는 카테고리는 삭제할 수 없습니다"))
+        doThrow(DpmException(ErrorCode.CATEGORY_HAS_CHILDREN, mapOf("categoryId" to categoryId)))
             .`when`(deleteSurveyCategoryService).invoke(any())
 
         // when & then
         mockMvc.perform(delete("/api/v1/survey-categories/$categoryId")
             .with(csrf()))
-            .andExpect(status().isInternalServerError)
+            .andExpect(status().isConflict)
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.error").exists())
-            .andExpect(jsonPath("$.error.code").value("S001"))
+            .andExpect(jsonPath("$.error.code").value("C4092"))
     }
 
     @Test

@@ -39,7 +39,7 @@ class ControllerAdvice {
     }
 
     /**
-     * 위 Exception 이 놓친 모든 예외 처리
+     * 위에서 처리되지 않은 모든 예외 처리
      */
     @ExceptionHandler(Exception::class)
     fun handleGenericException(e: Exception): ResponseEntity<DpmApiResponse<Unit>> {

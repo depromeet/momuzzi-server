@@ -16,10 +16,16 @@ enum class ErrorCode(
 
     // 404 Not Found
     RESOURCE_NOT_FOUND("C404", "요청한 리소스를 찾을 수 없습니다.", 404),
+    CATEGORY_NOT_FOUND("C4041", "카테고리를 찾을 수 없습니다.", 404),
+    PARENT_CATEGORY_NOT_FOUND("C4042", "부모 카테고리를 찾을 수 없습니다.", 404),
 
     // 409 Conflict
     RESOURCE_CONFLICT("C409", "리소스 충돌이 발생했습니다.", 409),
     DUPLICATE_RESOURCE("C4091", "중복된 리소스입니다.", 409),
+    CATEGORY_HAS_CHILDREN("C4092", "하위 카테고리가 존재하여 삭제할 수 없습니다.", 409),
+    INVALID_CATEGORY_LEVEL_CHANGE("C4093", "자식 카테고리가 있는 BRANCH 카테고리를 LEAF로 변경할 수 없습니다.", 409),
+    DUPLICATE_CATEGORY_NAME("C4094", "같은 부모 하위에 동일한 이름의 카테고리가 이미 존재합니다.", 409),
+    DUPLICATE_CATEGORY_ORDER("C4095", "같은 부모 하위에 동일한 순서의 카테고리가 이미 존재합니다.", 409),
 
     // 5xx Server Errors
     INTERNAL_SERVER_ERROR("S001", "서버 내부 오류가 발생했습니다.", 500),
