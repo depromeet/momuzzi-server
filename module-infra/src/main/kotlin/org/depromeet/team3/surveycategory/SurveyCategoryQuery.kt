@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category
+package org.depromeet.team3.surveycategory
 
 import org.depromeet.team3.mapper.SurveyCategoryMapper
 import org.springframework.stereotype.Repository

@@ -1,14 +1,13 @@
-package org.depromeet.team3.survey_category.application
+package org.depromeet.team3.surveycategory.application
 
-import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.depromeet.team3.common.exception.DpmException
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.survey_category.SurveyCategory
-import org.depromeet.team3.survey_category.SurveyCategoryLevel
-import org.depromeet.team3.survey_category.SurveyCategoryRepository
-import org.depromeet.team3.survey_category.SurveyCategoryType
-import org.depromeet.team3.survey_category.dto.request.UpdateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.SurveyCategory
+import org.depromeet.team3.surveycategory.SurveyCategoryLevel
+import org.depromeet.team3.surveycategory.SurveyCategoryRepository
+import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -58,13 +57,13 @@ class UpdateSurveyCategoryServiceTest {
             order = 2
         )
 
-        `when`(surveyCategoryRepository.findById(categoryId)).thenReturn(existingCategory)
+        `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(existingCategory)
 
         // when
         updateSurveyCategoryService(categoryId, updateRequest)
 
         // then
-        verify(surveyCategoryRepository).findById(categoryId)
+        verify(surveyCategoryRepository).findByIdAndIsDeletedFalse(categoryId)
         verify(surveyCategoryRepository).save(
             existingCategory.copy(
                 name = "전통한식",
@@ -86,11 +85,11 @@ class UpdateSurveyCategoryServiceTest {
             order = 2
         )
 
-        `when`(surveyCategoryRepository.findById(categoryId)).thenReturn(null)
+        `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(null)
 
         // when & then
         assertThatThrownBy { updateSurveyCategoryService(categoryId, updateRequest) }
-            .isInstanceOf(DpmException::class.java)
+            .isInstanceOf(SurveyCategoryException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CATEGORY_NOT_FOUND)
     }
 
@@ -119,7 +118,23 @@ class UpdateSurveyCategoryServiceTest {
             order = 5
         )
 
-        `when`(surveyCategoryRepository.findById(categoryId)).thenReturn(existingCategory)
+        val parentCategory = SurveyCategory(
+            id = 2L,
+            parentId = null,
+            type = SurveyCategoryType.AVOID_INGREDIENT,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "부모 카테고리",
+            order = 1,
+            isDeleted = false,
+            createdAt = LocalDateTime.now(),
+            updatedAt = null
+        )
+
+        `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(existingCategory)
+        `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(2L)).thenReturn(parentCategory)
+        `when`(surveyCategoryRepository.countChildrenByParentIdAndIsDeletedFalse(categoryId)).thenReturn(0L)
+        `when`(surveyCategoryRepository.existsByNameAndParentIdAndIsDeletedFalse("피해야할 재료", 2L, categoryId)).thenReturn(false)
+        `when`(surveyCategoryRepository.existsByOrderAndParentIdAndIsDeletedFalse(5, 2L, categoryId)).thenReturn(false)
 
         // when
         updateSurveyCategoryService(categoryId, updateRequest)

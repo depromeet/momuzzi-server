@@ -1,7 +1,7 @@
-package org.depromeet.team3.survey_category.dto.response
+package org.depromeet.team3.surveycategory.dto.response
 
 import io.swagger.v3.oas.annotations.media.Schema
-import org.depromeet.team3.survey_category.SurveyCategoryLevel
+import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 
 @Schema(description = "설문 카테고리 계층 구조 아이템")
 data class SurveyCategoryItem(

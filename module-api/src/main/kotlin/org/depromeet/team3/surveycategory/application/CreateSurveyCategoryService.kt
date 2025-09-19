@@ -1,8 +1,8 @@
-package org.depromeet.team3.survey_category.application
+package org.depromeet.team3.surveycategory.application
 
-import org.depromeet.team3.survey_category.SurveyCategory
-import org.depromeet.team3.survey_category.SurveyCategoryRepository
-import org.depromeet.team3.survey_category.dto.request.CreateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.SurveyCategory
+import org.depromeet.team3.surveycategory.SurveyCategoryRepository
+import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

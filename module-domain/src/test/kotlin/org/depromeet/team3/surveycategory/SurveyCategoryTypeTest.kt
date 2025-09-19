@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category
+package org.depromeet.team3.surveycategory
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

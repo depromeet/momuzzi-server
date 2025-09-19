@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category
+package org.depromeet.team3.surveycategory
 
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query

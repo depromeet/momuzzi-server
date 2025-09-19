@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category
+package org.depromeet.team3.surveycategory
 
 enum class SurveyCategoryLevel {
     BRANCH,  // 상위 레벨 (하위 카테고리 있음)

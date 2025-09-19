@@ -1,8 +1,8 @@
 package org.depromeet.team3.surveycategory
 
-import org.depromeet.team3.survey_category.SurveyCategory
-import org.depromeet.team3.survey_category.SurveyCategoryLevel
-import org.depromeet.team3.survey_category.SurveyCategoryType
+import org.depromeet.team3.surveycategory.SurveyCategory
+import org.depromeet.team3.surveycategory.SurveyCategoryLevel
+import org.depromeet.team3.surveycategory.SurveyCategoryType
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import kotlin.test.assertEquals

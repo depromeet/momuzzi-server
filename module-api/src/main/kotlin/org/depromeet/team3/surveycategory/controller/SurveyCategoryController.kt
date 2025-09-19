@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category.controller
+package org.depromeet.team3.surveycategory.controller
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -8,13 +8,13 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.response.DpmApiResponse
-import org.depromeet.team3.survey_category.dto.request.CreateSurveyCategoryRequest
-import org.depromeet.team3.survey_category.dto.request.UpdateSurveyCategoryRequest
-import org.depromeet.team3.survey_category.dto.response.SurveyCategoryResponse
-import org.depromeet.team3.survey_category.application.CreateSurveyCategoryService
-import org.depromeet.team3.survey_category.application.DeleteSurveyCategoryService
-import org.depromeet.team3.survey_category.application.GetSurveyCategoryService
-import org.depromeet.team3.survey_category.application.UpdateSurveyCategoryService
+import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryResponse
+import org.depromeet.team3.surveycategory.application.CreateSurveyCategoryService
+import org.depromeet.team3.surveycategory.application.DeleteSurveyCategoryService
+import org.depromeet.team3.surveycategory.application.GetSurveyCategoryService
+import org.depromeet.team3.surveycategory.application.UpdateSurveyCategoryService
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable

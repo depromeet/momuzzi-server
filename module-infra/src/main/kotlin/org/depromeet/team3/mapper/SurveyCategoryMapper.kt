@@ -1,8 +1,8 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.survey_category.SurveyCategory
-import org.depromeet.team3.survey_category.SurveyCategoryEntity
-import org.depromeet.team3.survey_category.SurveyCategoryJpaRepository
+import org.depromeet.team3.surveycategory.SurveyCategory
+import org.depromeet.team3.surveycategory.SurveyCategoryEntity
+import org.depromeet.team3.surveycategory.SurveyCategoryJpaRepository
 import org.springframework.stereotype.Component
 
 @Component

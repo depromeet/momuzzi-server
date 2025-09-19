@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category
+package org.depromeet.team3.surveycategory
 
 enum class SurveyCategoryType {
     CUISINE,           // 선호하는 음식

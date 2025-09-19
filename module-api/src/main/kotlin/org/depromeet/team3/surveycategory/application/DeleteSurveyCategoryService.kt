@@ -1,8 +1,8 @@
-package org.depromeet.team3.survey_category.application
+package org.depromeet.team3.surveycategory.application
 
-import org.depromeet.team3.common.exception.DpmException
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.survey_category.SurveyCategoryRepository
+import org.depromeet.team3.surveycategory.SurveyCategoryRepository
+import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -15,13 +15,13 @@ class DeleteSurveyCategoryService(
     operator fun invoke(id: Long): Unit {
         // 1. 삭제할 카테고리 조회
         val categoryToDelete = surveyCategoryRepository.findById(id)
-            ?: throw DpmException(ErrorCode.CATEGORY_NOT_FOUND, mapOf("id" to id))
+            ?: throw SurveyCategoryException(ErrorCode.CATEGORY_NOT_FOUND, mapOf("id" to id))
 
         // 2. 하위 카테고리 존재 여부 확인
         val hasChildren = surveyCategoryRepository.existsByParentIdAndIsDeletedFalse(id)
         
         if (hasChildren) {
-            throw DpmException(
+            throw SurveyCategoryException(
                 ErrorCode.CATEGORY_HAS_CHILDREN,
                 mapOf(
                     "categoryName" to categoryToDelete.name,

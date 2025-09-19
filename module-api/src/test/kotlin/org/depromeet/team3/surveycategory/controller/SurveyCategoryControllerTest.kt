@@ -1,19 +1,20 @@
-package org.depromeet.team3.survey_category.controller
+package org.depromeet.team3.surveycategory.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.depromeet.team3.common.exception.DpmException
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.config.SecurityTestConfig
-import org.depromeet.team3.survey_category.SurveyCategoryLevel
-import org.depromeet.team3.survey_category.SurveyCategoryType
-import org.depromeet.team3.survey_category.application.CreateSurveyCategoryService
-import org.depromeet.team3.survey_category.application.DeleteSurveyCategoryService
-import org.depromeet.team3.survey_category.application.GetSurveyCategoryService
-import org.depromeet.team3.survey_category.application.UpdateSurveyCategoryService
-import org.depromeet.team3.survey_category.dto.request.CreateSurveyCategoryRequest
-import org.depromeet.team3.survey_category.dto.request.UpdateSurveyCategoryRequest
-import org.depromeet.team3.survey_category.dto.response.SurveyCategoryItem
-import org.depromeet.team3.survey_category.dto.response.SurveyCategoryResponse
+import org.depromeet.team3.surveycategory.SurveyCategoryLevel
+import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.surveycategory.application.CreateSurveyCategoryService
+import org.depromeet.team3.surveycategory.application.DeleteSurveyCategoryService
+import org.depromeet.team3.surveycategory.application.GetSurveyCategoryService
+import org.depromeet.team3.surveycategory.application.UpdateSurveyCategoryService
+import org.depromeet.team3.surveycategory.controller.SurveyCategoryController
+import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
+import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryResponse
+import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.doNothing
@@ -173,7 +174,7 @@ class SurveyCategoryControllerTest {
         )
 
         // Mock 설정 - 예외 발생 시뮬레이션
-        doThrow(DpmException(ErrorCode.CATEGORY_NOT_FOUND, mapOf("id" to categoryId)))
+        doThrow(SurveyCategoryException(ErrorCode.CATEGORY_NOT_FOUND, mapOf("id" to categoryId)))
             .`when`(updateSurveyCategoryService).invoke(any(), any())
 
         // when & then
@@ -195,7 +196,7 @@ class SurveyCategoryControllerTest {
         // given
         val categoryId = 1L
 
-        doThrow(DpmException(ErrorCode.CATEGORY_HAS_CHILDREN, mapOf("categoryId" to categoryId)))
+        doThrow(SurveyCategoryException(ErrorCode.CATEGORY_HAS_CHILDREN, mapOf("categoryId" to categoryId)))
             .`when`(deleteSurveyCategoryService).invoke(any())
 
         // when & then

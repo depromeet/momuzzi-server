@@ -1,12 +1,12 @@
-package org.depromeet.team3.survey_category.application
+package org.depromeet.team3.surveycategory.application
 
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.depromeet.team3.common.exception.DpmException
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.survey_category.SurveyCategory
-import org.depromeet.team3.survey_category.SurveyCategoryLevel
-import org.depromeet.team3.survey_category.SurveyCategoryRepository
-import org.depromeet.team3.survey_category.SurveyCategoryType
+import org.depromeet.team3.surveycategory.SurveyCategory
+import org.depromeet.team3.surveycategory.SurveyCategoryLevel
+import org.depromeet.team3.surveycategory.SurveyCategoryRepository
+import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -72,7 +72,7 @@ class DeleteSurveyCategoryServiceTest {
 
         // when & then
         assertThatThrownBy { deleteSurveyCategoryService(categoryId) }
-            .isInstanceOf(DpmException::class.java)
+            .isInstanceOf(SurveyCategoryException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CATEGORY_NOT_FOUND)
     }
 
@@ -98,7 +98,7 @@ class DeleteSurveyCategoryServiceTest {
 
         // when & then
         assertThatThrownBy { deleteSurveyCategoryService(categoryId) }
-            .isInstanceOf(DpmException::class.java)
+            .isInstanceOf(SurveyCategoryException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CATEGORY_HAS_CHILDREN)
     }
 

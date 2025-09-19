@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category
+package org.depromeet.team3.surveycategory
 
 import org.depromeet.team3.common.BaseTimeDomain
 import java.time.LocalDateTime

@@ -1,4 +1,4 @@
-package org.depromeet.team3.survey_category.dto.response
+package org.depromeet.team3.surveycategory.dto.response
 
 import io.swagger.v3.oas.annotations.media.Schema
 
