@@ -10,4 +10,4 @@ abstract class DpmException(     // 서비스명 확정되면 이름 수정 예�
     val errorCode: ErrorCode,
     val detail: Map<String, Any?>? = null,
     message: String? = errorCode.message,
-) : Exception(message)
+) : RuntimeException(message)
