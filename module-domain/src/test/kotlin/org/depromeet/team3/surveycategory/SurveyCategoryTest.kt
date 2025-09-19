@@ -1,8 +1,6 @@
 package org.depromeet.team3.surveycategory
 
-import org.depromeet.team3.surveycategory.SurveyCategory
-import org.depromeet.team3.surveycategory.SurveyCategoryLevel
-import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
@@ -80,7 +78,7 @@ class SurveyCategoryTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             createdAt = now
         )
 
@@ -89,7 +87,7 @@ class SurveyCategoryTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             createdAt = now
         )
 
@@ -106,7 +104,7 @@ class SurveyCategoryTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             createdAt = now
         )
 
@@ -114,7 +112,7 @@ class SurveyCategoryTest {
             type = SurveyCategoryType.AVOID_INGREDIENT,
             level = SurveyCategoryLevel.BRANCH,
             name = "채식",
-            order = 1,
+            sortOrder = 1,
             createdAt = now
         )
 
@@ -133,7 +131,7 @@ class SurveyCategoryTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = now,
             updatedAt = null
@@ -142,7 +140,7 @@ class SurveyCategoryTest {
         // when
         val updatedCategory = originalCategory.copy(
             name = "전통한식",
-            order = 2,
+            sortOrder = 2,
             updatedAt = now
         )
 
@@ -168,7 +166,7 @@ class SurveyCategoryTest {
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            order = 1,
+            sortOrder = 1,
             isDeleted = false,
             createdAt = now,
             updatedAt = null

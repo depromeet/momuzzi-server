@@ -2,6 +2,7 @@ package org.depromeet.team3.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import org.depromeet.team3.common.resolver.UserIdArgumentResolver
 import org.depromeet.team3.security.jwt.JwtProperties
 import org.depromeet.team3.security.jwt.JwtTokenProvider
 import org.depromeet.team3.security.util.CookieUtil
@@ -11,6 +12,12 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.web.method.support.HandlerMethodArgumentResolver
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import org.springframework.core.MethodParameter
+import org.springframework.web.bind.support.WebDataBinderFactory
+import org.springframework.web.context.request.NativeWebRequest
+import org.springframework.web.method.support.ModelAndViewContainer
 
 /**
  * Security 관련 테스트용 설정 클래스
@@ -60,5 +67,38 @@ class SecurityTestConfig {
     fun testObjectMapper(): ObjectMapper {
         return ObjectMapper()
             .registerModule(KotlinModule.Builder().build())
+    }
+
+    @Bean
+    @Primary
+    fun testUserIdArgumentResolver(): UserIdArgumentResolver {
+        return object : UserIdArgumentResolver() {
+            override fun resolveArgument(
+                parameter: MethodParameter,
+                mavContainer: ModelAndViewContainer?,
+                webRequest: NativeWebRequest,
+                binderFactory: WebDataBinderFactory?
+            ): Any? {
+                // 테스트에서는 항상 사용자 ID 1을 반환
+                val isNullable = parameter.parameterType == Long::class.javaObjectType ||
+                                parameter.parameterAnnotations.any { it.annotationClass.simpleName == "Nullable" }
+                
+                return if (isNullable) {
+                    1L
+                } else {
+                    1L
+                }
+            }
+        }
+    }
+
+    @Bean
+    @Primary
+    fun testWebMvcConfigurer(userIdArgumentResolver: UserIdArgumentResolver): WebMvcConfigurer {
+        return object : WebMvcConfigurer {
+            override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
+                resolvers.add(userIdArgumentResolver)
+            }
+        }
     }
 }

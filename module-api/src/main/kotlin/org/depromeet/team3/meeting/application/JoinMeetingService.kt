@@ -1,7 +1,7 @@
 package org.depromeet.team3.meeting.application
 
-import org.depromeet.team3.meeting.MeetingAttendee
-import org.depromeet.team3.meeting.MeetingAttendeeRepository
+import org.depromeet.team3.meetingattendee.MeetingAttendee
+import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meeting.MeetingRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,7 +15,8 @@ class JoinMeetingService(
     @Transactional
     operator fun invoke(
         meetingId: Long,
-        userId: Long
+        userId: Long,
+        meetingNickname: String
     ): Unit {
         validateMeeting(meetingId)
 
@@ -27,6 +28,7 @@ class JoinMeetingService(
             null,
             meetingId,
             userId,
+            meetingNickname,
             null, null
         )
 

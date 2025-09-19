@@ -6,9 +6,11 @@ import org.depromeet.team3.auth.KakaoOAuthClient
 import org.depromeet.team3.auth.KakaoProperties
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.auth.model.KakaoResponse
+import org.depromeet.team3.auth.util.TestDataFactory
 import org.depromeet.team3.security.jwt.JwtTokenProvider
 import org.depromeet.team3.user.UserEntity
 import org.depromeet.team3.user.UserRepository
+import org.depromeet.team3.user.util.UserTestDataFactory
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -53,28 +55,16 @@ class AuthServiceTest {
         authService = AuthService(kakaoOAuthClient, userRepository, jwtTokenProvider, kakaoProperties)
 
         // 카카오 프로필 모의 데이터
-        kakaoProfile = KakaoResponse.KakaoProfile(
-            id = 12345L,
-            kakao_account = KakaoResponse.KakaoAccount(
-                email = "test@example.com",
-                profile = KakaoResponse.Profile(
-                    nickname = "테스트사용자",
-                    profile_image_url = "http://example.com/profile.jpg"
-                )
-            )
-        )
+        kakaoProfile = TestDataFactory.createKakaoProfile()
 
-        oAuthToken = KakaoResponse.OAuthToken(
-            access_token = "test-access-token"
-        )
+        oAuthToken = TestDataFactory.createOAuthToken()
 
-        existingUser = UserEntity(
+        existingUser = UserTestDataFactory.createUserEntity(
             id = 1L,
             socialId = "12345",
             email = "test@example.com",
             nickname = "테스트사용자",
-            profileImage = "http://example.com/old-profile.jpg",
-            refreshToken = null
+            profileImage = "http://example.com/old-profile.jpg"
         )
     }
 

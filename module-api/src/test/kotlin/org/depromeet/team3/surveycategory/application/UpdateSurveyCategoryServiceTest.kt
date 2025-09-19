@@ -5,9 +5,10 @@ import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
-import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
+import org.depromeet.team3.survey.util.SurveyTestDataFactory
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -37,16 +38,12 @@ class UpdateSurveyCategoryServiceTest {
     fun `존재하는 카테고리를 성공적으로 수정한다`() {
         // given
         val categoryId = 1L
-        val existingCategory = SurveyCategory(
+        val existingCategory = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            parentId = null,
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            sortOrder = 1,
-            isDeleted = false,
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            sortOrder = 1
         )
 
         val updateRequest = UpdateSurveyCategoryRequest(
@@ -98,16 +95,12 @@ class UpdateSurveyCategoryServiceTest {
     fun `카테고리의 모든 필드를 수정할 수 있다`() {
         // given
         val categoryId = 1L
-        val existingCategory = SurveyCategory(
+        val existingCategory = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            parentId = null,
             type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
-            sortOrder = 1,
-            isDeleted = false,
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            sortOrder = 1
         )
 
         val updateRequest = UpdateSurveyCategoryRequest(
@@ -118,16 +111,12 @@ class UpdateSurveyCategoryServiceTest {
             sortOrder = 5
         )
 
-        val parentCategory = SurveyCategory(
+        val parentCategory = SurveyTestDataFactory.createSurveyCategory(
             id = 2L,
-            parentId = null,
             type = SurveyCategoryType.AVOID_INGREDIENT,
             level = SurveyCategoryLevel.BRANCH,
             name = "부모 카테고리",
-            sortOrder = 1,
-            isDeleted = false,
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            sortOrder = 1
         )
 
         `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(existingCategory)

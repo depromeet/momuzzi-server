@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.config.SecurityTestConfig
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
-import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.application.CreateSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.DeleteSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.GetSurveyCategoryService

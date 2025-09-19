@@ -2,7 +2,7 @@ package org.depromeet.team3.surveycategory.application
 
 import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryQuery
-import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
 import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryResponse
 import org.springframework.stereotype.Service

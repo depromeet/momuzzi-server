@@ -6,7 +6,8 @@ spring:
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
-    password: 
+    password:
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
@@ -24,8 +25,8 @@ spring:
 # JWT 테스트 설정
 jwt:
   secret: test-secret-key-for-jwt-token-generation-minimum-256-bits-long
-  access-token-validity: 3600000   # 1시간
-  refresh-token-validity: 604800000   # 1주일
+  access-token-validity: 3600000 # 1시간
+  refresh-token-validity: 604800000 # 1주일
 
 # 앱 설정
 app:

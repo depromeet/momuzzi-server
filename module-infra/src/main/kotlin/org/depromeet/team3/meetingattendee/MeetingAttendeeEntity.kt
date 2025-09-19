@@ -1,7 +1,8 @@
-package org.depromeet.team3.meeting
+package org.depromeet.team3.meetingattendee
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
+import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.user.UserEntity
 
 @Entity
@@ -10,11 +11,14 @@ class MeetingAttendeeEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meeting_id", nullable = false)
     val meeting: MeetingEntity,
-    
+
+    @Column(name = "meeting_nickname", nullable = false)
+    val meetingNickname: String,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     val user: UserEntity

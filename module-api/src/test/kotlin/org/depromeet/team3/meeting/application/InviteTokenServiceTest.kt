@@ -2,6 +2,7 @@ package org.depromeet.team3.meeting.application
 
 import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingRepository
+import org.depromeet.team3.meeting.util.MeetingTestDataFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach

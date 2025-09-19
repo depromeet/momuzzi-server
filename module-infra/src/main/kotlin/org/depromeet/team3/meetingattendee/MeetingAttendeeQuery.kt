@@ -1,4 +1,4 @@
-package org.depromeet.team3.meeting
+package org.depromeet.team3.meetingattendee
 
 import org.depromeet.team3.mapper.MeetingAttendeeMapper
 import org.springframework.stereotype.Repository

@@ -3,7 +3,7 @@ package org.depromeet.team3.surveycategory.dto.request
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
-import org.depromeet.team3.surveycategory.SurveyCategoryType
+import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 
 @Schema(description = "설문 카테고리 수정 요청 DTO")

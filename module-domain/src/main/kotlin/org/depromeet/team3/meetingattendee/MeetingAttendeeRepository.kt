@@ -1,4 +1,4 @@
-package org.depromeet.team3.meeting
+package org.depromeet.team3.meetingattendee
 
 interface MeetingAttendeeRepository {
 
