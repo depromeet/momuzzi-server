@@ -4,6 +4,7 @@ import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.common.exception.DpmException
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
@@ -20,6 +21,21 @@ class ControllerAdvice {
     fun handleDpmException(e: DpmException): ResponseEntity<DpmApiResponse<Unit>> {
         return ResponseEntity.status(e.errorCode.httpStatus)
             .body(DpmApiResponse.error(e))
+    }
+
+    /**
+     * Validation 예외 처리
+     */
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidationException(e: MethodArgumentNotValidException): ResponseEntity<DpmApiResponse<Unit>> {
+        val errorDetails = mutableMapOf<String, Any?>()
+        
+        e.bindingResult.fieldErrors.forEach { fieldError ->
+            errorDetails[fieldError.field] = fieldError.defaultMessage
+        }
+        
+        return ResponseEntity.status(ErrorCode.INVALID_PARAMETER.httpStatus)
+            .body(DpmApiResponse.error(ErrorCode.INVALID_PARAMETER, errorDetails))
     }
 
     /**
