@@ -1,6 +1,8 @@
 package org.depromeet.team3.auth.controller
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -21,6 +23,12 @@ class AuthController(
         description = "카카오 OAuth 인가코드로 로그인을 처리합니다. 성공 시 자동으로 accessToken, refreshToken이 쿠키로 설정됩니다." +
                 "응답 바디에는 사용자 프로필 정보만 포함됩니다."
     )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "로그인 성공"),
+        ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        ApiResponse(responseCode = "401", description = "카카오 인증 실패"),
+        ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    )
     @GetMapping("/kakao-login")
     fun kakaoLogin(
         @RequestParam("code") code: String,
@@ -34,6 +42,12 @@ class AuthController(
         summary = "토큰 갱신 API",
         description = "쿠키의 refreshToken을 사용하여 만료된 accessToken을 갱신합니다. " +
                 "401 에러 발생 시에 수동으로 호출하여 토큰 갱신 => 성공 시 새로운 토큰들이 자동으로 쿠키에 설정됩니다"
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
+        ApiResponse(responseCode = "401", description = "토큰 갱신 실패"),
+        ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+        ApiResponse(responseCode = "500", description = "서버 내부 오류")
     )
     @PostMapping("/reissue-token")
     fun refreshToken(

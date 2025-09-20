@@ -56,22 +56,37 @@ class AuthService(
     ): Map<String, String> {
         // 1. Refresh Token 추출 및 검증
         val refreshToken = jwtTokenProvider.extractRefreshToken(request)
-            ?: throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "Refresh Token이 없습니다")
+            ?: throw AuthException(
+                ErrorCode.KAKAO_AUTH_FAILED,
+                detail = mapOf("reason" to "Refresh Token이 없습니다")
+            )
 
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "Refresh Token이 유효하지 않습니다")
+            throw AuthException(
+                ErrorCode.KAKAO_AUTH_FAILED,
+                detail = mapOf("reason" to "Refresh Token이 유효하지 않습니다")
+            )
         }
 
         // 2. 사용자 정보 조회 및 토큰 일치성 검증
         val userId = jwtTokenProvider.getUserIdFromToken(refreshToken)?.toLongOrNull()
-            ?: throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "사용자 정보를 찾을 수 없습니다")
+            ?: throw AuthException(
+                ErrorCode.KAKAO_AUTH_FAILED,
+                detail = mapOf("reason" to "사용자 정보를 찾을 수 없습니다")
+            )
 
         val userEntity = userRepository.findById(userId).orElseThrow {
-            AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "사용자를 찾을 수 없습니다")
+            AuthException(
+                ErrorCode.KAKAO_AUTH_FAILED,
+                detail = mapOf("reason" to "사용자를 찾을 수 없습니다")
+            )
         }
 
         if (userEntity.refreshToken != refreshToken) {
-            throw AuthException(ErrorCode.KAKAO_AUTH_FAILED, message = "Refresh Token이 일치하지 않습니다")
+            throw AuthException(
+                ErrorCode.KAKAO_AUTH_FAILED,
+                detail = mapOf("reason" to "Refresh Token이 일치하지 않습니다")
+            )
         }
 
         // 3. 새로운 토큰 생성 및 설정
