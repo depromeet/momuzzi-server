@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 
 data class Meeting(
     val id: Long? = null,
+    val name: String,
     val hostUserId: Long,
     val attendeeCount: Int,
     val isClosed: Boolean = false,

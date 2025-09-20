@@ -16,6 +16,7 @@ class MeetingMapper(
     override fun toDomain(entity: MeetingEntity): Meeting {
         return Meeting(
             id = entity.id!!,
+            name = entity.name,
             hostUserId = entity.hostUser.id!!,
             attendeeCount = entity.attendeeCount,
             isClosed = entity.isClosed,
@@ -35,6 +36,7 @@ class MeetingMapper(
 
         return MeetingEntity(
             id = domain.id,
+            name = domain.name,
             attendeeCount = domain.attendeeCount,
             isClosed = domain.isClosed,
             endAt = domain.endAt,

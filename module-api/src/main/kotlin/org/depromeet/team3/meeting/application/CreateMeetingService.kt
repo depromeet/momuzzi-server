@@ -15,6 +15,7 @@ class CreateMeetingService(
     operator fun invoke(request: CreateMeetingRequest, userId: Long): Unit {
         val meeting = Meeting(
             null,
+            request.name,
             userId,
             request.attendeeCount,
             isClosed = false,

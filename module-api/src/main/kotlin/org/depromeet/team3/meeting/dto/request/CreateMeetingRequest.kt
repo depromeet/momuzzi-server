@@ -5,6 +5,9 @@ import java.time.LocalDateTime
 
 data class CreateMeetingRequest(
 
+    @Schema(description = "모임 이름", example = "점심 모무찌?")
+    val name: String,
+
     @Schema(description = "모임 참여 인원", example = "1")
     val attendeeCount: Int,
 
