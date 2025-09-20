@@ -16,7 +16,7 @@ class JoinMeetingService(
     operator fun invoke(
         meetingId: Long,
         userId: Long,
-        meetingNickname: String
+        attendeeNickname: String
     ): Unit {
         validateMeeting(meetingId)
 
@@ -28,7 +28,7 @@ class JoinMeetingService(
             null,
             meetingId,
             userId,
-            meetingNickname,
+            attendeeNickname,
             null, null
         )
 

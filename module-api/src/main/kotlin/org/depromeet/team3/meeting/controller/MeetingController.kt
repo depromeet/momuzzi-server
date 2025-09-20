@@ -16,6 +16,7 @@ import org.depromeet.team3.meeting.application.JoinMeetingService
 import org.depromeet.team3.meeting.dto.request.CreateMeetingRequest
 import org.depromeet.team3.meeting.dto.request.GenerateInviteTokenRequest
 import org.depromeet.team3.meeting.dto.request.JoinMeetingRequest
+import org.depromeet.team3.meeting.dto.response.CreateMeetingResponse
 import org.depromeet.team3.meeting.dto.response.InviteTokenResponse
 import org.depromeet.team3.meeting.dto.response.MeetingResponse
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
@@ -83,10 +84,10 @@ class MeetingController(
         @Parameter(description = "사용자 ID", example = "123")
         @UserId userId: Long,
         @RequestBody @Valid request: CreateMeetingRequest,
-    ) : DpmApiResponse<Unit> {
-        creteMeetingService(request, userId)
+    ) : DpmApiResponse<CreateMeetingResponse> {
+        val response = creteMeetingService(request, userId)
 
-        return DpmApiResponse.ok()
+        return DpmApiResponse.ok(response)
     }
 
     @Operation(
@@ -125,7 +126,7 @@ class MeetingController(
         @UserId userId: Long,
         @RequestBody @Valid request: JoinMeetingRequest
     ) : DpmApiResponse<Unit> {
-        joinMeetingService.invoke(meetingId, userId, request.meetingNickname)
+        joinMeetingService.invoke(meetingId, userId, request.attendeeNickname)
 
         return DpmApiResponse.ok()
     }
