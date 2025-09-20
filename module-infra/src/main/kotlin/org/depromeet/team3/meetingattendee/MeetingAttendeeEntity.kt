@@ -16,8 +16,8 @@ class MeetingAttendeeEntity(
     @JoinColumn(name = "meeting_id", nullable = false)
     val meeting: MeetingEntity,
 
-    @Column(name = "meeting_nickname", nullable = false)
-    val meetingNickname: String,
+    @Column(name = "attendee_nickname", nullable = false)
+    val attendeeNickname: String,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

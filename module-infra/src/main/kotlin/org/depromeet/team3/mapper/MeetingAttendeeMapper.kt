@@ -17,7 +17,7 @@ class MeetingAttendeeMapper(
             id = entity.id,
             meetingId = entity.meeting.id!!,
             userId = entity.user.id!!,
-            meetingNickname = entity.meetingNickname,
+            attendeeNickname = entity.attendeeNickname,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
         )
@@ -33,7 +33,7 @@ class MeetingAttendeeMapper(
         return MeetingAttendeeEntity(
             id = domain.id,
             meeting = meetingEntity,
-            meetingNickname = domain.meetingNickname,
+            attendeeNickname = domain.attendeeNickname,
             user = userEntity
         )
     }

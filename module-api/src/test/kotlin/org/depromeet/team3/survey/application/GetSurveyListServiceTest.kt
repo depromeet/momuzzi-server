@@ -81,7 +81,7 @@ class GetSurveyListServiceTest {
         val attendee = MeetingAttendeeTestDataFactory.createMeetingAttendee(
             meetingId = meetingId,
             userId = userId,
-            meetingNickname = "조회자"
+            attendeeNickname = "조회자"
         )
 
         val survey1 = SurveyTestDataFactory.createSurvey(
@@ -126,14 +126,14 @@ class GetSurveyListServiceTest {
             id = 1L,
             meetingId = meetingId,
             userId = participantId1,
-            meetingNickname = "참가자1"
+            attendeeNickname = "참가자1"
         )
 
         val participant2 = MeetingAttendeeTestDataFactory.createMeetingAttendee(
             id = 2L,
             meetingId = meetingId,
             userId = participantId2,
-            meetingNickname = "참가자2"
+            attendeeNickname = "참가자2"
         )
 
         // Mock 설정
@@ -215,7 +215,7 @@ class GetSurveyListServiceTest {
             id = 1L,
             meetingId = meetingId,
             userId = userId,
-            meetingNickname = "조회자"
+            attendeeNickname = "조회자"
         )
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)

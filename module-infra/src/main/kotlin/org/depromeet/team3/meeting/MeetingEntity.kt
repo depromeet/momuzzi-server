@@ -13,7 +13,10 @@ class MeetingEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-    
+
+    @Column(nullable = false)
+    val name: String,
+
     @Column(name = "attendee_count", nullable = false)
     val attendeeCount: Int,
     
