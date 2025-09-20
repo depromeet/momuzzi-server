@@ -19,7 +19,6 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import org.assertj.core.api.Assertions.assertThat
-import org.springframework.test.util.ReflectionTestUtils
 import java.util.*
 
 @ExtendWith(MockitoExtension::class)
@@ -115,7 +114,7 @@ class AuthServiceTest {
             authService.refreshTokens(request, response)
         }
         
-        assertThat(exception.message).isEqualTo("Refresh Token이 없습니다")
+        assertThat(exception.detail).containsEntry("reason", "Refresh Token이 없습니다")
     }
 
     @Test
@@ -133,6 +132,113 @@ class AuthServiceTest {
             authService.refreshTokens(request, response)
         }
         
-        assertThat(exception.message).isEqualTo("Refresh Token이 유효하지 않습니다")
+        assertThat(exception.detail).containsEntry("reason", "Refresh Token이 유효하지 않습니다")
+    }
+
+    @Test
+    fun `토큰 갱신 실패 - 사용자 정보 없음`() {
+        // given
+        val validRefreshToken = "valid-refresh-token"
+        
+        whenever(jwtTokenProvider.extractRefreshToken(request))
+            .thenReturn(validRefreshToken)
+        whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
+            .thenReturn(true)
+        whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
+            .thenReturn(null)
+
+        // when & then
+        val exception = assertThrows<AuthException> {
+            authService.refreshTokens(request, response)
+        }
+        
+        assertThat(exception.detail).containsEntry("reason", "사용자 정보를 찾을 수 없습니다")
+    }
+
+    @Test
+    fun `토큰 갱신 실패 - 사용자를 찾을 수 없음`() {
+        // given
+        val validRefreshToken = "valid-refresh-token"
+        val userId = 1L
+        
+        whenever(jwtTokenProvider.extractRefreshToken(request))
+            .thenReturn(validRefreshToken)
+        whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
+            .thenReturn(true)
+        whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
+            .thenReturn(userId.toString())
+        whenever(userRepository.findById(userId))
+            .thenReturn(Optional.empty())
+
+        // when & then
+        val exception = assertThrows<AuthException> {
+            authService.refreshTokens(request, response)
+        }
+        
+        assertThat(exception.detail).containsEntry("reason", "사용자를 찾을 수 없습니다")
+    }
+
+    @Test
+    fun `토큰 갱신 실패 - Refresh Token 불일치`() {
+        // given
+        val validRefreshToken = "valid-refresh-token"
+        val differentRefreshToken = "different-refresh-token"
+        val userId = 1L
+        
+        val userWithDifferentToken = UserTestDataFactory.createUserEntity(
+            id = userId,
+            refreshToken = differentRefreshToken
+        )
+        
+        whenever(jwtTokenProvider.extractRefreshToken(request))
+            .thenReturn(validRefreshToken)
+        whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
+            .thenReturn(true)
+        whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
+            .thenReturn(userId.toString())
+        whenever(userRepository.findById(userId))
+            .thenReturn(Optional.of(userWithDifferentToken))
+
+        // when & then
+        val exception = assertThrows<AuthException> {
+            authService.refreshTokens(request, response)
+        }
+        
+        assertThat(exception.detail).containsEntry("reason", "Refresh Token이 일치하지 않습니다")
+    }
+
+    @Test
+    fun `토큰 갱신 성공`() {
+        // given
+        val validRefreshToken = "valid-refresh-token"
+        val userId = 1L
+        
+        val userWithValidToken = UserTestDataFactory.createUserEntity(
+            id = userId,
+            refreshToken = validRefreshToken
+        )
+        
+        whenever(jwtTokenProvider.extractRefreshToken(request))
+            .thenReturn(validRefreshToken)
+        whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
+            .thenReturn(true)
+        whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
+            .thenReturn(userId.toString())
+        whenever(userRepository.findById(userId))
+            .thenReturn(Optional.of(userWithValidToken))
+        whenever(jwtTokenProvider.generateRefreshToken(userId))
+            .thenReturn("new-refresh-token")
+        whenever(userRepository.save(any<UserEntity>()))
+            .thenReturn(userWithValidToken)
+
+        // when
+        val result = authService.refreshTokens(request, response)
+
+        // then
+        assertThat(result["message"]).isEqualTo("토큰이 성공적으로 갱신되었습니다")
+        assertThat(result["status"]).isEqualTo("success")
+        
+        verify(jwtTokenProvider).setTokenCookies(any(), any(), any())
+        verify(userRepository).save(any<UserEntity>())
     }
 }
