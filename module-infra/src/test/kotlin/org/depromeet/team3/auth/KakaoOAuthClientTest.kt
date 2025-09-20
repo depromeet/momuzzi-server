@@ -24,21 +24,6 @@ class KakaoOAuthClientTest {
     }
 
     @Test
-    fun `허용된 redirect_uri 목록에 올바른 URI가 포함되어 있다`() {
-        // given
-        val allowedRedirectUris = setOf(
-            "http://localhost:8080/login/oauth2/code/kakao",
-            "http://localhost:8080/api/auth/kakao-login"
-        )
-        val validRedirectUri = "http://localhost:8080/login/oauth2/code/kakao"
-        val invalidRedirectUri = "http://invalid-uri.com"
-
-        // when & then
-        assertThat(allowedRedirectUris).contains(validRedirectUri)
-        assertThat(allowedRedirectUris).doesNotContain(invalidRedirectUri)
-    }
-
-    @Test
     fun `null oAuthToken으로 프로필 요청시 예외가 발생한다`() {
         // given
         val kakaoProperties = KakaoProperties().apply { clientId = "test-client-id" }

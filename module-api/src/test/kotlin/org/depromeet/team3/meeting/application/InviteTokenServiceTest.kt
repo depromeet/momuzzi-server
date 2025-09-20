@@ -1,8 +1,10 @@
 package org.depromeet.team3.meeting.application
 
-import org.depromeet.team3.meeting.Meeting
+import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.util.MeetingTestDataFactory
+import org.depromeet.team3.user.util.UserTestDataFactory
+import org.depromeet.team3.station.util.StationTestDataFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -30,15 +32,14 @@ class InviteTokenServiceTest {
         // Given
         val meetingId = 1L
         val baseUrl = "https://app.momuzzi.com"
-        val meeting = Meeting(
+        val meeting = MeetingTestDataFactory.createMeetingEntity(
             id = meetingId,
-            hostUserId = 1L,
+            name = "오늘 모무찌? ㅋㅋ",
             attendeeCount = 5,
             isClosed = false,
-            stationId = 1L,
             endAt = LocalDateTime.now().plusHours(2),
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            hostUser = UserTestDataFactory.createUserEntity(),
+            station = StationTestDataFactory.createStationEntity()
         )
         
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
@@ -72,15 +73,14 @@ class InviteTokenServiceTest {
         // Given
         val meetingId = 1L
         val baseUrl = "https://app.momuzzi.com"
-        val meeting = Meeting(
+        val meeting = MeetingTestDataFactory.createMeetingEntity(
             id = meetingId,
-            hostUserId = 1L,
+            name = "종료된 테스트 모임",
             attendeeCount = 5,
             isClosed = true,
-            stationId = 1L,
             endAt = LocalDateTime.now().minusHours(1),
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            hostUser = UserTestDataFactory.createUserEntity(),
+            station = StationTestDataFactory.createStationEntity()
         )
         
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
@@ -96,15 +96,14 @@ class InviteTokenServiceTest {
         // Given
         val meetingId = 1L
         val baseUrl = "https://app.momuzzi.com"
-        val meeting = Meeting(
+        val meeting = MeetingTestDataFactory.createMeetingEntity(
             id = meetingId,
-            hostUserId = 1L,
+            name = "유효성 검증 테스트 모임",
             attendeeCount = 5,
             isClosed = false,
-            stationId = 1L,
             endAt = LocalDateTime.now().plusHours(2),
-            createdAt = LocalDateTime.now(),
-            updatedAt = null
+            hostUser = UserTestDataFactory.createUserEntity(),
+            station = StationTestDataFactory.createStationEntity()
         )
         
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)

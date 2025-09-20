@@ -12,7 +12,8 @@ import org.depromeet.team3.user.util.UserTestDataFactory
 object MeetingTestDataFactory {
 
     fun createMeetingEntity(
-        id: Long = 1L,
+        id: Long? = 1L,
+        name: String = "테스트 모임",
         attendeeCount: Int = 2,
         isClosed: Boolean = false,
         endAt: java.time.LocalDateTime? = null,
@@ -21,6 +22,7 @@ object MeetingTestDataFactory {
     ): MeetingEntity {
         return MeetingEntity(
             id = id,
+            name = name,
             attendeeCount = attendeeCount,
             isClosed = isClosed,
             endAt = endAt,
