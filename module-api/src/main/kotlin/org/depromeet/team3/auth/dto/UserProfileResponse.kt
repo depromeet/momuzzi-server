@@ -1,4 +1,4 @@
-package org.depromeet.team3.auth.application.response
+package org.depromeet.team3.auth.dto
 
 data class UserProfileResponse(
     val email: String,
