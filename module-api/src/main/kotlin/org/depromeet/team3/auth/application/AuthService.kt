@@ -4,7 +4,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.depromeet.team3.auth.KakaoOAuthClient
 import org.depromeet.team3.auth.KakaoProperties
-import org.depromeet.team3.auth.application.response.UserProfileResponse
+import org.depromeet.team3.auth.dto.UserProfileResponse
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.security.jwt.JwtTokenProvider
