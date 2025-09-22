@@ -14,6 +14,9 @@ class UserEntity(
     @Column(name = "social_id", nullable = false, unique = true)
     var socialId: String = "",
 
+    @Column(name = "kakao_id", nullable = false)
+    var kakaoId: String = "",
+
     @Column(nullable = false, unique = true)
     var email: String = "",
 

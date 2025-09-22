@@ -114,7 +114,8 @@ class AuthService(
             email = email,
             profileImage = profileImage,
             refreshToken = null,
-            nickname = nickname
+            nickname = nickname,
+            kakaoId = socialId
         )
         return userRepository.save(newUser)
     }
