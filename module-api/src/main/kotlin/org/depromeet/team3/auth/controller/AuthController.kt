@@ -41,7 +41,7 @@ class AuthController(
     @Operation(
         summary = "토큰 갱신 API",
         description = "쿠키의 refreshToken을 사용하여 만료된 accessToken을 갱신합니다. " +
-                "401 에러 발생 시에 수동으로 호출하여 토큰 갱신 => 성공 시 새로운 토큰들이 자동으로 쿠키에 설정됩니다"
+                "401 에러 발생 시에 수동으로 호출하여 토큰 갱신 => 성공 시 새로운 토큰들이 자동으로 쿠키에 설정됩니다."
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),

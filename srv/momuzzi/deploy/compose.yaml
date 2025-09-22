@@ -1,14 +1,21 @@
 services:
   web:
     image: ${IMAGE}
+    container_name: deploy-web-1
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
     restart: unless-stopped
+    networks:
+      - depromeet_network
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1" ]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 10s
+
+networks:
+  depromeet_network:
+    external: true
