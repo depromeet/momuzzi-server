@@ -13,6 +13,7 @@ object MeetingTestDataFactory {
 
     fun createMeetingEntity(
         id: Long = 1L,
+        name: String = "테스트 미팅",
         attendeeCount: Int = 2,
         isClosed: Boolean = false,
         endAt: java.time.LocalDateTime? = null,
@@ -21,6 +22,7 @@ object MeetingTestDataFactory {
     ): MeetingEntity {
         return MeetingEntity(
             id = id,
+            name = name,
             attendeeCount = attendeeCount,
             isClosed = isClosed,
             endAt = endAt,

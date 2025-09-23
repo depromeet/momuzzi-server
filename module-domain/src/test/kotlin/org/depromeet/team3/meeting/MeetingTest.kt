@@ -17,6 +17,7 @@ class MeetingTest {
 
         // when
         val meeting = Meeting(
+            name = "테스트 미팅",
             hostUserId = hostUserId,
             attendeeCount = attendeeCount,
             stationId = 1L,
@@ -39,6 +40,7 @@ class MeetingTest {
         val now = LocalDateTime.now()
         val meeting1 = Meeting(
             id = 1L,
+            name = "테스트 미팅 1",
             hostUserId = 1L,
             attendeeCount = 5,
             stationId = 1L,
@@ -47,6 +49,7 @@ class MeetingTest {
 
         val meeting2 = Meeting(
             id = 1L,
+            name = "테스트 미팅 1",
             hostUserId = 1L,
             attendeeCount = 5,
             stationId = 1L,

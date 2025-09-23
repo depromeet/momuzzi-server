@@ -7,6 +7,9 @@ import java.time.LocalDateTime
 data class MeetingResponse(
     @Schema(description = "모임 ID", example = "1")
     val id: Long,
+
+    @Schema(description = "모임 이름", example = "저녁 모무찌")
+    val name: String? = null,
     
     @Schema(description = "호스트 사용자 ID", example = "123")
     val hostUserId: Long,

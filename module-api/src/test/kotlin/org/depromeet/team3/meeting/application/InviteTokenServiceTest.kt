@@ -32,6 +32,7 @@ class InviteTokenServiceTest {
         val baseUrl = "https://app.momuzzi.com"
         val meeting = Meeting(
             id = meetingId,
+            name = "테스트 미팅",
             hostUserId = 1L,
             attendeeCount = 5,
             isClosed = false,
@@ -44,13 +45,12 @@ class InviteTokenServiceTest {
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
         
         // When
-        val result = inviteTokenService.generateInviteToken(meetingId, baseUrl)
+        val result = inviteTokenService.generateInviteToken(meetingId)
         
         // Then
         assertNotNull(result)
-        assertTrue(result.inviteUrl.startsWith(baseUrl))
-        assertTrue(result.inviteUrl.contains("token="))
-        assertNotNull(result.token)
+        assertTrue(result.validateTokenUrl.contains("token="))
+        assertTrue(result.validateTokenUrl.contains("validate-invite"))
     }
     
     @Test
@@ -63,7 +63,7 @@ class InviteTokenServiceTest {
         
         // When & Then
         assertThrows<IllegalArgumentException> {
-            inviteTokenService.generateInviteToken(meetingId, baseUrl)
+            inviteTokenService.generateInviteToken(meetingId)
         }
     }
     
@@ -74,6 +74,7 @@ class InviteTokenServiceTest {
         val baseUrl = "https://app.momuzzi.com"
         val meeting = Meeting(
             id = meetingId,
+            name = "종료된 미팅",
             hostUserId = 1L,
             attendeeCount = 5,
             isClosed = true,
@@ -87,7 +88,7 @@ class InviteTokenServiceTest {
         
         // When & Then
         assertThrows<IllegalStateException> {
-            inviteTokenService.generateInviteToken(meetingId, baseUrl)
+            inviteTokenService.generateInviteToken(meetingId)
         }
     }
     
@@ -95,9 +96,9 @@ class InviteTokenServiceTest {
     fun `유효한 토큰 검증 성공 테스트`() {
         // Given
         val meetingId = 1L
-        val baseUrl = "https://app.momuzzi.com"
         val meeting = Meeting(
             id = meetingId,
+            name = "테스트 미팅",
             hostUserId = 1L,
             attendeeCount = 5,
             isClosed = false,
@@ -109,17 +110,15 @@ class InviteTokenServiceTest {
         
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
 
-        val tokenResponse = inviteTokenService.generateInviteToken(meetingId, baseUrl)
+        val tokenResponse = inviteTokenService.generateInviteToken(meetingId)
+        val token = tokenResponse.validateTokenUrl.substringAfter("token=")
         
         // When
-        val result = inviteTokenService.validateInviteToken(tokenResponse.token)
+        val result = inviteTokenService.validateInviteToken(token)
         
         // Then
         assertNotNull(result)
-        assertTrue(result.isValid)
-        assertFalse(result.isExpired)
         assertEquals(meetingId, result.meetingId)
-        assertEquals("유효한 토큰입니다.", result.message)
     }
     
     @Test
@@ -127,39 +126,28 @@ class InviteTokenServiceTest {
         // Given
         val invalidToken = "invalid_token"
         
-        // When
-        val result = inviteTokenService.validateInviteToken(invalidToken)
-        
-        // Then
-        assertNotNull(result)
-        assertFalse(result.isValid)
-        assertTrue(result.isExpired)
-        assertNull(result.meetingId)
-        assertEquals("유효하지 않은 토큰입니다.", result.message)
+        // When & Then
+        assertThrows<org.depromeet.team3.meeting.exception.InvalidInviteTokenException> {
+            inviteTokenService.validateInviteToken(invalidToken)
+        }
     }
     
     @Test
     fun `존재하지 않는 모임 ID로 토큰 검증 실패 테스트`() {
         // Given
         val meetingId = 999L
-        val baseUrl = "https://app.momuzzi.com"
         
         whenever(meetingRepository.findById(meetingId)).thenReturn(null)
 
         assertThrows<IllegalArgumentException> {
-            inviteTokenService.generateInviteToken(meetingId, baseUrl)
+            inviteTokenService.generateInviteToken(meetingId)
         }
 
         val fakeToken = "fake_token_for_testing"
         
-        // When
-        val result = inviteTokenService.validateInviteToken(fakeToken)
-        
-        // Then
-        assertNotNull(result)
-        assertFalse(result.isValid)
-        assertTrue(result.isExpired)
-        assertNull(result.meetingId)
-        assertEquals("유효하지 않은 토큰입니다.", result.message)
+        // When & Then
+        assertThrows<org.depromeet.team3.meeting.exception.InvalidInviteTokenException> {
+            inviteTokenService.validateInviteToken(fakeToken)
+        }
     }
 }
