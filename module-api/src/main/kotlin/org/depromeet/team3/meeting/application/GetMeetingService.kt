@@ -16,6 +16,7 @@ class GetMeetingService(
             .map { meeting ->
                 MeetingResponse(
                     id = meeting.id!!,
+                    name = meeting.name,
                     hostUserId = meeting.hostUserId,
                     attendeeCount = meeting.attendeeCount,
                     isClosed = meeting.isClosed,

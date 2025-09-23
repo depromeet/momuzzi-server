@@ -43,5 +43,14 @@ enum class ErrorCode(
     KAKAO_JSON_PARSE_ERROR("O003", "카카오 응답 데이터 파싱에 실패했습니다.", 500),
     KAKAO_API_ERROR("O004", "카카오 API 호출 중 오류가 발생했습니다.", 500),
     SOCIAL_LOGIN_INVALID_STATE("O005", "OAuth state 값이 유효하지 않습니다.", 400),
-    ALREADY_REGISTERED_WITH_OTHER_LOGIN("O006", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409)
+    ALREADY_REGISTERED_WITH_OTHER_LOGIN("O006", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409),
+
+    // 초대 토큰 관련 에러 (T001~T099)
+    INVALID_INVITE_TOKEN("T001", "유효하지 않은 초대 토큰입니다.", 400),
+    INVALID_TOKEN_FORMAT("T002", "토큰 형식이 올바르지 않습니다.", 400),
+    INVALID_MEETING_ID_IN_TOKEN("T003", "토큰의 모임 ID 형식이 올바르지 않습니다.", 400),
+    INVALID_EXPIRY_TIME_IN_TOKEN("T004", "토큰의 만료 시간 형식이 올바르지 않습니다.", 400),
+    TOKEN_EXPIRED("T005", "만료된 초대 토큰입니다.", 401),
+    MEETING_NOT_FOUND_FOR_TOKEN("T006", "토큰에 해당하는 모임을 찾을 수 없습니다.", 404),
+    MEETING_ALREADY_CLOSED("T007", "이미 종료된 모임입니다.", 409),
 }

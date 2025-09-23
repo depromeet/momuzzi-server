@@ -12,5 +12,7 @@ interface MeetingAttendeeRepository {
 
     fun existsByMeetingIdAndUserId(meetingId: Long, userId: Long): Boolean
 
+    fun countByMeetingId(meetingId: Long): Int
+
     fun deleteById(id: Long)
 }

@@ -8,5 +8,6 @@ interface MeetingAttendeeJpaRepository : JpaRepository<MeetingAttendeeEntity, Lo
     fun findByMeetingId(meetingId: Long): List<MeetingAttendeeEntity>
     fun findByUserId(userId: Long): List<MeetingAttendeeEntity>
     fun findByMeetingIdAndUserId(meetingId: Long, userId: Long): MeetingAttendeeEntity?
+    fun countByMeetingId(meetingId: Long): Int
     fun existsByMeetingIdAndUserId(meetingId: Long, userId: Long): Boolean
 }

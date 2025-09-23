@@ -14,19 +14,12 @@ import org.depromeet.team3.meeting.application.GetMeetingService
 import org.depromeet.team3.meeting.application.InviteTokenService
 import org.depromeet.team3.meeting.application.JoinMeetingService
 import org.depromeet.team3.meeting.dto.request.CreateMeetingRequest
-import org.depromeet.team3.meeting.dto.request.GenerateInviteTokenRequest
 import org.depromeet.team3.meeting.dto.request.JoinMeetingRequest
 import org.depromeet.team3.meeting.dto.response.CreateMeetingResponse
 import org.depromeet.team3.meeting.dto.response.InviteTokenResponse
 import org.depromeet.team3.meeting.dto.response.MeetingResponse
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @Tag(name = "모임", description = "모임 관련 API")
 @RestController
@@ -97,16 +90,12 @@ class MeetingController(
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "초대 토큰 생성 성공")
     )
-    @PostMapping("/{meetingId}/invite")
+    @PostMapping("/{meetingId}/invite-token")
     fun createInviteLink(
         @Parameter(description = "모임 ID", example = "1")
-        @PathVariable meetingId: Long,
-        @RequestBody @Valid request: GenerateInviteTokenRequest
+        @PathVariable meetingId: Long
     ): DpmApiResponse<InviteTokenResponse> {
-        val response = inviteTokenService.generateInviteToken(
-            meetingId = meetingId,
-            baseUrl = request.baseUrl
-        )
+        val response = inviteTokenService.generateInviteToken(meetingId)
 
         return DpmApiResponse.ok(response)
     }
@@ -118,15 +107,13 @@ class MeetingController(
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "모임 참여 성공")
     )
-    @PostMapping("/{meetingId}/join")
+    @PostMapping("/join")
     fun join(
-        @Parameter(description = "모임 ID", example = "1")
-        @PathVariable("meetingId") meetingId: Long,
         @Parameter(description = "사용자 ID", example = "123")
         @UserId userId: Long,
         @RequestBody @Valid request: JoinMeetingRequest
     ) : DpmApiResponse<Unit> {
-        joinMeetingService.invoke(meetingId, userId, request.attendeeNickname)
+        joinMeetingService.invoke(userId, request.meetingId, request.attendeeNickname)
 
         return DpmApiResponse.ok()
     }
