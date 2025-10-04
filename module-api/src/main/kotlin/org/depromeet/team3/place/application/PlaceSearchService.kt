@@ -9,48 +9,51 @@ import java.util.concurrent.ConcurrentHashMap
 @Service
 class PlaceSearchService(
     private val googlePlacesClient: GooglePlacesClient,
-    private val googlePlacesApiProperties: org.depromeet.team3.common.GooglePlacesApiProperties
 ) {
-    // 검색어별 offset 관리 (메모리 캐시)
+    /**
+     * 검색어별 현재 offset을 관리하는 메모리 캐시
+     */
     private val queryOffsetMap = ConcurrentHashMap<String, Int>()
     
-    // Google API에서 가져올 전체 결과 개수 (3번 호출 * 5개 = 15개)
+    /**
+     * Google API에서 한 번에 가져올 전체 결과 개수
+     * 3번 호출 * 5개 결과 = 15개
+     */
     private val totalFetchSize = 15
-    
-    // 최대 호출 횟수
+
     private val maxCallCount = 3
 
+    /**
+     * 맛집 검색 및 순차 결과 반환
+     *
+     * @param request 검색 요청 (검색어, 결과 개수)
+     * @return 검색 결과 목록 (최대 3번까지 다른 결과 반환)
+     */
     fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse {
         val response = googlePlacesClient.textSearch(request.query, totalFetchSize)
             ?: return PlacesSearchResponse(emptyList())
 
-        // 현재 offset 가져오기
         val currentOffset = queryOffsetMap.getOrDefault(request.query, 0)
         val currentCallCount = currentOffset / request.maxResults
         
-        // 3번 호출 제한 체크
         if (currentCallCount >= maxCallCount) {
             queryOffsetMap[request.query] = 0
             return PlacesSearchResponse(emptyList())
         }
         
-        // 결과에서 현재 offset부터 maxResults개만큼 추출
         val startIndex = currentOffset
         val endIndex = minOf(startIndex + request.maxResults, response.results.size)
         
         val selectedResults = if (startIndex < response.results.size) {
             response.results.subList(startIndex, endIndex)
         } else {
-            // offset이 결과 범위를 벗어나면 빈 결과 반환
             queryOffsetMap[request.query] = 0
             emptyList()
         }
 
         val items = selectedResults.map { result ->
-            // Place Details로 전체 정보 가져오기
             val placeDetails = googlePlacesClient.getPlaceDetails(result.placeId)?.result
             
-            // 가장 높은 평점의 리뷰 하나만 선택
             val topReview = placeDetails?.reviews
                 ?.maxByOrNull { it.rating }
                 ?.let { review ->
@@ -74,17 +77,15 @@ class PlaceSearchService(
             )
         }
 
-        // 다음 호출을 위해 offset 업데이트
         queryOffsetMap[request.query] = endIndex
 
         return PlacesSearchResponse(items)
     }
 
+    /**
+     * Google Maps 장소 링크 생성
+     */
     private fun generateGoogleMapsLink(placeId: String): String {
         return "https://www.google.com/maps/place/?q=place_id:$placeId"
-    }
-
-    private fun generatePhotoUrl(photoReference: String): String {
-        return "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=$photoReference&key=${googlePlacesApiProperties.apiKey}"
     }
 }
