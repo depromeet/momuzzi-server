@@ -1,7 +1,7 @@
 package org.depromeet.team3.restaurant
 
 import org.depromeet.team3.common.BaseTimeDomain
-import org.depromeet.team3.menu.Menu
+import org.depromeet.team3.place.Menu
 import java.time.LocalDateTime
 
 data class Restaurant(

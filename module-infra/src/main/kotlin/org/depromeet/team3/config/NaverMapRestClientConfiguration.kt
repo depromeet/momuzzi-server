@@ -14,6 +14,9 @@ import org.springframework.http.client.ClientHttpRequestFactory
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 
+/**
+ *  혹시 모르니 일단 둘게요
+ */
 @Configuration
 @EnableConfigurationProperties(NaverApiProperties::class)
 class NaverMapRestClientConfiguration(
@@ -25,27 +28,6 @@ class NaverMapRestClientConfiguration(
     companion object {
         const val MAX_CONNECTION_TOTAL = 3
         const val MAX_PER_ROUTE = 5
-    }
-
-    @Bean
-    fun naverMapGeocodingRestClient(): RestClient {
-        return RestClient.builder()
-            .requestFactory(httpRequestFactory())
-            .baseUrl(properties.geocodingBaseUrl)
-            .defaultHeaders { headers ->
-                headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                headers.set("X-Naver-Client-Id", properties.clientId)
-                headers.set("X-Naver-Client-Secret", properties.clientSecret)
-            }
-            .defaultStatusHandler(HttpStatusCode::is5xxServerError) { request, response ->
-                logger.error {
-                    "Naver Map Geocoding API request failed. " +
-                        "Status: ${response.statusCode}, " +
-                        "URL: ${request.uri}, " +
-                        "Method: ${request.method}"
-                }
-            }
-            .build()
     }
 
     @Bean

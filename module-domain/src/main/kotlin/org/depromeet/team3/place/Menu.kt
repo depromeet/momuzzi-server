@@ -1,4 +1,4 @@
-package org.depromeet.team3.menu
+package org.depromeet.team3.place
 
 import org.depromeet.team3.common.BaseTimeDomain
 import java.time.LocalDateTime

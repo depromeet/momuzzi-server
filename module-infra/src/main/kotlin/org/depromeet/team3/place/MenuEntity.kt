@@ -1,4 +1,4 @@
-package org.depromeet.team3.menu
+package org.depromeet.team3.place
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
