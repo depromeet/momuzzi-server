@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.common.response.DpmApiResponse
-import org.depromeet.team3.security.util.CookieUtil
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
@@ -19,8 +18,7 @@ import java.io.IOException
 @Component
 class JwtAuthenticationFilter(
     private val jwtTokenProvider: JwtTokenProvider,
-    private val objectMapper: ObjectMapper,
-    private val cookieUtil: CookieUtil
+    private val objectMapper: ObjectMapper
 ) : OncePerRequestFilter() {
     
     @Throws(ServletException::class, IOException::class)
@@ -66,39 +64,11 @@ class JwtAuthenticationFilter(
                 AuthResult.Success(userId)
             }
             
-            // Access Token이 없거나 만료된 경우 → Refresh Token으로 재시도
-            accessToken == null -> {
-                tryRefreshTokenAuthentication(request, response)
-            }
-            
             // Access Token이 유효하지 않은 경우
             else -> {
                 AuthResult.Failed
             }
         }
-    }
-
-    /**
-     * Refresh Token을 사용한 인증 시도
-     */
-    private fun tryRefreshTokenAuthentication(
-        request: HttpServletRequest,
-        response: HttpServletResponse
-    ): AuthResult {
-        val refreshToken = jwtTokenProvider.extractRefreshToken(request)
-
-        if (refreshToken != null && jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            val newAccessToken = jwtTokenProvider.refreshAccessToken(refreshToken)
-            
-            if (newAccessToken != null) {
-                // 새로운 Access Token을 쿠키에 저장
-                cookieUtil.createAccessTokenCookie(response, newAccessToken)
-                val userId = extractUserId(newAccessToken)
-
-                return AuthResult.Success(userId)
-            }
-        }
-        return AuthResult.Failed
     }
 
     /**
