@@ -50,7 +50,7 @@ class GooglePlacesClient(
                     uriBuilder
                         .path("/details/json")
                         .queryParam("place_id", placeId)
-                        .queryParam("fields", "place_id,name,formatted_address,website,rating,user_ratings_total,opening_hours,photos,url,types,reviews")
+                        .queryParam("fields", "place_id,name,formatted_address,rating,user_ratings_total,opening_hours,photos,url,types,reviews")
                         .queryParam("language", "ko")
                         .queryParam("key", googlePlacesApiProperties.apiKey)
                         .build()

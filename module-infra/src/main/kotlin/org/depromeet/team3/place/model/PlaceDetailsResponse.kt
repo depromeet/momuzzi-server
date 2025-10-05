@@ -10,7 +10,6 @@ data class PlaceDetailsResponse(
     val status: String
 ) {
     data class PlaceDetail(
-        val website: String? = null,
         @JsonProperty("opening_hours")
         val openingHours: OpeningHours? = null,
         val reviews: List<Review>? = null,
