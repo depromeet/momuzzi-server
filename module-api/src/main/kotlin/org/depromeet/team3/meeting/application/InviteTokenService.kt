@@ -1,8 +1,13 @@
 package org.depromeet.team3.meeting.application
 
+import org.depromeet.team3.common.ContextConstants.API_VERSION_V1
+import org.depromeet.team3.common.ContextConstants.BASE_DOMAIN
+import org.depromeet.team3.common.ContextConstants.HTTPS_PROTOCOL
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.dto.response.InviteTokenResponse
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
+import org.depromeet.team3.meeting.exception.InvalidInviteTokenException
 import org.depromeet.team3.util.DataEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,8 +24,7 @@ class InviteTokenService(
 
     @Transactional(readOnly = true)
     fun generateInviteToken(
-        meetingId: Long, 
-        baseUrl: String,
+        meetingId: Long
     ): InviteTokenResponse {
         val meeting = meetingRepository.findById(meetingId)
             ?: throw IllegalArgumentException("Not Found meeting ID: $meetingId")
@@ -32,89 +36,40 @@ class InviteTokenService(
         val endAtTimestamp = meeting.endAt!!.toInstant(ZoneOffset.UTC).toEpochMilli()
         
         val encodedData = DataEncoder.encodeWithSeparator(SEPARATOR, meetingId.toString(), endAtTimestamp.toString())
-        val inviteUrl = "$baseUrl/meetings/join?token=$encodedData"
+        val validateTokenUrl = "$HTTPS_PROTOCOL/$BASE_DOMAIN/$API_VERSION_V1/meetings/validate-invite?token=$encodedData"
         
-        return InviteTokenResponse(
-            inviteUrl = inviteUrl,
-            token = encodedData
-        )
+        return InviteTokenResponse(validateTokenUrl)
     }
 
     @Transactional(readOnly = true)
-    fun validateInviteToken(
-        token: String,
-    ): ValidateInviteTokenResponse {
-        val decodedData = DataEncoder.decodeWithSeparator(token, SEPARATOR)
-            ?: return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = true,
-                meetingId = null,
-                message = "유효하지 않은 토큰입니다."
-            )
-        
-        if (decodedData.size != 2) {
-            return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = false,
-                meetingId = null,
-                message = "토큰 형식이 올바르지 않습니다."
-            )
-        }
-        
-        val meetingId = try {
-            decodedData[0].toLong()
-        } catch (e: NumberFormatException) {
-            return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = false,
-                meetingId = null,
-                message = "토큰의 모임 ID 형식이 올바르지 않습니다."
-            )
-        }
-        
-        val endAtTimestamp = try {
-            decodedData[1].toLong()
-        } catch (e: NumberFormatException) {
-            return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = false,
-                meetingId = meetingId,
-                message = "토큰의 만료 시간 형식이 올바르지 않습니다."
-            )
+    fun validateInviteToken(token: String): ValidateInviteTokenResponse {
+        val (meetingId, expiryTimestamp) = parseTokenData(token)
+
+        if (System.currentTimeMillis() > expiryTimestamp) {
+            throw InvalidInviteTokenException(ErrorCode.TOKEN_EXPIRED)
         }
 
         val meeting = meetingRepository.findById(meetingId)
-            ?: return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = false,
-                meetingId = meetingId,
-                message = "존재하지 않는 모임입니다."
-            )
-        
+            ?: throw InvalidInviteTokenException(ErrorCode.MEETING_NOT_FOUND_FOR_TOKEN)
+
         if (meeting.isClosed) {
-            return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = false,
-                meetingId = meetingId,
-                message = "이미 종료된 모임입니다."
-            )
+            throw InvalidInviteTokenException(ErrorCode.MEETING_ALREADY_CLOSED)
         }
 
-        val isExpired = System.currentTimeMillis() > endAtTimestamp
-        if (isExpired) {
-            return ValidateInviteTokenResponse(
-                isValid = false,
-                isExpired = true,
-                meetingId = meetingId,
-                message = "만료된 토큰입니다."
-            )
-        }
-        
-        return ValidateInviteTokenResponse(
-            isValid = true,
-            isExpired = false,
-            meetingId = meetingId,
-            message = "유효한 토큰입니다."
-        )
+        return ValidateInviteTokenResponse(meetingId)
+    }
+
+    private fun parseTokenData(token: String): Pair<Long, Long> {
+        val parts = DataEncoder.decodeWithSeparator(token, SEPARATOR)
+            ?.takeIf { it.size == 2 }
+            ?: throw InvalidInviteTokenException(ErrorCode.INVALID_TOKEN_FORMAT)
+
+        val meetingId = parts[0].toLongOrNull()
+            ?: throw InvalidInviteTokenException(ErrorCode.INVALID_MEETING_ID_IN_TOKEN)
+
+        val expiryTimestamp = parts[1].toLongOrNull()
+            ?: throw InvalidInviteTokenException(ErrorCode.INVALID_EXPIRY_TIME_IN_TOKEN)
+
+        return Pair(meetingId, expiryTimestamp)
     }
 }

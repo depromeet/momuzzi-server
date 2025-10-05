@@ -40,6 +40,10 @@ class MeetingAttendeeQuery(
         return meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)
     }
 
+    override fun countByMeetingId(meetingId: Long): Int {
+        return meetingAttendeeJpaRepository.countByMeetingId(meetingId)
+    }
+
     override fun deleteById(id: Long) {
         meetingAttendeeJpaRepository.deleteById(id)
     }
