@@ -1,12 +1,7 @@
 package org.depromeet.team3.meeting.application
 
-// TODO: Fix this test file - auth 변경으로 인해 임시 주석 처리
-/*
-import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.util.MeetingTestDataFactory
-import org.depromeet.team3.user.util.UserTestDataFactory
-import org.depromeet.team3.station.util.StationTestDataFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -33,16 +28,14 @@ class InviteTokenServiceTest {
     fun `초대 토큰 생성 성공 테스트`() {
         // Given
         val meetingId = 1L
-        val baseUrl = "https://app.momuzzi.com"
-        val meeting = MeetingTestDataFactory.createMeetingEntity(
+        val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "테스트 미팅",
             hostUserId = 1L,
             attendeeCount = 5,
             isClosed = false,
-            endAt = LocalDateTime.now().plusHours(2),
-            hostUser = UserTestDataFactory.createUserEntity(),
-            station = StationTestDataFactory.createStationEntity()
+            stationId = 1L,
+            endAt = LocalDateTime.now().plusHours(2)
         )
 
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
@@ -74,16 +67,14 @@ class InviteTokenServiceTest {
     fun `종료된 모임으로 초대 토큰 생성 시 예외 발생`() {
         // Given
         val meetingId = 1L
-        val baseUrl = "https://app.momuzzi.com"
-        val meeting = MeetingTestDataFactory.createMeetingEntity(
+        val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "종료된 미팅",
             hostUserId = 1L,
             attendeeCount = 5,
             isClosed = true,
-            endAt = LocalDateTime.now().minusHours(1),
-            hostUser = UserTestDataFactory.createUserEntity(),
-            station = StationTestDataFactory.createStationEntity()
+            stationId = 1L,
+            endAt = LocalDateTime.now().minusHours(1)
         )
 
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
@@ -98,15 +89,14 @@ class InviteTokenServiceTest {
     fun `유효한 토큰 검증 성공 테스트`() {
         // Given
         val meetingId = 1L
-        val meeting = Meeting(
+        val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "테스트 미팅",
             hostUserId = 1L,
             attendeeCount = 5,
             isClosed = false,
-            endAt = LocalDateTime.now().plusHours(2),
-            hostUser = UserTestDataFactory.createUserEntity(),
-            station = StationTestDataFactory.createStationEntity()
+            stationId = 1L,
+            endAt = LocalDateTime.now().plusHours(2)
         )
 
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
@@ -152,4 +142,3 @@ class InviteTokenServiceTest {
         }
     }
 }
-*/
