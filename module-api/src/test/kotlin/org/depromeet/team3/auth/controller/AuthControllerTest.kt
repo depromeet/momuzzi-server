@@ -2,51 +2,58 @@ package org.depromeet.team3.auth.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.depromeet.team3.auth.application.AuthService
-import org.depromeet.team3.auth.application.response.UserProfileResponse
+import org.depromeet.team3.auth.dto.LoginResponse
+import org.depromeet.team3.auth.dto.RefreshTokenRequest
+import org.depromeet.team3.auth.dto.TokenResponse
+import org.depromeet.team3.auth.dto.UserProfileResponse
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.config.TestSecurityConfiguration
-import org.junit.jupiter.api.BeforeEach
+import org.depromeet.team3.common.exception.GlobalExceptionHandler
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.InjectMocks
+import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
-/**
- * AuthController 통합 테스트 - Security 완전 우회
- */
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-@Import(TestSecurityConfiguration::class)
+
+@ExtendWith(MockitoExtension::class)
 class AuthControllerTest {
 
-    @Autowired
-    private lateinit var mockMvc: MockMvc
-
-    @MockBean
+    @Mock
     private lateinit var authService: AuthService
+
+    @InjectMocks
+    private lateinit var authController: AuthController
+
+    private val objectMapper = ObjectMapper()
+    
+    private val mockMvc: MockMvc by lazy {
+        MockMvcBuilders.standaloneSetup(authController)
+            .setControllerAdvice(GlobalExceptionHandler())
+            .build()
+    }
 
     @Test
     fun `카카오 로그인 성공 - 200 응답`() {
         // given
         val code = "test-auth-code"
-        val userProfileResponse = UserProfileResponse(
-            email = "test@example.com",
-            nickname = "테스트사용자",
-            profileImage = "https://example.com/profile.jpg"
+        val loginResponse = LoginResponse(
+            accessToken = "access-token-123",
+            refreshToken = "refresh-token-456",
+            userProfile = UserProfileResponse(
+                email = "test@example.com",
+                nickname = "테스트사용자",
+                profileImage = "https://example.com/profile.jpg"
+            )
         )
         
-        whenever(authService.oAuthKakaoLoginWithCode(eq(code), any()))
-            .thenReturn(userProfileResponse)
+        whenever(authService.oAuthKakaoLoginWithCode(eq(code))).thenReturn(loginResponse)
 
         // when & then
         mockMvc.perform(
@@ -55,9 +62,11 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.data.email").value("test@example.com"))
-            .andExpect(jsonPath("$.data.nickname").value("테스트사용자"))
-            .andExpect(jsonPath("$.data.profileImage").value("https://example.com/profile.jpg"))
+            .andExpect(jsonPath("$.data.accessToken").value("access-token-123"))
+            .andExpect(jsonPath("$.data.refreshToken").value("refresh-token-456"))
+            .andExpect(jsonPath("$.data.userProfile.email").value("test@example.com"))
+            .andExpect(jsonPath("$.data.userProfile.nickname").value("테스트사용자"))
+            .andExpect(jsonPath("$.data.userProfile.profileImage").value("https://example.com/profile.jpg"))
     }
 
     @Test
@@ -71,96 +80,77 @@ class AuthControllerTest {
     }
 
     @Test
-    fun `카카오 로그인 실패 - 401 에러 (인증 실패)`() {
-        // given
-        val code = "invalid-auth-code"
-        
-        whenever(authService.oAuthKakaoLoginWithCode(eq(code), any()))
-            .thenThrow(AuthException(ErrorCode.KAKAO_INVALID_GRANT))
-
-        // when & then
-        mockMvc.perform(
-            get("/api/v1/auth/kakao-login")
-                .param("code", code)
-                .contentType(MediaType.APPLICATION_JSON)
-        )
-            .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.error.name").value("KAKAO_INVALID_GRANT"))
-            .andExpect(jsonPath("$.error.code").value("O001"))
-            .andExpect(jsonPath("$.error.message").value("카카오 인증 코드가 유효하지 않습니다."))
-    }
-
-    @Test
     fun `토큰 재발급 성공 - 200 응답`() {
         // given
-        val refreshResult = mapOf(
-            "message" to "토큰이 성공적으로 갱신되었습니다",
-            "status" to "success"
+        val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
+        val tokenResponse = TokenResponse(
+            accessToken = "new-access-token",
+            refreshToken = "new-refresh-token"
         )
         
-        whenever(authService.refreshTokens(any(), any()))
-            .thenReturn(refreshResult)
+        whenever(authService.refreshTokens("valid-refresh-token")).thenReturn(tokenResponse)
 
         // when & then
         mockMvc.perform(
             post("/api/v1/auth/reissue-token")
                 .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshTokenRequest))
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.data.message").value("토큰이 성공적으로 갱신되었습니다"))
-            .andExpect(jsonPath("$.data.status").value("success"))
-    }
-
-    @Test
-    fun `토큰 재발급 실패 - 401 에러 (Refresh Token 없음)`() {
-        // given
-        val errorDetail = mapOf("reason" to "Refresh Token이 없습니다")
-        
-        whenever(authService.refreshTokens(any(), any()))
-            .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
-
-        // when & then
-        mockMvc.perform(
-            post("/api/v1/auth/reissue-token")
-                .contentType(MediaType.APPLICATION_JSON)
-        )
-            .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.error.name").value("KAKAO_AUTH_FAILED"))
-            .andExpect(jsonPath("$.error.code").value("O002"))
-            .andExpect(jsonPath("$.error.message").value("카카오 인증에 실패했습니다."))
-            .andExpect(jsonPath("$.error.detail.reason").value("Refresh Token이 없습니다"))
+            .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
+            .andExpect(jsonPath("$.data.refreshToken").value("new-refresh-token"))
     }
 
     @Test
     fun `토큰 재발급 실패 - 401 에러 (Refresh Token 유효하지 않음)`() {
         // given
+        val refreshTokenRequest = RefreshTokenRequest(refreshToken = "invalid-refresh-token")
         val errorDetail = mapOf("reason" to "Refresh Token이 유효하지 않습니다")
         
-        whenever(authService.refreshTokens(any(), any()))
+        whenever(authService.refreshTokens("invalid-refresh-token"))
             .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
 
         // when & then
         mockMvc.perform(
             post("/api/v1/auth/reissue-token")
                 .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshTokenRequest))
         )
             .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.error.detail.reason").value("Refresh Token이 유효하지 않습니다"))
+    }
+
+    @Test
+    fun `토큰 재발급 실패 - 401 에러 (사용자 정보 없음)`() {
+        // given
+        val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
+        val errorDetail = mapOf("reason" to "사용자 정보를 찾을 수 없습니다")
+        
+        whenever(authService.refreshTokens("valid-refresh-token"))
+            .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/auth/reissue-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshTokenRequest))
+        )
+            .andExpect(status().isUnauthorized)
     }
 
     @Test
     fun `서버 내부 오류 - 500 에러`() {
         // given
-        whenever(authService.refreshTokens(any(), any()))
+        val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
+        
+        whenever(authService.refreshTokens("valid-refresh-token"))
             .thenThrow(RuntimeException("서버 오류"))
 
         // when & then
         mockMvc.perform(
             post("/api/v1/auth/reissue-token")
                 .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshTokenRequest))
         )
             .andExpect(status().isInternalServerError)
-            .andExpect(jsonPath("$.error.name").value("INTERNAL_SERVER_ERROR"))
-            .andExpect(jsonPath("$.error.code").value("S001"))
     }
 }

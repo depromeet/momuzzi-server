@@ -1,9 +1,9 @@
 package org.depromeet.team3.auth.application
 
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 import org.depromeet.team3.auth.KakaoOAuthClient
 import org.depromeet.team3.auth.KakaoProperties
+import org.depromeet.team3.auth.dto.LoginResponse
+import org.depromeet.team3.auth.dto.TokenResponse
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.auth.model.KakaoResponse
 import org.depromeet.team3.auth.util.TestDataFactory
@@ -32,12 +32,6 @@ class AuthServiceTest {
 
     @Mock
     private lateinit var jwtTokenProvider: JwtTokenProvider
-
-    @Mock
-    private lateinit var request: HttpServletRequest
-
-    @Mock
-    private lateinit var response: HttpServletResponse
 
     private lateinit var authService: AuthService
 
@@ -89,32 +83,25 @@ class AuthServiceTest {
         )
         whenever(userRepository.save(any<UserEntity>()))
             .thenReturn(savedUser)
+        whenever(jwtTokenProvider.generateAccessToken(2L, "test@example.com"))
+            .thenReturn("access-token")
         whenever(jwtTokenProvider.generateRefreshToken(2L))
             .thenReturn("refresh-token")
 
         // when
-        val result = authService.oAuthKakaoLoginWithCode(code, response)
+        val result = authService.oAuthKakaoLoginWithCode(code)
 
         // then
-        assertThat(result.email).isEqualTo("test@example.com")
-        assertThat(result.nickname).isEqualTo("테스트사용자")
-        assertThat(result.profileImage).isEqualTo("http://example.com/profile.jpg")
+        assertThat(result).isInstanceOf(LoginResponse::class.java)
+        assertThat(result.accessToken).isEqualTo("access-token")
+        assertThat(result.refreshToken).isEqualTo("refresh-token")
+        assertThat(result.userProfile.email).isEqualTo("test@example.com")
+        assertThat(result.userProfile.nickname).isEqualTo("테스트사용자")
+        assertThat(result.userProfile.profileImage).isEqualTo("http://example.com/profile.jpg")
 
-        verify(jwtTokenProvider).setTokenCookies(any(), any(), any())
-    }
-
-    @Test
-    fun `토큰 갱신 실패 - Refresh Token 없음`() {
-        // given
-        whenever(jwtTokenProvider.extractRefreshToken(request))
-            .thenReturn(null)
-
-        // when & then
-        val exception = assertThrows<AuthException> {
-            authService.refreshTokens(request, response)
-        }
-        
-        assertThat(exception.detail).containsEntry("reason", "Refresh Token이 없습니다")
+        verify(jwtTokenProvider).generateAccessToken(2L, "test@example.com")
+        verify(jwtTokenProvider).generateRefreshToken(2L)
+        verify(userRepository, times(2)).save(any<UserEntity>())
     }
 
     @Test
@@ -122,14 +109,12 @@ class AuthServiceTest {
         // given
         val invalidRefreshToken = "invalid-refresh-token"
         
-        whenever(jwtTokenProvider.extractRefreshToken(request))
-            .thenReturn(invalidRefreshToken)
         whenever(jwtTokenProvider.validateRefreshToken(invalidRefreshToken))
             .thenReturn(false)
 
         // when & then
         val exception = assertThrows<AuthException> {
-            authService.refreshTokens(request, response)
+            authService.refreshTokens(invalidRefreshToken)
         }
         
         assertThat(exception.detail).containsEntry("reason", "Refresh Token이 유효하지 않습니다")
@@ -140,8 +125,6 @@ class AuthServiceTest {
         // given
         val validRefreshToken = "valid-refresh-token"
         
-        whenever(jwtTokenProvider.extractRefreshToken(request))
-            .thenReturn(validRefreshToken)
         whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
             .thenReturn(true)
         whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
@@ -149,7 +132,7 @@ class AuthServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            authService.refreshTokens(request, response)
+            authService.refreshTokens(validRefreshToken)
         }
         
         assertThat(exception.detail).containsEntry("reason", "사용자 정보를 찾을 수 없습니다")
@@ -161,8 +144,6 @@ class AuthServiceTest {
         val validRefreshToken = "valid-refresh-token"
         val userId = 1L
         
-        whenever(jwtTokenProvider.extractRefreshToken(request))
-            .thenReturn(validRefreshToken)
         whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
             .thenReturn(true)
         whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
@@ -172,7 +153,7 @@ class AuthServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            authService.refreshTokens(request, response)
+            authService.refreshTokens(validRefreshToken)
         }
         
         assertThat(exception.detail).containsEntry("reason", "사용자를 찾을 수 없습니다")
@@ -190,8 +171,6 @@ class AuthServiceTest {
             refreshToken = differentRefreshToken
         )
         
-        whenever(jwtTokenProvider.extractRefreshToken(request))
-            .thenReturn(validRefreshToken)
         whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
             .thenReturn(true)
         whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
@@ -201,7 +180,7 @@ class AuthServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            authService.refreshTokens(request, response)
+            authService.refreshTokens(validRefreshToken)
         }
         
         assertThat(exception.detail).containsEntry("reason", "Refresh Token이 일치하지 않습니다")
@@ -215,30 +194,33 @@ class AuthServiceTest {
         
         val userWithValidToken = UserTestDataFactory.createUserEntity(
             id = userId,
+            email = "test@example.com",
             refreshToken = validRefreshToken
         )
         
-        whenever(jwtTokenProvider.extractRefreshToken(request))
-            .thenReturn(validRefreshToken)
         whenever(jwtTokenProvider.validateRefreshToken(validRefreshToken))
             .thenReturn(true)
         whenever(jwtTokenProvider.getUserIdFromToken(validRefreshToken))
             .thenReturn(userId.toString())
         whenever(userRepository.findById(userId))
             .thenReturn(Optional.of(userWithValidToken))
+        whenever(jwtTokenProvider.generateAccessToken(userId, "test@example.com"))
+            .thenReturn("new-access-token")
         whenever(jwtTokenProvider.generateRefreshToken(userId))
             .thenReturn("new-refresh-token")
         whenever(userRepository.save(any<UserEntity>()))
             .thenReturn(userWithValidToken)
 
         // when
-        val result = authService.refreshTokens(request, response)
+        val result = authService.refreshTokens(validRefreshToken)
 
         // then
-        assertThat(result["message"]).isEqualTo("토큰이 성공적으로 갱신되었습니다")
-        assertThat(result["status"]).isEqualTo("success")
+        assertThat(result).isInstanceOf(TokenResponse::class.java)
+        assertThat(result.accessToken).isEqualTo("new-access-token")
+        assertThat(result.refreshToken).isEqualTo("new-refresh-token")
         
-        verify(jwtTokenProvider).setTokenCookies(any(), any(), any())
+        verify(jwtTokenProvider).generateAccessToken(userId, "test@example.com")
+        verify(jwtTokenProvider).generateRefreshToken(userId)
         verify(userRepository).save(any<UserEntity>())
     }
 }

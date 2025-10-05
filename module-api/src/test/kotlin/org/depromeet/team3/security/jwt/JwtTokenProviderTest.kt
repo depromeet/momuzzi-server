@@ -1,6 +1,5 @@
 package org.depromeet.team3.security.jwt
 
-import org.depromeet.team3.security.util.CookieUtil
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -8,18 +7,13 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import org.assertj.core.api.Assertions.assertThat
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 
 /**
  * JwtTokenProvider 핵심 기능 테스트
  */
 @ExtendWith(MockitoExtension::class)
 class JwtTokenProviderTest {
-
-    @Mock
-    private lateinit var cookieUtil: CookieUtil
     
     private lateinit var jwtTokenProvider: JwtTokenProvider
     private lateinit var jwtProperties: JwtProperties
@@ -31,7 +25,7 @@ class JwtTokenProviderTest {
             accessTokenValidity = 3600000L, // 1시간
             refreshTokenValidity = 604800000L // 1주일
         )
-        jwtTokenProvider = JwtTokenProvider(cookieUtil, jwtProperties)
+        jwtTokenProvider = JwtTokenProvider(jwtProperties)
     }
 
     @Test
@@ -71,7 +65,7 @@ class JwtTokenProviderTest {
             accessTokenValidity = 1L, // 1ms
             refreshTokenValidity = 1L // 1ms
         )
-        val shortLivedProvider = JwtTokenProvider(cookieUtil, shortJwtProperties)
+        val shortLivedProvider = JwtTokenProvider(shortJwtProperties)
         
         val userId = 123L
         val userEmail = "test@example.com"
@@ -96,13 +90,12 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    fun `Request에서 토큰을 정상적으로 추출한다`() {
+    fun `Authorization 헤더에서 토큰을 정상적으로 추출한다`() {
         // given
         val request = mock<HttpServletRequest>()
         val accessToken = "test-access-token"
-        val cookie = Cookie("accessToken", accessToken)
         
-        whenever(request.cookies).thenReturn(arrayOf(cookie))
+        whenever(request.getHeader("Authorization")).thenReturn("Bearer $accessToken")
 
         // when
         val extractedToken = jwtTokenProvider.extractToken(request)
@@ -112,72 +105,37 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    fun `Request에서 Refresh Token을 정상적으로 추출한다`() {
+    fun `Bearer 접두사가 없는 경우 null을 반환한다`() {
         // given
         val request = mock<HttpServletRequest>()
-        val refreshToken = "test-refresh-token"
-        val cookie = Cookie("refreshToken", refreshToken)
-        
-        whenever(request.cookies).thenReturn(arrayOf(cookie))
+        whenever(request.getHeader("Authorization")).thenReturn("test-access-token")
 
         // when
-        val extractedToken = jwtTokenProvider.extractRefreshToken(request)
+        val extractedToken = jwtTokenProvider.extractToken(request)
 
         // then
-        assertThat(extractedToken).isEqualTo(refreshToken)
+        assertThat(extractedToken).isNull()
     }
 
     @Test
-    fun `쿠키가 없는 경우 null을 반환한다`() {
+    fun `Authorization 헤더가 없는 경우 null을 반환한다`() {
         // given
         val request = mock<HttpServletRequest>()
-        whenever(request.cookies).thenReturn(null)
+        whenever(request.getHeader("Authorization")).thenReturn(null)
 
         // when
-        val accessToken = jwtTokenProvider.extractToken(request)
-        val refreshToken = jwtTokenProvider.extractRefreshToken(request)
+        val extractedToken = jwtTokenProvider.extractToken(request)
 
         // then
-        assertThat(accessToken).isNull()
-        assertThat(refreshToken).isNull()
-    }
-
-    @Test
-    fun `토큰 쿠키 설정이 정상적으로 동작한다`() {
-        // given
-        val response = mock<HttpServletResponse>()
-        val userId = 123L
-        val userEmail = "test@example.com"
-
-        // when
-        jwtTokenProvider.setTokenCookies(response, userId, userEmail)
-
-        // then
-        verify(cookieUtil, times(1)).createAccessTokenCookie(any(), any())
-        verify(cookieUtil, times(1)).createRefreshTokenCookie(any(), any())
-    }
-
-    @Test
-    fun `Refresh Token으로 새로운 Access Token을 생성할 수 있다`() {
-        // given
-        val userId = 123L
-        val refreshToken = jwtTokenProvider.generateRefreshToken(userId)
-
-        // when
-        val newAccessToken = jwtTokenProvider.refreshAccessToken(refreshToken)
-
-        // then
-        assertThat(newAccessToken).isNotNull()
-        assertThat(jwtTokenProvider.validateAccessToken(newAccessToken!!)).isTrue()
-        assertThat(jwtTokenProvider.getUserIdFromToken(newAccessToken)).isEqualTo(userId.toString())
+        assertThat(extractedToken).isNull()
     }
 
     @Test
     fun `JWT 토큰 관련 상수들이 올바르게 설정되어 있다`() {
         // JWT와 관련된 기본 설정값들을 검증
         assertThat("Bearer ").hasSize(7)
-        assertThat("accessToken").isNotEmpty
-        assertThat("refreshToken").isNotEmpty
+        assertThat("ACCESS").isEqualTo("ACCESS")
+        assertThat("REFRESH").isEqualTo("REFRESH")
     }
 
     @Test
@@ -202,5 +160,19 @@ class JwtTokenProviderTest {
         
         // then
         assertThat(userId).isNull()
+    }
+    
+    @Test
+    fun `토큰에서 이메일을 추출할 수 있다`() {
+        // given
+        val userId = 123L
+        val userEmail = "test@example.com"
+        val accessToken = jwtTokenProvider.generateAccessToken(userId, userEmail)
+
+        // when
+        val extractedEmail = jwtTokenProvider.getEmailFromToken(accessToken)
+
+        // then
+        assertThat(extractedEmail).isEqualTo(userEmail)
     }
 }

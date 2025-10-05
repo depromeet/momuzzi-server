@@ -3,7 +3,6 @@ package org.depromeet.team3.security
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.depromeet.team3.security.jwt.JwtAuthenticationFilter
 import org.depromeet.team3.security.jwt.JwtTokenProvider
-import org.depromeet.team3.security.util.CookieUtil
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -18,8 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtTokenProvider: JwtTokenProvider,
-    private val objectMapper: ObjectMapper,
-    private val cookieUtil: CookieUtil
+    private val objectMapper: ObjectMapper
 ) {
 
     @Bean
@@ -46,7 +44,7 @@ class SecurityConfig(
                 it.anyRequest().permitAll()     // 일단 전부 열어놓겠습니다.
             }
             .addFilterBefore(
-                JwtAuthenticationFilter(jwtTokenProvider, objectMapper, cookieUtil),
+                JwtAuthenticationFilter(jwtTokenProvider, objectMapper),
                 UsernamePasswordAuthenticationFilter::class.java
             )
         return http.build()

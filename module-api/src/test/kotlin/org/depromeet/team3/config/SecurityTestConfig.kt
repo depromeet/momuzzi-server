@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.depromeet.team3.common.resolver.UserIdArgumentResolver
 import org.depromeet.team3.security.jwt.JwtProperties
-import org.depromeet.team3.security.jwt.JwtTokenProvider
-import org.depromeet.team3.security.util.CookieUtil
+
 import org.depromeet.team3.security.jwt.AppProperties
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -42,18 +41,6 @@ class SecurityTestConfig {
         return AppProperties(
             env = "test"
         )
-    }
-
-    @Bean
-    @Primary
-    fun testCookieUtil(appProperties: AppProperties): CookieUtil {
-        return CookieUtil(appProperties)
-    }
-
-    @Bean
-    @Primary
-    fun testJwtTokenProvider(cookieUtil: CookieUtil, jwtProperties: JwtProperties): JwtTokenProvider {
-        return JwtTokenProvider(cookieUtil, jwtProperties)
     }
 
     @Bean
