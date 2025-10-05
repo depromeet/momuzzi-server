@@ -4,8 +4,6 @@ import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
-import org.depromeet.team3.security.util.CookieUtil
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -17,7 +15,6 @@ import javax.crypto.SecretKey
 
 @Component
 class JwtTokenProvider(
-    private val cookieUtil: CookieUtil,
     private val jwtProperties: JwtProperties
 ) {
 
@@ -66,44 +63,15 @@ class JwtTokenProvider(
     }
 
     /**
-     * 로그인 성공 시 토큰 쿠키 설정
-     */
-    fun setTokenCookies(
-        response: HttpServletResponse,
-        userId: Long,
-        email: String? = null
-    ) {
-        val accessToken = generateAccessToken(userId, email)
-        val refreshToken = generateRefreshToken(userId)
-
-        cookieUtil.createAccessTokenCookie(response, accessToken)
-        cookieUtil.createRefreshTokenCookie(response, refreshToken)
-    }
-
-    /**
-     * 요청에서 토큰 추출 (쿠키 우선, 없으면 Authorization 헤더에서)
+     * 요청에서 토큰 추출 (Authorization 헤더에서)
      */
     fun extractToken(request: HttpServletRequest): String? {
-        // 1. 쿠키에서 토큰 확인
-        val tokenFromCookie = CookieUtil.getCookieValue(request, CookieUtil.ACCESS_TOKEN_COOKIE_NAME)
-        if (tokenFromCookie != null) {
-            return tokenFromCookie
-        }
-
-        // 2. Authorization 헤더에서 토큰 확인 (API 호출 지원)
         val bearerToken = request.getHeader("Authorization")
         return if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             bearerToken.substring(7)
         } else {
             null
         }
-    }
-
-    /**
-     * 요청에서 Refresh Token 추출 (쿠키에서)
-     */
-    fun extractRefreshToken(request: HttpServletRequest): String? {
-        return CookieUtil.getCookieValue(request, CookieUtil.REFRESH_TOKEN_COOKIE_NAME)
     }
 
     /**
@@ -156,30 +124,6 @@ class JwtTokenProvider(
         } catch (e: Exception) {
             null
         }
-    }
-
-    /**
-     * Refresh Token 기능 (추후 확장용)
-     */
-    fun refreshAccessToken(refreshToken: String): String? {
-        return try {
-            val claims = getClaims(refreshToken)
-            val tokenType = claims.get("tokenType", String::class.java)
-            
-            if (tokenType == "REFRESH" && claims.expiration.after(Date())) {
-                val userId = claims.subject.toLongOrNull()
-                userId?.let { generateAccessToken(it) }
-            } else null
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
-     * 로그아웃 시 쿠키 제거 (추후 로그아웃 기능용)
-     */
-    fun clearTokenCookies(response: HttpServletResponse) {
-        cookieUtil.deleteAllAuthCookies(response)
     }
 
     /**
