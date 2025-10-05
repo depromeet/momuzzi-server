@@ -23,7 +23,7 @@ data class PlaceDetailsResponse(
         data class Review(
             @JsonProperty("author_name")
             val authorName: String,
-            val rating: Int,
+            val rating: Double,
             @JsonProperty("relative_time_description")
             val relativeTimeDescription: String,
             val text: String,

@@ -13,6 +13,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.ClientHttpRequestFactory
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.web.client.RestClient
+import java.time.Duration
 
 @Configuration
 @EnableConfigurationProperties(GooglePlacesApiProperties::class)
@@ -53,7 +54,11 @@ class GooglePlacesRestClientConfiguration(
             .setConnectionManager(googlePlacesConnectionManager())
             .build()
 
-        return HttpComponentsClientHttpRequestFactory(httpClient)
+        return HttpComponentsClientHttpRequestFactory(httpClient).apply {
+            setConnectTimeout(Duration.ofSeconds(5))
+            setReadTimeout(Duration.ofSeconds(5))
+            setConnectionRequestTimeout(Duration.ofSeconds(1))
+        }
     }
 
     @Bean
