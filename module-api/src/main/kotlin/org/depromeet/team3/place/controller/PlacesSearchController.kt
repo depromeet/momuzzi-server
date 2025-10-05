@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Tag(name = "맛집 데이터", description = "구글 플레이스 맛집 검색 API")
 @RestController
-@RequestMapping("${ContextConstants.API_VERSION_V1}/google-places")
+@RequestMapping("${ContextConstants.API_VERSION_V1}/places")
 class PlacesSearchController(
     private val placeSearchService: PlaceSearchService
 ) {
@@ -30,14 +30,12 @@ class PlacesSearchController(
         ApiResponse(responseCode = "200", description = "검색 성공"),
         ApiResponse(responseCode = "400", description = "잘못된 요청")
     )
-    @GetMapping("/text-search")
+    @GetMapping
     fun textSearch(
-        @Parameter(description = "검색 키워드", example = "강남역 한식 맛집", required = true)
-        @RequestParam query: String,
-        @Parameter(description = "검색 결과 개수", example = "5")
-        @RequestParam(defaultValue = "5") maxResults: Int
+        @Parameter(description = "검색 키워드", example = "강남역 야장 맛집", required = true)
+        @RequestParam query: String
     ): DpmApiResponse<PlacesSearchResponse> {
-        val request = PlacesSearchRequest(query, maxResults)
+        val request = PlacesSearchRequest(query, 5)
         val response = placeSearchService.textSearch(request)
 
         return DpmApiResponse.ok(response)
