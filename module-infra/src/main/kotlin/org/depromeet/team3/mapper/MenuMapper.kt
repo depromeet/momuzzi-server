@@ -1,7 +1,7 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.menu.Menu
-import org.depromeet.team3.menu.MenuEntity
+import org.depromeet.team3.place.Menu
+import org.depromeet.team3.place.MenuEntity
 import org.depromeet.team3.restaurant.RestaurantJpaRepository
 import org.springframework.stereotype.Component
 

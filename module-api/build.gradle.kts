@@ -20,7 +20,10 @@ dependencies {
     
     // Jackson Kotlin 모듈
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    
+
+    // Caffeine Cache
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+
     testImplementation("org.mockito:mockito-core:5.1.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.1.1")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")

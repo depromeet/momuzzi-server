@@ -21,9 +21,3 @@ app:
 
 kakao:
   redirect-uri: https://www.momuzzi.site/auth/callback
-
-api:
-  naver:
-    map:
-      client-id: ${CLIENT_ID}
-      client-secret: ${CLIENT_SECRET}

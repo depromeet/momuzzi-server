@@ -1,6 +1,6 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.menu.MenuJpaRepository
+import org.depromeet.team3.place.MenuJpaRepository
 import org.depromeet.team3.restaurant.Restaurant
 import org.depromeet.team3.restaurant.RestaurantEntity
 import org.springframework.context.annotation.Lazy

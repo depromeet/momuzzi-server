@@ -2,7 +2,7 @@ package org.depromeet.team3.restaurant
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
-import org.depromeet.team3.menu.MenuEntity
+import org.depromeet.team3.place.MenuEntity
 
 @Entity
 @Table(name = "tb_restaurants")
