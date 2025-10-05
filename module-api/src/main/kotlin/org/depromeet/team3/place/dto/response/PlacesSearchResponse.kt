@@ -11,7 +11,6 @@ data class PlacesSearchResponse(
         val openNow: Boolean?,
         val photos: List<String>?,
         val link: String,
-        val website: String?,
         val weekdayText: List<String>?,
         val topReview: Review?
     ) {

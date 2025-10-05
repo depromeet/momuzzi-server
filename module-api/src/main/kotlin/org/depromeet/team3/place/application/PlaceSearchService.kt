@@ -1,5 +1,6 @@
 package org.depromeet.team3.place.application
 
+import org.depromeet.team3.common.GooglePlacesApiProperties
 import org.depromeet.team3.place.client.GooglePlacesClient
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
@@ -12,6 +13,7 @@ import java.util.concurrent.TimeUnit
 @Service
 class PlaceSearchService(
     private val googlePlacesClient: GooglePlacesClient,
+    private val googlePlacesApiProperties: GooglePlacesApiProperties,
 ) {
     private val logger = LoggerFactory.getLogger(PlaceSearchService::class.java)
     
@@ -85,9 +87,10 @@ class PlaceSearchService(
                 rating = result.rating,
                 userRatingsTotal = result.userRatingsTotal,
                 openNow = result.openingHours?.openNow,
-                photos = null,
-                link = result.url ?: generateGoogleMapsLink(result.placeId),
-                website = placeDetails?.website,
+                photos = placeDetails?.photos?.take(5)?.map { photo ->
+                    generatePhotoUrl(photo.photoReference)
+                },
+                link = generateNaverPlaceLink(result.name),
                 weekdayText = placeDetails?.openingHours?.weekdayText,
                 topReview = topReview
             )
@@ -100,9 +103,16 @@ class PlaceSearchService(
     }
 
     /**
-     * Google Maps 장소 링크 생성
+     * 네이버 플레이스 링크 생성
      */
-    private fun generateGoogleMapsLink(placeId: String): String {
-        return "https://www.google.com/maps/place/?q=place_id:$placeId"
+    private fun generateNaverPlaceLink(placeName: String): String {
+        return "https://m.place.naver.com/restaurant/list?query=$placeName"
+    }
+
+    /**
+     * Google Places Photo URL 생성
+     */
+    private fun generatePhotoUrl(photoReference: String): String {
+        return "${googlePlacesApiProperties.baseUrl}/photo?maxwidth=400&photo_reference=$photoReference&key=${googlePlacesApiProperties.apiKey}"
     }
 }

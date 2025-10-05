@@ -24,7 +24,7 @@ class GooglePlacesRestClientConfiguration(
     private val logger = KotlinLogging.logger { GooglePlacesRestClientConfiguration::class.java.name }
 
     companion object {
-        const val MAX_CONNECTION_TOTAL = 3
+        const val MAX_CONNECTION_TOTAL = 10
         const val MAX_PER_ROUTE = 5
     }
 

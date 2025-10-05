@@ -20,11 +20,19 @@ data class PlacesSearchResponse(
         val userRatingsTotal: Int? = null,
         @JsonProperty("opening_hours")
         val openingHours: OpeningHours? = null,
-        val url: String? = null
+        val url: String? = null,
+        val photos: List<Photo>? = null
     ) {
         data class OpeningHours(
             @JsonProperty("open_now")
             val openNow: Boolean? = null
+        )
+        
+        data class Photo(
+            @JsonProperty("photo_reference")
+            val photoReference: String,
+            val height: Int,
+            val width: Int
         )
     }
 }

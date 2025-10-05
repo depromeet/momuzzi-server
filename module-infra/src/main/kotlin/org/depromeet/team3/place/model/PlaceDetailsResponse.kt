@@ -13,7 +13,8 @@ data class PlaceDetailsResponse(
         val website: String? = null,
         @JsonProperty("opening_hours")
         val openingHours: OpeningHours? = null,
-        val reviews: List<Review>? = null
+        val reviews: List<Review>? = null,
+        val photos: List<Photo>? = null
     ) {
         data class OpeningHours(
             @JsonProperty("weekday_text")
@@ -28,6 +29,13 @@ data class PlaceDetailsResponse(
             val relativeTimeDescription: String,
             val text: String,
             val time: Long
+        )
+        
+        data class Photo(
+            @JsonProperty("photo_reference")
+            val photoReference: String,
+            val height: Int,
+            val width: Int
         )
     }
 }
