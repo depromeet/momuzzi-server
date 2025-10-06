@@ -76,7 +76,9 @@ pipeline {
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
                     retry(2) {
-                        sh './gradlew test --parallel --no-daemon --stacktrace --build-cache | tee test-result.log'
+                        sh '''#!/bin/bash -eo pipefail
+./gradlew test --parallel --no-daemon --stacktrace --build-cache | tee test-result.log
+'''
                     }
                 }
             }
