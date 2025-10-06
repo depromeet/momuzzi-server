@@ -62,9 +62,12 @@ pipeline {
         }
         stage('Test') {
             when {
-                allOf {
-                    changeRequest()
-                    changeRequest target: 'dev'
+                anyOf {
+                    allOf {
+                        changeRequest()
+                        changeRequest target: 'dev'
+                    }
+                    branch 'main'
                 }
             }
             environment {
