@@ -269,7 +269,8 @@ EOF
         always {
             // Gradle daemon 정리
             sh './gradlew --stop || true'
-            cleanWs()
+            // .gradle 캐시는 보존하면서 워크스페이스 정리
+            cleanWs patterns: [[pattern: '.gradle/**', type: 'EXCLUDE']]
         }
         success {
             echo 'Pipeline succeeded!'
