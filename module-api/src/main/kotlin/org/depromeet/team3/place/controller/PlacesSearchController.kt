@@ -31,7 +31,7 @@ class PlacesSearchController(
         ApiResponse(responseCode = "400", description = "잘못된 요청")
     )
     @GetMapping
-    fun textSearch(
+    suspend fun textSearch(
         @Parameter(description = "검색 키워드", example = "강남역 야장 맛집", required = true)
         @RequestParam query: String
     ): DpmApiResponse<PlacesSearchResponse> {
