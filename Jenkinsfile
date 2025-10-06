@@ -22,6 +22,9 @@ pipeline {
         
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=1g"
+        
+        // Gradle 캐시 설정
+        GRADLE_USER_HOME = "${env.WORKSPACE}/.gradle"
     }
     
     tools {
@@ -57,19 +60,32 @@ pipeline {
                 }
             }
         }
-
-        // 추후 사용
-        //stage('Test') {
-        //    when {
-        //        anyOf {
-        //            changeRequest()
-        //            branch 'dev'
-        //        }
-        //    }
-        //    steps {
-        //        sh './gradlew test --no-daemon --stacktrace'
-        //    }
-        //}
+        stage('Test') {
+            when {
+                allOf {
+                    changeRequest()
+                    changeRequest target: 'dev'
+                }
+            }
+            environment {
+                GRADLE_USER_HOME = "${env.WORKSPACE}/.gradle"
+            }
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    retry(2) {
+                        sh './gradlew test --parallel --no-daemon --stacktrace --build-cache | tee test-result.log'
+                    }
+                }
+            }
+            post {
+                always {
+                    // 테스트 결과 리포트 저장
+                    junit '**/build/test-results/test/*.xml'
+                    // 테스트 요약 출력
+                    sh 'grep -E "Test result|BUILD SUCCESSFUL|BUILD FAILED" -A 5 test-result.log || true'
+                }
+            }
+        }
 
 
         stage('Build Application') {
