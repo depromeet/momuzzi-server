@@ -54,9 +54,9 @@ pipeline {
                     sh './gradlew --stop || true'
                     sh 'pkill -f "KotlinCompileDaemon" || true'
                     
-                    // Docker 정리
-                    sh 'docker system prune -f || true'
-                    sh 'docker builder prune -f || true'
+                    // Docker 정리(일시적으로 주석 처리)
+                    // sh 'docker system prune -f || true'
+                    // sh 'docker builder prune -f || true'
                 }
             }
         }
@@ -100,16 +100,15 @@ pipeline {
                     echo "Git branch: ${env.GIT_BRANCH}"
                     sh 'echo "Git branch from command: $(git branch --show-current)"'
                     sh 'echo "All git branches: $(git branch -a)"'
-                    
+
                     sh '''
-                        # Kotlin 컴파일 최적화로 빌드
-                            ./gradlew :module-api:clean :module-api:bootJar \
-                            --no-daemon \
-                            --stacktrace \
-                            -x test \
-                            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" \
-                            -Dkotlin.daemon.jvm.options="-Xmx2g,-XX:MaxMetaspaceSize=512m" \
-                            -Dkotlin.incremental=false
+                    ./gradlew :module-api:clean :module-api:bootJar \
+                    --no-daemon \
+                    --stacktrace \
+                    -x test \
+                    -Dorg.gradle.jvmargs="-Xmx1g -XX:MaxMetaspaceSize=512m" \
+                    -Dkotlin.daemon.jvm.options="-Xmx512m,-XX:MaxMetaspaceSize=256m" \
+                    -Dkotlin.incremental=false
                     '''
                 }
             }

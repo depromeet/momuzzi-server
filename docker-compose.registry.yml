@@ -62,6 +62,13 @@ services:
     user: root
     networks:
       - depromeet_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'     # Jenkins 컨테이너가 사용할 수 있는 최대 CPU (2코어)
+          memory: 3G      # Jenkins 컨테이너 최대 메모리 제한
+        reservations:
+          memory: 1G
 
 volumes:
   registry_data:
