@@ -21,7 +21,7 @@ pipeline {
         DEPLOY_PATH = "/home/ubuntu/momuzzi-server"
         
         // Kotlin 컴파일 최적화
-        GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=1g"
+        GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=512m"
         
         // Gradle 캐시 설정
         GRADLE_USER_HOME = "${env.WORKSPACE}/.gradle"
