@@ -63,6 +63,10 @@ services:
     networks:
       - depromeet_network
 
+    mem_limit: 3g        # Jenkins 컨테이너 메모리 제한
+    mem_reservation: 1g  # 예약 메모리
+    cpus: 2.0
+
 volumes:
   registry_data:
     driver: local
