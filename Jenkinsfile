@@ -32,6 +32,19 @@ pipeline {
     }
 
     stages {
+        stage('CI Test (PR to dev)') {
+            when {
+                allOf {
+                    changeRequest()
+                    changeRequest target: 'dev'
+                }
+            }
+            steps {
+                echo "Running CI for PR → dev"
+                sh './gradlew test --no-daemon --stacktrace'
+            }
+        }
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -47,10 +60,7 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
-                    // Gradle wrapper 실행 권한 부여
                     sh 'chmod +x ./gradlew'
-                    
-                    // Kotlin daemon 중지 (기존 데몬으로 인한 충돌 방지)
                     sh './gradlew --stop || true'
                     sh 'pkill -f "KotlinCompileDaemon" || true'
                     
@@ -113,7 +123,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Docker Build Test') {
             when {
                 changeRequest()
@@ -127,31 +137,31 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' || 
-                                     env.GIT_BRANCH == 'origin/main' || 
+                    def isMainBranch = env.BRANCH_NAME == 'main' ||
+                                     env.GIT_BRANCH == 'origin/main' ||
                                      env.GIT_BRANCH == 'main' ||
                                      sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-                    
+
                     if (isMainBranch) {
                         // Docker 캐시 정리 (손상된 레이어 제거)
                         sh """
                             docker system prune -af
                             docker builder prune -af
                         """
-                        
+
                         def imageTag = "${env.GIT_COMMIT_SHORT}"
                         def fullImageName = "${REGISTRY_URL}/${IMAGE_NAME}"
-                        
+
                         // Docker 이미지 빌드 (캐시 사용 안함)
                         sh """
                             docker build --no-cache -f module-api/Dockerfile -t ${fullImageName}:${imageTag} .
                             docker tag ${fullImageName}:${imageTag} ${fullImageName}:latest
                         """
-                        
+
                         // Registry에 로그인 및 이미지 푸시
                         withCredentials([usernamePassword(
                             credentialsId: "${REGISTRY_CREDENTIALS_ID}",
@@ -161,19 +171,19 @@ pipeline {
                             sh """
                                 # Docker 로그아웃 후 재로그인
                                 docker logout ${REGISTRY_URL} || true
-                                
+
                                 echo "Attempting login to ${REGISTRY_URL} with user: \$REGISTRY_USERNAME"
                                 echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
-                                
+
                                 # 이미지 정보 확인
                                 docker images | grep ${fullImageName}
-                                
+
                                 # Push 시도
                                 docker push ${fullImageName}:${imageTag}
                                 docker push ${fullImageName}:latest
                             """
                         }
-                        
+
                         // 로컬 이미지 정리
                         sh """
                             docker rmi ${fullImageName}:${imageTag} || true
@@ -185,15 +195,15 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy to NCP Server') {
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' || 
-                                     env.GIT_BRANCH == 'origin/main' || 
+                    def isMainBranch = env.BRANCH_NAME == 'main' ||
+                                     env.GIT_BRANCH == 'origin/main' ||
                                      env.GIT_BRANCH == 'main' ||
                                      sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-                    
+
                     if (isMainBranch) {
                         withCredentials([usernamePassword(
                             credentialsId: "${REGISTRY_CREDENTIALS_ID}",
