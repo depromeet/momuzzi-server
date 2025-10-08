@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.response.DpmApiResponse
-import org.depromeet.team3.place.application.PlaceSearchService
+import org.depromeet.team3.place.application.PlacesSearchService
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
 import org.springframework.web.bind.annotation.GetMapping
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("${ContextConstants.API_VERSION_V1}/places")
 class PlacesSearchController(
-    private val placeSearchService: PlaceSearchService
+    private val placesSearchService: PlacesSearchService
 ) {
 
     @Operation(
@@ -36,7 +36,7 @@ class PlacesSearchController(
         @RequestParam query: String
     ): DpmApiResponse<PlacesSearchResponse> {
         val request = PlacesSearchRequest(query, 5)
-        val response = placeSearchService.textSearch(request)
+        val response = placesSearchService.textSearch(request)
 
         return DpmApiResponse.ok(response)
     }

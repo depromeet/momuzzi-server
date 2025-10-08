@@ -16,11 +16,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 @Service
-class PlaceSearchService(
+class PlacesSearchService(
     private val googlePlacesClient: GooglePlacesClient,
     private val googlePlacesApiProperties: GooglePlacesApiProperties,
 ) {
-    private val logger = LoggerFactory.getLogger(PlaceSearchService::class.java)
+    private val logger = LoggerFactory.getLogger(PlacesSearchService::class.java)
     
     /**
      * 검색어별 현재 offset을 관리하는 메모리 캐시

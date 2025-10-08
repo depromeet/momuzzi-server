@@ -18,14 +18,14 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 
 @ExtendWith(MockitoExtension::class)
-class PlaceSearchServiceTest {
+class PlacesSearchServiceTest {
 
     @Mock
     private lateinit var googlePlacesClient: GooglePlacesClient
 
     private lateinit var googlePlacesApiProperties: GooglePlacesApiProperties
     
-    private lateinit var placeSearchService: PlaceSearchService
+    private lateinit var placesSearchService: PlacesSearchService
 
     @BeforeEach
     fun setUp() {
@@ -34,7 +34,7 @@ class PlaceSearchServiceTest {
             apiKey = "test-api-key"
         )
         
-        placeSearchService = PlaceSearchService(
+        placesSearchService = PlacesSearchService(
             googlePlacesClient = googlePlacesClient,
             googlePlacesApiProperties = googlePlacesApiProperties
         )
@@ -56,7 +56,7 @@ class PlaceSearchServiceTest {
         }
 
         // when
-        val response = placeSearchService.textSearch(request)
+        val response = placesSearchService.textSearch(request)
 
         // then
         assertThat(response.items).hasSize(5)
@@ -83,10 +83,10 @@ class PlaceSearchServiceTest {
         }
 
         // when - 첫 번째 요청
-        val firstResponse = placeSearchService.textSearch(request)
+        val firstResponse = placesSearchService.textSearch(request)
         
         // when - 두 번째 요청 (같은 쿼리)
-        val secondResponse = placeSearchService.textSearch(request)
+        val secondResponse = placesSearchService.textSearch(request)
 
         // then
         assertThat(firstResponse.items).hasSize(5)
@@ -116,8 +116,8 @@ class PlaceSearchServiceTest {
 
         // when - 동시에 2개의 요청 실행
         val results = listOf(
-            async { placeSearchService.textSearch(request) },
-            async { placeSearchService.textSearch(request) }
+            async { placesSearchService.textSearch(request) },
+            async { placesSearchService.textSearch(request) }
         ).awaitAll()
 
         // then - 두 응답은 서로 다른 결과를 반환해야 함 (중복 없음)
@@ -149,11 +149,11 @@ class PlaceSearchServiceTest {
         }
 
         // when - 첫 번째, 두 번째 요청
-        placeSearchService.textSearch(request)
-        placeSearchService.textSearch(request)
+        placesSearchService.textSearch(request)
+        placesSearchService.textSearch(request)
         
         // when - 세 번째 요청 (최대 호출 횟수 초과)
-        val thirdResponse = placeSearchService.textSearch(request)
+        val thirdResponse = placesSearchService.textSearch(request)
 
         // then - 빈 목록 반환
         assertThat(thirdResponse.items).isEmpty()
@@ -172,7 +172,7 @@ class PlaceSearchServiceTest {
         // when & then
         val exception = assertThrows<PlaceSearchException> {
             runBlocking {
-                placeSearchService.textSearch(request)
+                placesSearchService.textSearch(request)
             }
         }
         
@@ -192,7 +192,7 @@ class PlaceSearchServiceTest {
             .thenReturn(googleResponse)
 
         // when
-        val response = placeSearchService.textSearch(request)
+        val response = placesSearchService.textSearch(request)
 
         // then - 빈 목록 반환
         assertThat(response.items).isEmpty()
@@ -212,7 +212,7 @@ class PlaceSearchServiceTest {
         // when & then
         val exception = assertThrows<PlaceSearchException> {
             runBlocking {
-                placeSearchService.textSearch(request)
+                placesSearchService.textSearch(request)
             }
         }
         
@@ -240,7 +240,7 @@ class PlaceSearchServiceTest {
         }
 
         // when
-        val response = placeSearchService.textSearch(request)
+        val response = placesSearchService.textSearch(request)
 
         // then - 실패한 항목만 제외되고 4개 반환
         assertThat(response.items).hasSize(4)
