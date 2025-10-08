@@ -72,7 +72,9 @@ class PlaceSearchService(
             logger.error("Google Places API 호출 실패: query=$query", e)
             throw PlaceSearchException("맛집 검색 중 오류가 발생했습니다", e)
         }.also { response ->
-            if (response.status != "OK") {
+            if (response.status == "ZERO_RESULTS") {
+                logger.debug("검색 결과 없음: status=ZERO_RESULTS")
+            } else if (response.status != "OK") {
                 logger.warn("Google Places API 비정상 응답: status=${response.status}")
                 throw PlaceSearchException("Google Places API 응답 상태: ${response.status}")
             }
