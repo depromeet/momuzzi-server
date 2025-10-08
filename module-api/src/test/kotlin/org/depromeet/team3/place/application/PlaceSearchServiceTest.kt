@@ -180,10 +180,29 @@ class PlaceSearchServiceTest {
     }
 
     @Test
-    fun `맛집 검색 실패 - Google API 상태 코드 실패`() {
+    fun `맛집 검색 - ZERO_RESULTS는 빈 목록 반환`(): Unit = runBlocking {
         // given
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
-        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(status = "ZERO_RESULTS")
+        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(
+            resultCount = 0,
+            status = "ZERO_RESULTS"
+        )
+        
+        whenever(googlePlacesClient.textSearch(any(), any()))
+            .thenReturn(googleResponse)
+
+        // when
+        val response = placeSearchService.textSearch(request)
+
+        // then - 빈 목록 반환
+        assertThat(response.items).isEmpty()
+    }
+
+    @Test
+    fun `맛집 검색 실패 - Google API 에러 상태 코드`() {
+        // given
+        val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
+        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(status = "INVALID_REQUEST")
         
         runBlocking {
             whenever(googlePlacesClient.textSearch(any(), any()))
@@ -197,7 +216,7 @@ class PlaceSearchServiceTest {
             }
         }
         
-        assertThat(exception.message).isEqualTo("Google Places API 응답 상태: ZERO_RESULTS")
+        assertThat(exception.message).isEqualTo("Google Places API 응답 상태: INVALID_REQUEST")
     }
 
     @Test
