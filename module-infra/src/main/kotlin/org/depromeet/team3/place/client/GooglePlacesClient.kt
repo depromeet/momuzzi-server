@@ -1,6 +1,8 @@
 package org.depromeet.team3.place.client
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.depromeet.team3.common.GooglePlacesApiProperties
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.depromeet.team3.place.model.PlacesSearchResponse
@@ -18,8 +20,8 @@ class GooglePlacesClient(
     /**
      * 텍스트 검색
      */
-    fun textSearch(query: String, maxResults: Int = 5): PlacesSearchResponse? {
-        return try {
+    suspend fun textSearch(query: String, maxResults: Int = 5): PlacesSearchResponse? = withContext(Dispatchers.IO) {
+        try {
             googlePlacesRestClient.get()
                 .uri { uriBuilder ->
                     uriBuilder
@@ -35,16 +37,16 @@ class GooglePlacesClient(
                     response.copy(results = response.results.take(maxResults))
                 }
         } catch (e: Exception) {
-            logger.error(e) { "Failed to text search: query=$query" }
+            logger.error(e) { "텍스트 검색 실패: query=$query" }
             null
         }
     }
 
     /**
-     * Place Details 조회 (전체 정보)
+     * Place Details 조회
      */
-    fun getPlaceDetails(placeId: String): PlaceDetailsResponse? {
-        return try {
+    suspend fun getPlaceDetails(placeId: String): PlaceDetailsResponse? = withContext(Dispatchers.IO) {
+        try {
             googlePlacesRestClient.get()
                 .uri { uriBuilder ->
                     uriBuilder
@@ -58,7 +60,7 @@ class GooglePlacesClient(
                 .retrieve()
                 .body(PlaceDetailsResponse::class.java)
         } catch (e: Exception) {
-            logger.error(e) { "Failed to get place details: placeId=$placeId" }
+            logger.error(e) { "장소 상세 정보 조회 실패: placeId=$placeId" }
             null
         }
     }

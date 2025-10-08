@@ -51,6 +51,8 @@ subprojects {
         dependencies {
             add("testImplementation", "org.junit.jupiter:junit-jupiter:5.9.2")
             add("testImplementation", "org.jetbrains.kotlin:kotlin-test-junit5:1.8.20")
+            add("implementation", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+            add("implementation", "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.7.3")
         }
     }
 }
