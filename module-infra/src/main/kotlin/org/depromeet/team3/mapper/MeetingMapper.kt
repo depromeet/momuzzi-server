@@ -3,7 +3,7 @@ package org.depromeet.team3.mapper
 import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.station.StationJpaRepository
-import org.depromeet.team3.user.UserRepository
+import org.depromeet.team3.auth.UserRepository
 import org.springframework.stereotype.Component
 
 @Component

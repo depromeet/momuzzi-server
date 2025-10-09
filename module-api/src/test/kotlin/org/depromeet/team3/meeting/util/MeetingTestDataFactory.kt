@@ -1,11 +1,10 @@
 package org.depromeet.team3.meeting.util
 
+import org.depromeet.team3.auth.UserEntity
 import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.station.StationEntity
 import org.depromeet.team3.station.util.StationTestDataFactory
-import org.depromeet.team3.user.UserEntity
-import org.depromeet.team3.user.util.UserTestDataFactory
 import java.time.LocalDateTime
 
 /**
@@ -13,13 +12,31 @@ import java.time.LocalDateTime
  */
 object MeetingTestDataFactory {
 
+    fun createUserEntity(
+        id: Long? = null,
+        socialId: String = "test_social_id",
+        email: String = "test@example.com",
+        nickname: String = "테스트사용자",
+        profileImage: String? = "http://example.com/profile.jpg",
+        refreshToken: String? = null
+    ): UserEntity {
+        return UserEntity(
+            id = id,
+            socialId = socialId,
+            email = email,
+            nickname = nickname,
+            profileImage = profileImage,
+            refreshToken = refreshToken
+        )
+    }
+
     fun createMeetingEntity(
         id: Long = 1L,
         name: String = "테스트 미팅",
         attendeeCount: Int = 2,
         isClosed: Boolean = false,
         endAt: java.time.LocalDateTime? = null,
-        hostUser: UserEntity = UserTestDataFactory.createUserEntity(),
+        hostUser: UserEntity = createUserEntity(),
         station: StationEntity = StationTestDataFactory.createStationEntity()
     ): MeetingEntity {
         val meeting = MeetingEntity(

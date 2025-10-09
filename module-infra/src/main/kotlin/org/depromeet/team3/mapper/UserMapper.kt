@@ -1,7 +1,7 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.user.User
-import org.depromeet.team3.user.UserEntity
+import org.depromeet.team3.auth.User
+import org.depromeet.team3.auth.UserEntity
 import org.springframework.stereotype.Component
 
 @Component

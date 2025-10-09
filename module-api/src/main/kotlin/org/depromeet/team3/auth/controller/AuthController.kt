@@ -4,7 +4,10 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.depromeet.team3.auth.application.AuthService
+import org.depromeet.team3.auth.application.KakaoLoginService
+import org.depromeet.team3.auth.application.RefreshTokenService
+import org.depromeet.team3.auth.command.KakaoLoginCommand
+import org.depromeet.team3.auth.command.RefreshTokenCommand
 import org.depromeet.team3.auth.dto.LoginResponse
 import org.depromeet.team3.auth.dto.RefreshTokenRequest
 import org.depromeet.team3.auth.dto.TokenResponse
@@ -16,7 +19,8 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("${ContextConstants.API_VERSION_V1}/auth")
 class AuthController(
-    private val authService: AuthService
+    private val kakaoLoginService: KakaoLoginService,
+    private val refreshTokenService: RefreshTokenService
 ) {
     @Operation(
         summary = "카카오 소셜 로그인 API",
@@ -32,7 +36,8 @@ class AuthController(
     fun kakaoLogin(
         @RequestParam("code") code: String
     ): DpmApiResponse<LoginResponse> {
-        val result = authService.oAuthKakaoLoginWithCode(code)
+        val command = KakaoLoginCommand(authorizationCode = code)
+        val result = kakaoLoginService.login(command)
         return DpmApiResponse.ok(result)
     }
 
@@ -51,7 +56,8 @@ class AuthController(
     fun refreshToken(
         @RequestBody request: RefreshTokenRequest
     ): DpmApiResponse<TokenResponse> {
-        val result = authService.refreshTokens(request.refreshToken)
+        val command = RefreshTokenCommand(request.refreshToken)
+        val result = refreshTokenService.refresh(command)
         return DpmApiResponse.ok(result)
     }
 }

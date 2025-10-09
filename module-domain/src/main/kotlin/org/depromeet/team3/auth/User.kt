@@ -1,4 +1,4 @@
-package org.depromeet.team3.user
+package org.depromeet.team3.auth
 
 import org.depromeet.team3.common.BaseTimeDomain
 import org.depromeet.team3.meeting.Meeting

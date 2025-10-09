@@ -6,6 +6,8 @@ import org.depromeet.team3.auth.model.KakaoResponse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.assertj.core.api.Assertions.assertThat
+import org.depromeet.team3.auth.client.KakaoOAuthClient
+import org.depromeet.team3.auth.properties.KakaoProperties
 
 class KakaoOAuthClientTest {
 

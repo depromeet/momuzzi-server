@@ -1,7 +1,8 @@
 package org.depromeet.team3.auth.util
 
+import org.depromeet.team3.auth.User
 import org.depromeet.team3.auth.model.KakaoResponse
-import org.depromeet.team3.user.UserEntity
+import java.time.LocalDateTime
 
 /**
  * 테스트용 데이터 팩토리 클래스
@@ -34,31 +35,25 @@ object TestDataFactory {
         )
     }
 
-    fun createUserEntity(
+    fun createUser(
         id: Long? = null,
         socialId: String = "12345",
         email: String = "test@example.com",
         nickname: String = "테스트사용자",
         profileImage: String? = "http://example.com/profile.jpg",
-        refreshToken: String? = null
-    ): UserEntity {
-        return UserEntity(
+        refreshToken: String? = null,
+        createdAt: LocalDateTime = LocalDateTime.now(),
+        updatedAt: LocalDateTime? = null
+    ): User {
+        return User(
             id = id,
             socialId = socialId,
             email = email,
             nickname = nickname,
             profileImage = profileImage,
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
+            createdAt = createdAt,
+            updatedAt = updatedAt
         )
     }
-
-    fun createUserProfileResponse(
-        email: String = "test@example.com",
-        nickname: String = "테스트사용자",
-        profileImage: String? = "http://example.com/profile.jpg"
-    ) = mapOf(
-        "email" to email,
-        "nickname" to nickname,
-        "profileImage" to profileImage
-    )
 }

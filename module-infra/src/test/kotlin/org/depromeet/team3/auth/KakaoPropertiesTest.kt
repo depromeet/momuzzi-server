@@ -1,6 +1,7 @@
 package org.depromeet.team3.auth
 
 import org.assertj.core.api.Assertions.assertThat
+import org.depromeet.team3.auth.properties.KakaoProperties
 import org.junit.jupiter.api.Test
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest

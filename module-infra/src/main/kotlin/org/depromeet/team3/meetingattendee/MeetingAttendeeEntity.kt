@@ -1,9 +1,9 @@
 package org.depromeet.team3.meetingattendee
 
 import jakarta.persistence.*
+import org.depromeet.team3.auth.UserEntity
 import org.depromeet.team3.common.BaseTimeEntity
 import org.depromeet.team3.meeting.MeetingEntity
-import org.depromeet.team3.user.UserEntity
 
 @Entity
 @Table(name = "tb_meeting_attendees")
