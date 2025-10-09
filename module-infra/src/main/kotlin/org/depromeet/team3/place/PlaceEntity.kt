@@ -1,12 +1,12 @@
-package org.depromeet.team3.restaurant
+package org.depromeet.team3.place
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
-import org.depromeet.team3.place.MenuEntity
+import org.depromeet.team3.menu.MenuEntity
 
 @Entity
 @Table(name = "tb_restaurants")
-class RestaurantEntity(
+class PlaceEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
@@ -41,6 +41,6 @@ class RestaurantEntity(
     @Column(name = "is_deleted", nullable = false)
     val isDeleted: Boolean = false,
     
-    @OneToMany(mappedBy = "restaurant", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "place", fetch = FetchType.LAZY)
     val menus: MutableList<MenuEntity> = mutableListOf()
 ) : BaseTimeEntity()

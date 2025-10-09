@@ -5,7 +5,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.depromeet.team3.common.GooglePlacesApiProperties
-import org.depromeet.team3.place.client.GooglePlacesClient
+import org.depromeet.team3.place.PlaceQuery
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.exception.PlaceSearchException
 import org.depromeet.team3.place.util.PlaceTestDataFactory
@@ -18,14 +18,14 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 
 @ExtendWith(MockitoExtension::class)
-class PlacesSearchServiceTest {
+class SearchPlacesServiceTest {
 
     @Mock
-    private lateinit var googlePlacesClient: GooglePlacesClient
+    private lateinit var placeQuery: PlaceQuery
 
     private lateinit var googlePlacesApiProperties: GooglePlacesApiProperties
     
-    private lateinit var placesSearchService: PlacesSearchService
+    private lateinit var searchPlacesService: SearchPlacesService
 
     @BeforeEach
     fun setUp() {
@@ -34,8 +34,8 @@ class PlacesSearchServiceTest {
             apiKey = "test-api-key"
         )
         
-        placesSearchService = PlacesSearchService(
-            googlePlacesClient = googlePlacesClient,
+        searchPlacesService = SearchPlacesService(
+            placeQuery = placeQuery,
             googlePlacesApiProperties = googlePlacesApiProperties
         )
     }
@@ -46,17 +46,17 @@ class PlacesSearchServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10)
         
-        whenever(googlePlacesClient.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
         // Mock place details for each result
         googleResponse.results.take(5).forEach { result ->
-            whenever(googlePlacesClient.getPlaceDetails(result.placeId))
+            whenever(placeQuery.getPlaceDetails(result.placeId))
                 .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
         }
 
         // when
-        val response = placesSearchService.textSearch(request)
+        val response = searchPlacesService.textSearch(request)
 
         // then
         assertThat(response.items).hasSize(5)
@@ -64,8 +64,8 @@ class PlacesSearchServiceTest {
         assertThat(response.items[0].topReview).isNotNull
         assertThat(response.items[0].topReview?.rating).isEqualTo(5)
         
-        verify(googlePlacesClient).textSearch("강남역 맛집", 10)
-        verify(googlePlacesClient, times(5)).getPlaceDetails(any())
+        verify(placeQuery).textSearch("강남역 맛집", 10)
+        verify(placeQuery, times(5)).getPlaceDetails(any())
     }
 
     @Test
@@ -74,19 +74,19 @@ class PlacesSearchServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10)
         
-        whenever(googlePlacesClient.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
         googleResponse.results.forEach { result ->
-            whenever(googlePlacesClient.getPlaceDetails(result.placeId))
+            whenever(placeQuery.getPlaceDetails(result.placeId))
                 .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
         }
 
         // when - 첫 번째 요청
-        val firstResponse = placesSearchService.textSearch(request)
+        val firstResponse = searchPlacesService.textSearch(request)
         
         // when - 두 번째 요청 (같은 쿼리)
-        val secondResponse = placesSearchService.textSearch(request)
+        val secondResponse = searchPlacesService.textSearch(request)
 
         // then
         assertThat(firstResponse.items).hasSize(5)
@@ -106,18 +106,18 @@ class PlacesSearchServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10)
         
-        whenever(googlePlacesClient.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
         googleResponse.results.forEach { result ->
-            whenever(googlePlacesClient.getPlaceDetails(result.placeId))
+            whenever(placeQuery.getPlaceDetails(result.placeId))
                 .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
         }
 
         // when - 동시에 2개의 요청 실행
         val results = listOf(
-            async { placesSearchService.textSearch(request) },
-            async { placesSearchService.textSearch(request) }
+            async { searchPlacesService.textSearch(request) },
+            async { searchPlacesService.textSearch(request) }
         ).awaitAll()
 
         // then - 두 응답은 서로 다른 결과를 반환해야 함 (중복 없음)
@@ -140,20 +140,20 @@ class PlacesSearchServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10)
         
-        whenever(googlePlacesClient.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
         googleResponse.results.forEach { result ->
-            whenever(googlePlacesClient.getPlaceDetails(result.placeId))
+            whenever(placeQuery.getPlaceDetails(result.placeId))
                 .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
         }
 
         // when - 첫 번째, 두 번째 요청
-        placesSearchService.textSearch(request)
-        placesSearchService.textSearch(request)
+        searchPlacesService.textSearch(request)
+        searchPlacesService.textSearch(request)
         
         // when - 세 번째 요청 (최대 호출 횟수 초과)
-        val thirdResponse = placesSearchService.textSearch(request)
+        val thirdResponse = searchPlacesService.textSearch(request)
 
         // then - 빈 목록 반환
         assertThat(thirdResponse.items).isEmpty()
@@ -165,14 +165,14 @@ class PlacesSearchServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         
         runBlocking {
-            whenever(googlePlacesClient.textSearch(any(), any()))
+            whenever(placeQuery.textSearch(any(), any()))
                 .thenThrow(RuntimeException("API Error"))
         }
 
         // when & then
         val exception = assertThrows<PlaceSearchException> {
             runBlocking {
-                placesSearchService.textSearch(request)
+                searchPlacesService.textSearch(request)
             }
         }
         
@@ -188,11 +188,11 @@ class PlacesSearchServiceTest {
             status = "ZERO_RESULTS"
         )
         
-        whenever(googlePlacesClient.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
 
         // when
-        val response = placesSearchService.textSearch(request)
+        val response = searchPlacesService.textSearch(request)
 
         // then - 빈 목록 반환
         assertThat(response.items).isEmpty()
@@ -205,14 +205,14 @@ class PlacesSearchServiceTest {
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(status = "INVALID_REQUEST")
         
         runBlocking {
-            whenever(googlePlacesClient.textSearch(any(), any()))
+            whenever(placeQuery.textSearch(any(), any()))
                 .thenReturn(googleResponse)
         }
 
         // when & then
         val exception = assertThrows<PlaceSearchException> {
             runBlocking {
-                placesSearchService.textSearch(request)
+                searchPlacesService.textSearch(request)
             }
         }
         
@@ -225,22 +225,22 @@ class PlacesSearchServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10)
         
-        whenever(googlePlacesClient.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
         // 첫 번째와 세 번째는 성공, 두 번째는 실패
         googleResponse.results.take(5).forEachIndexed { index, result ->
             if (index == 1) {
-                whenever(googlePlacesClient.getPlaceDetails(result.placeId))
+                whenever(placeQuery.getPlaceDetails(result.placeId))
                     .thenThrow(RuntimeException("Detail fetch failed"))
             } else {
-                whenever(googlePlacesClient.getPlaceDetails(result.placeId))
+                whenever(placeQuery.getPlaceDetails(result.placeId))
                     .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
             }
         }
 
         // when
-        val response = placesSearchService.textSearch(request)
+        val response = searchPlacesService.textSearch(request)
 
         // then - 실패한 항목만 제외되고 4개 반환
         assertThat(response.items).hasSize(4)

@@ -2,7 +2,7 @@ package org.depromeet.team3.place.controller
 
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.coEvery
-import org.depromeet.team3.place.application.PlacesSearchService
+import org.depromeet.team3.place.application.SearchPlacesService
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
 import org.depromeet.team3.place.exception.PlaceSearchException
 import org.junit.jupiter.api.Test
@@ -25,7 +25,7 @@ class PlacesSearchControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockkBean(relaxed = true)
-    private lateinit var placesSearchService: PlacesSearchService
+    private lateinit var searchPlacesService: SearchPlacesService
 
     @Test
     fun `맛집 검색 성공`() {
@@ -40,7 +40,7 @@ class PlacesSearchControllerTest {
                     userRatingsTotal = 100,
                     openNow = true,
                     photos = listOf("https://example.com/photo1.jpg"),
-                    link = "https://m.place.naver.com/restaurant/list?query=맛집 1",
+                    link = "https://m.place.naver.com/place/list?query=맛집 1",
                     weekdayText = listOf("월요일: 10:00~22:00"),
                     topReview = PlacesSearchResponse.PlaceItem.Review(
                         rating = 5,
@@ -50,7 +50,7 @@ class PlacesSearchControllerTest {
             )
         )
 
-        coEvery { placesSearchService.textSearch(any()) } returns mockResponse
+        coEvery { searchPlacesService.textSearch(any()) } returns mockResponse
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))
@@ -70,7 +70,7 @@ class PlacesSearchControllerTest {
         val query = "존재하지않는맛집"
         val mockResponse = PlacesSearchResponse(items = emptyList())
 
-        coEvery { placesSearchService.textSearch(any()) } returns mockResponse
+        coEvery { searchPlacesService.textSearch(any()) } returns mockResponse
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))
@@ -94,7 +94,7 @@ class PlacesSearchControllerTest {
         // given
         val query = "강남역 맛집"
 
-        coEvery { placesSearchService.textSearch(any()) } throws PlaceSearchException("맛집 검색 중 오류가 발생했습니다")
+        coEvery { searchPlacesService.textSearch(any()) } throws PlaceSearchException("맛집 검색 중 오류가 발생했습니다")
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))
@@ -118,7 +118,7 @@ class PlacesSearchControllerTest {
                     userRatingsTotal = 100 * index,
                     openNow = index % 2 == 0,
                     photos = listOf("https://example.com/photo$index.jpg"),
-                    link = "https://m.place.naver.com/restaurant/list?query=맛집 $index",
+                    link = "https://m.place.naver.com/place/list?query=맛집 $index",
                     weekdayText = listOf("월요일: 10:00~22:00"),
                     topReview = PlacesSearchResponse.PlaceItem.Review(
                         rating = 4 + index % 2,
@@ -128,7 +128,7 @@ class PlacesSearchControllerTest {
             }
         )
 
-        coEvery { placesSearchService.textSearch(any()) } returns mockResponse
+        coEvery { searchPlacesService.textSearch(any()) } returns mockResponse
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))
@@ -155,14 +155,14 @@ class PlacesSearchControllerTest {
                     userRatingsTotal = 50,
                     openNow = true,
                     photos = listOf("https://example.com/photo.jpg"),
-                    link = "https://m.place.naver.com/restaurant/list?query=카페 & 맛집",
+                    link = "https://m.place.naver.com/place/list?query=카페 & 맛집",
                     weekdayText = null,
                     topReview = null
                 )
             )
         )
 
-        coEvery { placesSearchService.textSearch(any()) } returns mockResponse
+        coEvery { searchPlacesService.textSearch(any()) } returns mockResponse
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))

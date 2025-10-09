@@ -1,10 +1,10 @@
-package org.depromeet.team3.restaurant
+package org.depromeet.team3.place
 
 import org.depromeet.team3.common.BaseTimeDomain
-import org.depromeet.team3.place.Menu
+import org.depromeet.team3.menu.Menu
 import java.time.LocalDateTime
 
-data class Restaurant(
+data class Place(
     val id: Long? = null,
     val name: String,
     val category: String,

@@ -1,21 +1,21 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.place.MenuJpaRepository
-import org.depromeet.team3.restaurant.Restaurant
-import org.depromeet.team3.restaurant.RestaurantEntity
+import org.depromeet.team3.menu.MenuJpaRepository
+import org.depromeet.team3.place.Place
+import org.depromeet.team3.place.PlaceEntity
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Component
 
 @Component
-class RestaurantMapper(
+class PlaceMapper(
     private val menuJpaRepository: MenuJpaRepository,
     @Lazy private val menuMapper: MenuMapper
-) : DomainMapper<Restaurant, RestaurantEntity> {
+) : DomainMapper<Place, PlaceEntity> {
     
-    override fun toDomain(entity: RestaurantEntity): Restaurant {
+    override fun toDomain(entity: PlaceEntity): Place {
         val menus = entity.menus.map { menuMapper.toDomain(it) }.toMutableList()
 
-        return Restaurant(
+        return Place(
             id = entity.id!!,
             name = entity.name,
             category = entity.category,
@@ -33,10 +33,10 @@ class RestaurantMapper(
         )
     }
     
-    override fun toEntity(domain: Restaurant): RestaurantEntity {
-        val menuEntities = domain.id?.let(menuJpaRepository::findAllByRestaurantId) ?: emptyList()
+    override fun toEntity(domain: Place): PlaceEntity {
+        val menuEntities = domain.id?.let(menuJpaRepository::findAllByPlaceId) ?: emptyList()
 
-        return RestaurantEntity(
+        return PlaceEntity(
             id = domain.id,
             name = domain.name,
             category = domain.category,
