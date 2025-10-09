@@ -1,8 +1,8 @@
-package org.depromeet.team3.place
+package org.depromeet.team3.menu
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
-import org.depromeet.team3.restaurant.RestaurantEntity
+import org.depromeet.team3.place.PlaceEntity
 
 @Entity
 @Table(name = "tb_menus")
@@ -25,5 +25,5 @@ class MenuEntity(
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurant_id", nullable = false)
-    val restaurant: RestaurantEntity
+    val place: PlaceEntity
 ) : BaseTimeEntity()

@@ -1,19 +1,19 @@
 package org.depromeet.team3.mapper
 
-import org.depromeet.team3.place.Menu
-import org.depromeet.team3.place.MenuEntity
-import org.depromeet.team3.restaurant.RestaurantJpaRepository
+import org.depromeet.team3.menu.Menu
+import org.depromeet.team3.menu.MenuEntity
+import org.depromeet.team3.place.PlaceJpaRepository
 import org.springframework.stereotype.Component
 
 @Component
 class MenuMapper(
-    private val restaurantJpaRepository: RestaurantJpaRepository
+    private val placeJpaRepository: PlaceJpaRepository
 ) : DomainMapper<Menu, MenuEntity> {
     
     override fun toDomain(entity: MenuEntity): Menu {
         return Menu(
             id = entity.id!!,
-            restaurantId = entity.restaurant.id!!, // 직접 접근
+            placeId = entity.place.id!!,
             name = entity.name,
             category = entity.category,
             price = entity.price,
@@ -24,9 +24,9 @@ class MenuMapper(
     }
     
     override fun toEntity(domain: Menu): MenuEntity {
-        val restaurantEntity = restaurantJpaRepository.findById(domain.restaurantId)
+        val placeEntity = placeJpaRepository.findById(domain.placeId)
             .orElseThrow { IllegalArgumentException(
-                "could not find restaurant with id: ${domain.restaurantId}")
+                "could not find place with id: ${domain.placeId}")
             }
 
         return MenuEntity(
@@ -35,7 +35,7 @@ class MenuMapper(
             category = domain.category,
             price = domain.price,
             isDeleted = domain.isDeleted,
-            restaurant = restaurantEntity
+            place = placeEntity
         )
     }
 }

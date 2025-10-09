@@ -1,12 +1,13 @@
 package org.depromeet.team3.place.application
 
 import org.depromeet.team3.common.GooglePlacesApiProperties
-import org.depromeet.team3.place.client.GooglePlacesClient
+import org.depromeet.team3.place.PlaceQuery
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
 import org.depromeet.team3.place.exception.PlaceSearchException
 import org.depromeet.team3.place.model.PlacesSearchResponse as GooglePlacesSearchResponse
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import com.github.benmanes.caffeine.cache.Caffeine
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
@@ -16,11 +17,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 @Service
-class PlacesSearchService(
-    private val googlePlacesClient: GooglePlacesClient,
+class SearchPlacesService(
+    private val placeQuery: PlaceQuery,
     private val googlePlacesApiProperties: GooglePlacesApiProperties,
 ) {
-    private val logger = LoggerFactory.getLogger(PlacesSearchService::class.java)
+    private val logger = LoggerFactory.getLogger(SearchPlacesService::class.java)
     
     /**
      * 검색어별 현재 offset을 관리하는 메모리 캐시
@@ -66,7 +67,7 @@ class PlacesSearchService(
     private suspend fun fetchPlacesFromGoogle(query: String): GooglePlacesSearchResponse {
         return try {
             withContext(Dispatchers.IO) {
-                googlePlacesClient.textSearch(query, totalFetchSize)
+                placeQuery.textSearch(query, totalFetchSize)
             } ?: throw PlaceSearchException("Google Places API 응답이 null입니다")
         } catch (e: Exception) {
             logger.error("Google Places API 호출 실패: query=$query", e)
@@ -145,7 +146,7 @@ class PlacesSearchService(
         results.map { result ->
             async(Dispatchers.IO) {
                 try {
-                    val placeDetails = googlePlacesClient.getPlaceDetails(result.placeId)?.result
+                    val placeDetails = placeQuery.getPlaceDetails(result.placeId)?.result
                     
                     val topReview = placeDetails?.reviews
                         ?.maxByOrNull { it.rating }
@@ -181,7 +182,7 @@ class PlacesSearchService(
      * 네이버 플레이스 링크 생성
      */
     private fun generateNaverPlaceLink(placeName: String): String {
-        return "https://m.place.naver.com/restaurant/list?query=$placeName"
+        return "https://m.place.naver.com/place/list?query=$placeName"
     }
 
     /**
