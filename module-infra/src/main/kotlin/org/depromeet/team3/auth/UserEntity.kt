@@ -1,4 +1,4 @@
-package org.depromeet.team3.user
+package org.depromeet.team3.auth
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity

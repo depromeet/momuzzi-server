@@ -1,6 +1,7 @@
-package org.depromeet.team3.auth
+package org.depromeet.team3.auth.client
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.depromeet.team3.auth.properties.KakaoProperties
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.auth.model.KakaoResponse
@@ -31,7 +32,7 @@ class KakaoOAuthClient(
 
     /**
      * 인가 코드를 이용해 카카오 서버로부터 OAuth 토큰 반환 받음.
-     * 추후 OAuth Token 을 이용해, 카카오 서버로부터 사용자 정보 반환 => DB 저장 및 자체 인증/인가 로직
+     * 추후 OAuth Token 을 이용해, 카카오 서버로부터 사용자 정보 반환
      */
     fun requestToken(accessCode: String, redirectUri: String): KakaoResponse.OAuthToken {
         val trimmedRedirectUri = redirectUri.trim()
