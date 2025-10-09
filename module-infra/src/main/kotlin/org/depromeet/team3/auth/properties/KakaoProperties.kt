@@ -1,4 +1,4 @@
-package org.depromeet.team3.auth
+package org.depromeet.team3.auth.properties
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component

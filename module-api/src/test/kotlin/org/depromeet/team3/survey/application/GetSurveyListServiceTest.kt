@@ -2,24 +2,15 @@ package org.depromeet.team3.survey.application
 
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.common.enums.SurveyCategoryType
-import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.util.MeetingAttendeeTestDataFactory
-import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.meeting.util.MeetingTestDataFactory
-import org.depromeet.team3.station.StationEntity
 import org.depromeet.team3.station.util.StationTestDataFactory
-import org.depromeet.team3.user.UserEntity
-import org.depromeet.team3.user.util.UserTestDataFactory
-import org.depromeet.team3.survey.Survey
 import org.depromeet.team3.survey.SurveyRepository
 import org.depromeet.team3.survey.exception.SurveyException
 import org.depromeet.team3.survey.util.SurveyTestDataFactory
-import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
-import org.depromeet.team3.surveycategory.SurveyCategoryLevel
-import org.depromeet.team3.surveyresult.SurveyResult
 import org.depromeet.team3.surveyresult.SurveyResultRepository
 import org.depromeet.team3.surveyresult.util.SurveyResultTestDataFactory
 import org.junit.jupiter.api.BeforeEach
@@ -74,7 +65,7 @@ class GetSurveyListServiceTest {
 
         val meetingEntity = MeetingTestDataFactory.createMeetingEntity(
             id = meetingId,
-            hostUser = UserTestDataFactory.createUserEntity(nickname = "테스트호스트"),
+            hostUser = MeetingTestDataFactory.createUserEntity(nickname = "테스트호스트"),
             station = StationTestDataFactory.createStationEntity(name = "테스트역")
         )
 

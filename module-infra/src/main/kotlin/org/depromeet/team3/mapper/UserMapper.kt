@@ -24,6 +24,7 @@ class UserMapper : DomainMapper<User, UserEntity> {
         return UserEntity(
             id = domain.id,
             socialId = domain.socialId,
+            kakaoId = domain.socialId,
             email = domain.email,
             nickname = domain.nickname,
             profileImage = domain.profileImage,

@@ -1,7 +1,10 @@
 package org.depromeet.team3.auth.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.depromeet.team3.auth.application.AuthService
+import org.depromeet.team3.auth.application.KakaoLoginService
+import org.depromeet.team3.auth.application.RefreshTokenService
+import org.depromeet.team3.auth.command.KakaoLoginCommand
+import org.depromeet.team3.auth.command.RefreshTokenCommand
 import org.depromeet.team3.auth.dto.LoginResponse
 import org.depromeet.team3.auth.dto.RefreshTokenRequest
 import org.depromeet.team3.auth.dto.TokenResponse
@@ -26,7 +29,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 class AuthControllerTest {
 
     @Mock
-    private lateinit var authService: AuthService
+    private lateinit var kakaoLoginService: KakaoLoginService
+
+    @Mock
+    private lateinit var refreshTokenService: RefreshTokenService
 
     @InjectMocks
     private lateinit var authController: AuthController
@@ -43,6 +49,7 @@ class AuthControllerTest {
     fun `카카오 로그인 성공 - 200 응답`() {
         // given
         val code = "test-auth-code"
+        val command = KakaoLoginCommand(authorizationCode = code)
         val loginResponse = LoginResponse(
             accessToken = "access-token-123",
             refreshToken = "refresh-token-456",
@@ -53,7 +60,7 @@ class AuthControllerTest {
             )
         )
         
-        whenever(authService.oAuthKakaoLoginWithCode(eq(code))).thenReturn(loginResponse)
+        whenever(kakaoLoginService.login(any<KakaoLoginCommand>())).thenReturn(loginResponse)
 
         // when & then
         mockMvc.perform(
@@ -83,12 +90,13 @@ class AuthControllerTest {
     fun `토큰 재발급 성공 - 200 응답`() {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
+        val command = RefreshTokenCommand(refreshToken = "valid-refresh-token")
         val tokenResponse = TokenResponse(
             accessToken = "new-access-token",
             refreshToken = "new-refresh-token"
         )
         
-        whenever(authService.refreshTokens("valid-refresh-token")).thenReturn(tokenResponse)
+        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>())).thenReturn(tokenResponse)
 
         // when & then
         mockMvc.perform(
@@ -107,7 +115,7 @@ class AuthControllerTest {
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "invalid-refresh-token")
         val errorDetail = mapOf("reason" to "Refresh Token이 유효하지 않습니다")
         
-        whenever(authService.refreshTokens("invalid-refresh-token"))
+        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
 
         // when & then
@@ -125,7 +133,7 @@ class AuthControllerTest {
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
         val errorDetail = mapOf("reason" to "사용자 정보를 찾을 수 없습니다")
         
-        whenever(authService.refreshTokens("valid-refresh-token"))
+        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
 
         // when & then
@@ -142,7 +150,7 @@ class AuthControllerTest {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
         
-        whenever(authService.refreshTokens("valid-refresh-token"))
+        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(RuntimeException("서버 오류"))
 
         // when & then
