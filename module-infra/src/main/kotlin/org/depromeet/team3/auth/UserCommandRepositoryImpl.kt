@@ -1,5 +1,6 @@
 package org.depromeet.team3.auth
 
+import jakarta.transaction.Transactional
 import org.depromeet.team3.mapper.UserMapper
 import org.springframework.stereotype.Repository
 
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Repository
  * 쓰기 작업만 처리
  */
 @Repository
+@Transactional
 class UserCommandRepositoryImpl(
     private val userJpaRepository: UserRepository,
     private val userMapper: UserMapper

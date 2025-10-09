@@ -15,7 +15,6 @@ object MeetingTestDataFactory {
     fun createUserEntity(
         id: Long? = null,
         socialId: String = "test_social_id",
-        kakaoId: String = "test_kakao_id",
         email: String = "test@example.com",
         nickname: String = "테스트사용자",
         profileImage: String? = "http://example.com/profile.jpg",
@@ -24,7 +23,6 @@ object MeetingTestDataFactory {
         return UserEntity(
             id = id,
             socialId = socialId,
-            kakaoId = kakaoId,
             email = email,
             nickname = nickname,
             profileImage = profileImage,
