@@ -40,7 +40,6 @@ class MeetingController(
     )
     @GetMapping
     fun getMeeting(
-        @Parameter(description = "사용자 ID", example = "123")
         @UserId userId: Long
     ) : DpmApiResponse<List<MeetingResponse>> {
         val response = getMeetingService(userId)
@@ -74,7 +73,6 @@ class MeetingController(
     )
     @PostMapping
     fun create(
-        @Parameter(description = "사용자 ID", example = "123")
         @UserId userId: Long,
         @RequestBody @Valid request: CreateMeetingRequest,
     ) : DpmApiResponse<CreateMeetingResponse> {
@@ -109,7 +107,6 @@ class MeetingController(
     )
     @PostMapping("/join")
     fun join(
-        @Parameter(description = "사용자 ID", example = "123")
         @UserId userId: Long,
         @RequestBody @Valid request: JoinMeetingRequest
     ) : DpmApiResponse<Unit> {
