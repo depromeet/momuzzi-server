@@ -38,7 +38,6 @@ class SurveyController(
     fun createSurvey(
         @Parameter(description = "모임 ID", example = "1")
         @PathVariable meetingId: Long,
-        @Parameter(description = "사용자 ID", example = "123")
         @UserId userId: Long,
         @RequestBody @Valid request: SurveyCreateRequest
     ): DpmApiResponse<SurveyCreateResponse> {
