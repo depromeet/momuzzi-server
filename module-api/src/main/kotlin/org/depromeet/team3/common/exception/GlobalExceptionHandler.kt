@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 /**
  * 전역 예외 처리 핸들러
@@ -63,6 +64,15 @@ class GlobalExceptionHandler {
         logger.warn("Illegal argument: ${e.message}", e)
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(DpmApiResponse.error(ErrorCode.INVALID_PARAMETER))
+    }
+
+    /**
+     * 정적 리소스를 찾을 수 없을 때 (로그 출력하지 않음)
+     */
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFoundException(e: NoResourceFoundException): ResponseEntity<Unit> {
+        // 아무것도 하지 않음 (로그도 남기지 않음)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build()
     }
 
     /**
