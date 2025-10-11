@@ -6,6 +6,9 @@ pipeline {
     }
 
     environment {
+        // 타임존 설정 (한국 시간)
+        TZ = 'Asia/Seoul'
+        
         // Registry 설정
         REGISTRY_URL = "registry.momuzzi.site"
         REGISTRY_CREDENTIALS_ID = "depromeet-registry"
