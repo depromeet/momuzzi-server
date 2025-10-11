@@ -37,6 +37,7 @@ object TestDataFactory {
 
     fun createUser(
         id: Long? = null,
+        kakaoId: String = "12345",
         socialId: String = "12345",
         email: String = "test@example.com",
         nickname: String = "테스트사용자",
@@ -47,6 +48,7 @@ object TestDataFactory {
     ): User {
         return User(
             id = id,
+            kakaoId = kakaoId,
             socialId = socialId,
             email = email,
             nickname = nickname,
