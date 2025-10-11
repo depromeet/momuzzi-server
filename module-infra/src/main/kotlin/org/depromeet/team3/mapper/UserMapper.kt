@@ -10,6 +10,7 @@ class UserMapper : DomainMapper<User, UserEntity> {
     override fun toDomain(entity: UserEntity): User {
         return User(
             id = entity.id,
+            kakaoId = entity.kakaoId,
             email = entity.email,
             nickname = entity.nickname,
             profileImage = entity.profileImage,
@@ -23,6 +24,7 @@ class UserMapper : DomainMapper<User, UserEntity> {
     override fun toEntity(domain: User): UserEntity {
         return UserEntity(
             id = domain.id,
+            kakaoId = domain.kakaoId,
             socialId = domain.socialId,
             email = domain.email,
             nickname = domain.nickname,

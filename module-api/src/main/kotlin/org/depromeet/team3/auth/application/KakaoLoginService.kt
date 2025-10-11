@@ -93,6 +93,7 @@ class KakaoLoginService(
     ): User {
         val newUser = User(
             id = null,
+            kakaoId = socialId,  // kakaoId 추가
             socialId = socialId,
             email = email,
             profileImage = profileImage,

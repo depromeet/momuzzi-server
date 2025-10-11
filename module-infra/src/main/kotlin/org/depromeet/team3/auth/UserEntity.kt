@@ -11,6 +11,9 @@ class UserEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 
+    @Column(name = "kakao_id", nullable = false, unique = true)
+    var kakaoId: String = "",
+
     @Column(name = "social_id", nullable = false, unique = true)
     var socialId: String = "",
 
