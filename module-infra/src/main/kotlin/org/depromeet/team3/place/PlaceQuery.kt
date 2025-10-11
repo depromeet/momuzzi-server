@@ -2,7 +2,7 @@ package org.depromeet.team3.place
 
 import org.depromeet.team3.place.client.GooglePlacesClient
 import org.depromeet.team3.place.model.PlaceDetailsResponse
-import org.depromeet.team3.place.model.PlacesSearchResponse
+import org.depromeet.team3.place.model.PlacesTextSearchResponse
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -12,7 +12,7 @@ class PlaceQuery(
     /**
      * 텍스트 검색
      */
-    suspend fun textSearch(query: String, maxResults: Int = 5): PlacesSearchResponse? {
+    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse? {
         return googlePlacesClient.textSearch(query, maxResults)
     }
 

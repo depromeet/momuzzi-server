@@ -35,11 +35,19 @@ class GooglePlacesRestClientConfiguration(
             .baseUrl(properties.baseUrl)
             .defaultHeaders { headers ->
                 headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             }
-            .defaultUriVariables(mapOf("key" to properties.apiKey))
+            .defaultStatusHandler(HttpStatusCode::is4xxClientError) { request, response ->
+                logger.error {
+                    "Google Places API client error. " +
+                        "Status: ${response.statusCode}, " +
+                        "URL: ${request.uri}, " +
+                        "Method: ${request.method}"
+                }
+            }
             .defaultStatusHandler(HttpStatusCode::is5xxServerError) { request, response ->
                 logger.error {
-                    "Google Places API request failed. " +
+                    "Google Places API server error. " +
                         "Status: ${response.statusCode}, " +
                         "URL: ${request.uri}, " +
                         "Method: ${request.method}"
