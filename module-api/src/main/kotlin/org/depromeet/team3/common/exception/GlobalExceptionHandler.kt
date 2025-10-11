@@ -70,9 +70,9 @@ class GlobalExceptionHandler {
      * 정적 리소스를 찾을 수 없을 때 (로그 출력하지 않음)
      */
     @ExceptionHandler(NoResourceFoundException::class)
-    fun handleNoResourceFoundException(e: NoResourceFoundException): ResponseEntity<Unit>? {
+    fun handleNoResourceFoundException(e: NoResourceFoundException): ResponseEntity<Unit> {
         // 아무것도 하지 않음 (로그도 남기지 않음)
-        return null
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build()
     }
 
     /**
