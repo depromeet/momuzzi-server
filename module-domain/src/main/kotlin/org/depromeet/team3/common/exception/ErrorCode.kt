@@ -42,8 +42,9 @@ enum class ErrorCode(
     KAKAO_AUTH_FAILED("O002", "카카오 인증에 실패했습니다.", 401),
     KAKAO_JSON_PARSE_ERROR("O003", "카카오 응답 데이터 파싱에 실패했습니다.", 500),
     KAKAO_API_ERROR("O004", "카카오 API 호출 중 오류가 발생했습니다.", 500),
-    SOCIAL_LOGIN_INVALID_STATE("O005", "OAuth state 값이 유효하지 않습니다.", 400),
-    ALREADY_REGISTERED_WITH_OTHER_LOGIN("O006", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409),
+    KAKAO_RATE_LIMIT_EXCEEDED("O005", "카카오 API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.", 429),
+    SOCIAL_LOGIN_INVALID_STATE("O006", "OAuth state 값이 유효하지 않습니다.", 400),
+    ALREADY_REGISTERED_WITH_OTHER_LOGIN("O007", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409),
 
     // 초대 토큰 관련 에러 (T001~T099)
     INVALID_INVITE_TOKEN("T001", "유효하지 않은 초대 토큰입니다.", 400),
