@@ -41,7 +41,7 @@ class SwaggerConfig : WebMvcConfigurer {
                     .bearerFormat("JWT")
                     .`in`(SecurityScheme.In.HEADER)
                     .name("Authorization")
-                    .description("JWT Access Token을 입력하세요 (Bearer 제외)")
+                    .description("JWT Access Token 을 입력하세요 (Bearer 제외)")
             )
     }
 
