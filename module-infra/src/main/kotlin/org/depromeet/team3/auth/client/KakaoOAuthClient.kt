@@ -84,6 +84,9 @@ class KakaoOAuthClient(
         } catch (e: HttpClientErrorException.BadRequest) {
             log.error("카카오 API Bad Request (400): {}", e.responseBodyAsString)
             throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
+        } catch (e: HttpClientErrorException.TooManyRequests) {
+            log.error("카카오 API Rate Limit 초과 (429): {}", e.responseBodyAsString)
+            throw AuthException(ErrorCode.KAKAO_RATE_LIMIT_EXCEEDED)
         } catch (e: HttpClientErrorException) {
             log.error("카카오 API HTTP 에러 - 상태코드: {}", e.statusCode)
             throw AuthException(ErrorCode.KAKAO_API_ERROR)

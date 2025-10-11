@@ -70,6 +70,7 @@ class KakaoLoginServiceTest {
         
         val savedUser = User(
             id = 2L,
+            kakaoId = "12345",
             socialId = "12345",
             email = "test@example.com",
             nickname = "테스트사용자",
@@ -108,6 +109,7 @@ class KakaoLoginServiceTest {
         
         val existingUser = User(
             id = 1L,
+            kakaoId = "12345",
             socialId = "12345",
             email = "test@example.com",
             nickname = "기존사용자",
