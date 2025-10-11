@@ -1,7 +1,10 @@
 package org.depromeet.team3.config
 
+import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
+import io.swagger.v3.oas.models.security.SecurityRequirement
+import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,13 +20,29 @@ class SwaggerConfig : WebMvcConfigurer {
         return OpenAPI()
             .addServersItem(Server().url("/"))
             .info(apiInfo())
+            .components(securityComponents())
+            .addSecurityItem(SecurityRequirement().addList("Bearer Authentication"))
     }
 
     private fun apiInfo(): Info {
         return Info()
-            .title("Team3 API")
-            .description("Team3 프로젝트 API 문서")
+            .title("디프만 3팀 Swagger")
+            .description("디프만 3팀의 Swagger API 문서입니다.")
             .version("1.0")
+    }
+
+    private fun securityComponents(): Components {
+        return Components()
+            .addSecuritySchemes(
+                "Bearer Authentication",
+                SecurityScheme()
+                    .type(SecurityScheme.Type.HTTP)
+                    .scheme("bearer")
+                    .bearerFormat("JWT")
+                    .`in`(SecurityScheme.In.HEADER)
+                    .name("Authorization")
+                    .description("JWT Access Token을 입력하세요 (Bearer 제외)")
+            )
     }
 
     override fun configureContentNegotiation(configurer: ContentNegotiationConfigurer) {
