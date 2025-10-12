@@ -50,11 +50,8 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        val selectedPlaces = googleResponse.places!!.take(5)
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
-            .thenReturn(selectedPlaces)
-        
-        val placeDetails = selectedPlaces.map { place ->
+        // 전체 10개에 대한 Details
+        val allPlaceDetails = googleResponse.places!!.map { place ->
             PlaceDetailsAssembler.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
@@ -73,8 +70,13 @@ class SearchPlacesServiceTest {
             )
         }
         
-        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
-            .thenReturn(placeDetails)
+        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(googleResponse.places!!))
+            .thenReturn(allPlaceDetails)
+        
+        // Offset 관리자가 첫 5개 선택
+        val selectedDetails = allPlaceDetails.take(5)
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(selectedDetails)
 
         // when
         val response = searchPlacesService.textSearch(request)
@@ -86,8 +88,8 @@ class SearchPlacesServiceTest {
         assertThat(response.items[0].topReview?.rating).isEqualTo(5)
         
         verify(placeQuery).textSearch("강남역 맛집", 10)
-        verify(searchPlaceOffsetManager).selectWithOffset<PlacesTextSearchResponse.Place>(eq("강남역 맛집"), eq(5), anyOrNull())
-        verify(placeDetailsAssembler).fetchPlaceDetailsInParallel(any())
+        verify(placeDetailsAssembler).fetchPlaceDetailsInParallel(googleResponse.places!!)
+        verify(searchPlaceOffsetManager).selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(eq("강남역 맛집"), eq(5), eq(allPlaceDetails))
     }
 
     @Test
@@ -99,32 +101,8 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        // 첫 번째 요청은 0-4번 인덱스
-        val firstPagePlaces = googleResponse.places!!.subList(0, 5)
-        // 두 번째 요청은 5-9번 인덱스
-        val secondPagePlaces = googleResponse.places!!.subList(5, 10)
-        
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
-            .thenReturn(firstPagePlaces)
-            .thenReturn(secondPagePlaces)
-        
-        val firstPageDetails = firstPagePlaces.map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
-                name = place.displayName.text,
-                address = place.formattedAddress,
-                rating = place.rating ?: 0.0,
-                userRatingsTotal = place.userRatingCount ?: 0,
-                openNow = place.currentOpeningHours?.openNow,
-                photos = listOf("https://example.com/photo.jpg"),
-                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
-                weekdayText = null,
-                topReview = null,
-                priceRange = null,
-                addressDescriptor = null
-            )
-        }
-        
-        val secondPageDetails = secondPagePlaces.map { place ->
+        // 전체 10개 Details
+        val allPlaceDetails = googleResponse.places!!.map { place ->
             PlaceDetailsAssembler.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
@@ -141,8 +119,12 @@ class SearchPlacesServiceTest {
         }
         
         whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
-            .thenReturn(firstPageDetails)
-            .thenReturn(secondPageDetails)
+            .thenReturn(allPlaceDetails)
+        
+        // 첫 번째 요청은 0-4번, 두 번째 요청은 5-9번
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(allPlaceDetails.subList(0, 5))
+            .thenReturn(allPlaceDetails.subList(5, 10))
 
         // when - 첫 번째 요청
         val firstResponse = searchPlacesService.textSearch(request)
@@ -171,31 +153,7 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        // 첫 번째와 두 번째 요청에 대해 다른 페이지 반환
-        val firstPagePlaces = googleResponse.places!!.subList(0, 5)
-        val secondPagePlaces = googleResponse.places!!.subList(5, 10)
-        
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
-            .thenReturn(firstPagePlaces)
-            .thenReturn(secondPagePlaces)
-        
-        val firstPageDetails = firstPagePlaces.map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
-                name = place.displayName.text,
-                address = place.formattedAddress,
-                rating = place.rating ?: 0.0,
-                userRatingsTotal = place.userRatingCount ?: 0,
-                openNow = place.currentOpeningHours?.openNow,
-                photos = listOf("https://example.com/photo.jpg"),
-                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
-                weekdayText = null,
-                topReview = null,
-                priceRange = null,
-                addressDescriptor = null
-            )
-        }
-        
-        val secondPageDetails = secondPagePlaces.map { place ->
+        val allPlaceDetails = googleResponse.places!!.map { place ->
             PlaceDetailsAssembler.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
@@ -212,8 +170,12 @@ class SearchPlacesServiceTest {
         }
         
         whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
-            .thenReturn(firstPageDetails)
-            .thenReturn(secondPageDetails)
+            .thenReturn(allPlaceDetails)
+        
+        // 첫 번째와 두 번째 요청에 대해 다른 페이지 반환
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(allPlaceDetails.subList(0, 5))
+            .thenReturn(allPlaceDetails.subList(5, 10))
 
         // when - 동시에 2개의 요청 실행
         val results = listOf(
@@ -244,14 +206,30 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        // 처음 두 번은 정상 반환, 세 번째는 null 반환 (최대 호출 횟수 초과)
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
-            .thenReturn(googleResponse.places!!.subList(0, 5))
-            .thenReturn(googleResponse.places!!.subList(5, 10))
-            .thenReturn(null)
+        val allPlaceDetails = googleResponse.places!!.map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
+        }
         
         whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
-            .thenReturn(emptyList())
+            .thenReturn(allPlaceDetails)
+        
+        // 처음 두 번은 정상 반환, 세 번째는 null 반환 (최대 호출 횟수 초과)
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(allPlaceDetails.subList(0, 5))
+            .thenReturn(allPlaceDetails.subList(5, 10))
+            .thenReturn(null)
 
         // when - 첫 번째, 두 번째 요청
         searchPlacesService.textSearch(request)
@@ -325,12 +303,8 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        val selectedPlaces = googleResponse.places!!.take(5)
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
-            .thenReturn(selectedPlaces)
-        
-        // 5개 요청했지만 4개만 성공적으로 조회됨
-        val placeDetails = selectedPlaces.take(4).map { place ->
+        // 10개 요청했지만 4개만 성공적으로 조회됨 (API 에러 등)
+        val placeDetails = googleResponse.places!!.take(4).map { place ->
             PlaceDetailsAssembler.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
@@ -347,6 +321,10 @@ class SearchPlacesServiceTest {
         }
         
         whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+            .thenReturn(placeDetails)
+        
+        // Offset은 4개 중 4개 선택
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
             .thenReturn(placeDetails)
 
         // when
