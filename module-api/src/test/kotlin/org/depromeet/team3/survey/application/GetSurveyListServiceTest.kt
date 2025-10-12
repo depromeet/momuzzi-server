@@ -6,6 +6,7 @@ import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.util.MeetingAttendeeTestDataFactory
 import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.meeting.util.MeetingTestDataFactory
+import org.depromeet.team3.station.util.StationTestDataFactory
 import org.depromeet.team3.survey.SurveyRepository
 import org.depromeet.team3.survey.exception.SurveyException
 import org.depromeet.team3.survey.util.SurveyTestDataFactory
@@ -65,7 +66,7 @@ class GetSurveyListServiceTest {
         val meetingEntity = MeetingTestDataFactory.createMeetingEntity(
             id = meetingId,
             hostUser = MeetingTestDataFactory.createUserEntity(nickname = "테스트호스트"),
-            stationId = 1L
+            station = StationTestDataFactory.createStationEntity(name = "테스트역")
         )
 
         val attendee = MeetingAttendeeTestDataFactory.createMeetingAttendee(
