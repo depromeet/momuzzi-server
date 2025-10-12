@@ -13,7 +13,6 @@ data class PlacesSearchResponse(
         val link: String,
         val weekdayText: List<String>?,
         val topReview: Review?,
-        val generativeSummary: String?,
         val priceRange: PriceRange?,
         val addressDescriptor: AddressDescriptor?
     ) {

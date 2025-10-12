@@ -5,9 +5,8 @@ import org.depromeet.team3.place.PlaceQuery
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
 import org.depromeet.team3.place.exception.PlaceSearchException
-import org.depromeet.team3.place.model.PlacesSearchResponse as GooglePlacesSearchResponse
+import org.depromeet.team3.place.model.PlacesTextSearchResponse
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import com.github.benmanes.caffeine.cache.Caffeine
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
@@ -64,7 +63,7 @@ class SearchPlacesService(
     /**
      * 1. Google Places API 호출
      */
-    private suspend fun fetchPlacesFromGoogle(query: String): GooglePlacesSearchResponse {
+    private suspend fun fetchPlacesFromGoogle(query: String): PlacesTextSearchResponse {
         return try {
             withContext(Dispatchers.IO) {
                 placeQuery.textSearch(query, totalFetchSize)
@@ -73,11 +72,8 @@ class SearchPlacesService(
             logger.error("Google Places API 호출 실패: query=$query", e)
             throw PlaceSearchException("맛집 검색 중 오류가 발생했습니다", e)
         }.also { response ->
-            if (response.status == "ZERO_RESULTS") {
-                logger.debug("검색 결과 없음: status=ZERO_RESULTS")
-            } else if (response.status != "OK") {
-                logger.warn("Google Places API 비정상 응답: status=${response.status}")
-                throw PlaceSearchException("Google Places API 응답 상태: ${response.status}")
+            if (response.places.isNullOrEmpty()) {
+                logger.debug("검색 결과 없음: places is null or empty")
             }
         }
     }
@@ -91,8 +87,10 @@ class SearchPlacesService(
     private suspend fun selectResultsWithOffset(
         queryKey: String,
         maxResults: Int,
-        response: GooglePlacesSearchResponse
-    ): List<GooglePlacesSearchResponse.PlaceResult>? {
+        response: PlacesTextSearchResponse
+    ): List<PlacesTextSearchResponse.Place>? {
+        val places = response.places ?: return null
+        
         val mutex = queryMutexMap.computeIfAbsent(queryKey) { Mutex() }
         
         var startIndex = 0
@@ -109,7 +107,7 @@ class SearchPlacesService(
                         queryOffsetCache.invalidate(queryKey)
                         shouldReturnEmpty = true
                     }
-                    currentOffset >= response.results.size -> {
+                    currentOffset >= places.size -> {
                         logger.debug("검색어의 offset이 결과 크기 초과: query=$queryKey")
                         queryOffsetCache.invalidate(queryKey)
                         shouldReturnEmpty = true
@@ -132,8 +130,8 @@ class SearchPlacesService(
             return null
         }
         
-        val endIndex = minOf(startIndex + maxResults, response.results.size)
-        return response.results.subList(startIndex, endIndex)
+        val endIndex = minOf(startIndex + maxResults, places.size)
+        return places.subList(startIndex, endIndex)
     }
 
     /**
@@ -141,37 +139,94 @@ class SearchPlacesService(
      * 여러 장소의 상세 정보를 동시에 병렬로 가져옵니다.
      */
     private suspend fun fetchPlaceDetailsInParallel(
-        results: List<GooglePlacesSearchResponse.PlaceResult>
+        results: List<PlacesTextSearchResponse.Place>
     ): List<PlacesSearchResponse.PlaceItem> = coroutineScope {
         results.map { result ->
             async(Dispatchers.IO) {
                 try {
-                    val placeDetails = placeQuery.getPlaceDetails(result.placeId)?.result
+                    val placeDetails = placeQuery.getPlaceDetails(result.id)
                     
                     val topReview = placeDetails?.reviews
                         ?.maxByOrNull { it.rating }
                         ?.let { review ->
                             PlacesSearchResponse.PlaceItem.Review(
                                 rating = review.rating.toInt(),
-                                text = review.text
+                                text = review.text.text
                             )
                         }
                     
+                    val photos = placeDetails?.photos?.take(5)?.map { photo ->
+                        generatePhotoUrl(photo.name)
+                    }
+                    
+                    val priceRange = placeDetails?.priceRange?.let { range ->
+                        PlacesSearchResponse.PlaceItem.PriceRange(
+                            startPrice = formatMoney(range.startPrice),
+                            endPrice = formatMoney(range.endPrice)
+                        )
+                    }
+
+                    val addressDescriptor = try {
+                        placeDetails?.addressDescriptor?.let { descriptor ->
+                            // 1. addressDescriptor에서 역 정보 먼저 찾기
+                            val stationLandmark = descriptor.landmarks
+                                ?.filter { landmark ->
+                                    val types = landmark.types ?: emptyList()
+                                    types.contains("transit_station") ||
+                                    types.contains("subway_station") ||
+                                    types.contains("train_station") ||
+                                    landmark.displayName?.text?.endsWith("역") == true
+                                }
+                                ?.minByOrNull { it.straightLineDistanceMeters ?: Double.MAX_VALUE }
+                            
+                            if (stationLandmark != null) {
+                                // 역 정보가 있으면 바로 사용
+                                val distance = stationLandmark.straightLineDistanceMeters?.toInt()
+                                val name = stationLandmark.displayName?.text
+                                if (distance != null && name != null) {
+                                    val walkingMinutes = maxOf(1, distance / 67)
+                                    PlacesSearchResponse.PlaceItem.AddressDescriptor(
+                                        description = "${name} 도보 약 ${walkingMinutes}분"
+                                    )
+                                } else null
+                            } else {
+                                // 2. 역 정보가 없으면 Nearby Search API 호출 (fallback)
+                                placeDetails.location?.let { location ->
+                                    val nearbyStation = placeQuery.searchNearbyStation(
+                                        latitude = location.latitude,
+                                        longitude = location.longitude
+                                    )
+                                    nearbyStation?.let { station ->
+                                        val walkingMinutes = maxOf(1, station.distance / 67)
+                                        PlacesSearchResponse.PlaceItem.AddressDescriptor(
+                                            description = "${station.name} 도보 약 ${walkingMinutes}분"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("addressDescriptor 처리 실패: place=${result.displayName?.text}", e)
+                        null
+                    }
+
+                    val koreanName = extractKoreanName(result.displayName.text)
+                    
                     PlacesSearchResponse.PlaceItem(
-                        name = result.name,
+                        name = koreanName,
                         address = result.formattedAddress,
                         rating = result.rating,
-                        userRatingsTotal = result.userRatingsTotal,
-                        openNow = result.openingHours?.openNow,
-                        photos = placeDetails?.photos?.take(5)?.map { photo ->
-                            generatePhotoUrl(photo.photoReference)
-                        },
-                        link = generateNaverPlaceLink(result.name),
-                        weekdayText = placeDetails?.openingHours?.weekdayText,
-                        topReview = topReview
+                        userRatingsTotal = result.userRatingCount,
+                        openNow = result.currentOpeningHours?.openNow,
+                        photos = photos,
+                        link = generateNaverPlaceLink(koreanName),
+                        weekdayText = placeDetails?.regularOpeningHours?.weekdayDescriptions,
+                        topReview = topReview,
+                        priceRange = priceRange,
+                        addressDescriptor = addressDescriptor
                     )
                 } catch (e: Exception) {
-                    logger.warn("장소 상세 정보 조회 실패: place=${result.name}", e)
+                    logger.warn("장소 상세 정보 조회 실패: place=${result.displayName.text}", e)
                     null
                 }
             }
@@ -186,9 +241,37 @@ class SearchPlacesService(
     }
 
     /**
-     * Google Places Photo URL 생성
+     * Google Places Photo URL 생성 (New API)
+     * Photo name 형식: places/{place_id}/photos/{photo_reference}
      */
-    private fun generatePhotoUrl(photoReference: String): String {
-        return "${googlePlacesApiProperties.baseUrl}/photo?maxwidth=400&photo_reference=$photoReference&key=${googlePlacesApiProperties.apiKey}"
+    private fun generatePhotoUrl(photoName: String): String {
+        return "https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=400&maxWidthPx=400&key=${googlePlacesApiProperties.apiKey}"
+    }
+    
+    /**
+     * Money 객체를 문자열로 포맷
+     */
+    private fun formatMoney(money: org.depromeet.team3.place.model.PlaceDetailsResponse.PriceRange.Money?): String? {
+        if (money == null) return null
+        val amount = money.units ?: "0"
+        return "${money.currencyCode} $amount"
+    }
+    
+    /**
+     * 장소 이름에서 한국어 부분만 추출
+     * 예: "바비레드 강남본점 Korean-Italian Fusion Restaurant 韓伊フュージョンレストラン 韩意融合餐厅" 
+     *     -> "바비레드 강남본점"
+     */
+    private fun extractKoreanName(fullName: String): String {
+        // 한글, 숫자, 공백, 일부 특수문자만 추출
+        val koreanPattern = Regex("[가-힣0-9\\s\\-()]+")
+        val matches = koreanPattern.findAll(fullName)
+        
+        return matches
+            .map { it.value.trim() }
+            .filter { it.isNotEmpty() }
+            .firstOrNull()
+            ?.trim()
+            ?: fullName // 한국어가 없으면 원본 반환
     }
 }

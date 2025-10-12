@@ -60,6 +60,40 @@ class GooglePlacesClient(
     }
     
     /**
+     * Nearby Search - 주변 지하철역 검색 (New API)
+     */
+    suspend fun searchNearby(latitude: Double, longitude: Double, radius: Double = 1000.0): org.depromeet.team3.place.model.NearbySearchResponse? = withContext(Dispatchers.IO) {
+        try {
+            val request = org.depromeet.team3.place.model.NearbySearchRequest(
+                includedTypes = listOf("subway_station", "transit_station", "train_station"),
+                maxResultCount = 1,
+                locationRestriction = org.depromeet.team3.place.model.NearbySearchRequest.LocationRestriction(
+                    circle = org.depromeet.team3.place.model.NearbySearchRequest.LocationRestriction.Circle(
+                        center = org.depromeet.team3.place.model.NearbySearchRequest.LocationRestriction.Circle.Center(
+                            latitude = latitude,
+                            longitude = longitude
+                        ),
+                        radius = radius
+                    )
+                ),
+                rankPreference = "DISTANCE"
+            )
+            
+            googlePlacesRestClient.post()
+                .uri("/v1/places:searchNearby")
+                .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
+                .header("X-Goog-FieldMask", "places.id,places.displayName,places.location")
+                .header("Accept-Language", "ko")
+                .body(request)
+                .retrieve()
+                .body(org.depromeet.team3.place.model.NearbySearchResponse::class.java)
+        } catch (e: Exception) {
+            logger.error(e) { "주변 역 검색 실패: lat=$latitude, lng=$longitude" }
+            null
+        }
+    }
+    
+    /**
      * Text Search용 Field Mask
      */
     private fun buildTextSearchFieldMask(): String {
@@ -86,9 +120,9 @@ class GooglePlacesClient(
             "regularOpeningHours",
             "reviews",
             "photos",
-            "generativeSummary",
             "priceRange",
-            "addressDescriptor"
+            "addressDescriptor",
+            "location"
         ).joinToString(",")
     }
 }

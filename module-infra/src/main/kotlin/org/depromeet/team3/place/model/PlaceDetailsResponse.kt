@@ -18,12 +18,11 @@ data class PlaceDetailsResponse(
     val regularOpeningHours: OpeningHours? = null,
     val reviews: List<Review>? = null,
     val photos: List<Photo>? = null,
-    @JsonProperty("generativeSummary")
-    val generativeSummary: GenerativeSummary? = null,
     @JsonProperty("priceRange")
     val priceRange: PriceRange? = null,
     @JsonProperty("addressDescriptor")
-    val addressDescriptor: AddressDescriptor? = null
+    val addressDescriptor: AddressDescriptor? = null,
+    val location: Location? = null
 ) {
     data class DisplayName(
         val text: String,
@@ -62,15 +61,6 @@ data class PlaceDetailsResponse(
         @JsonProperty("heightPx")
         val heightPx: Int
     )
-    
-    data class GenerativeSummary(
-        val overview: TextContent? = null
-    ) {
-        data class TextContent(
-            val text: String,
-            val languageCode: String? = null
-        )
-    }
     
     data class PriceRange(
         @JsonProperty("startPrice")
@@ -115,4 +105,9 @@ data class PlaceDetailsResponse(
             )
         }
     }
+    
+    data class Location(
+        val latitude: Double,
+        val longitude: Double
+    )
 }
