@@ -152,6 +152,12 @@ class PlaceQuery(
             formattedAddress = entity.address,
             rating = entity.rating,
             userRatingCount = entity.userRatingsTotal,
+            currentOpeningHours = if (entity.openNow != null || !entity.weekdayText.isNullOrBlank()) {
+                PlaceDetailsResponse.CurrentOpeningHours(
+                    openNow = entity.openNow,
+                    weekdayDescriptions = entity.weekdayText?.split("\n")
+                )
+            } else null,
             regularOpeningHours = if (!entity.weekdayText.isNullOrBlank()) {
                 PlaceDetailsResponse.OpeningHours(
                     weekdayDescriptions = entity.weekdayText.split("\n")

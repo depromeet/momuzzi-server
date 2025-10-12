@@ -55,7 +55,7 @@ class PlaceDetailsAssembler(
                     address = place.formattedAddress,
                     rating = place.rating ?: 0.0,
                     userRatingsTotal = place.userRatingCount ?: 0,
-                    openNow = place.currentOpeningHours?.openNow,
+                    openNow = placeDetails.currentOpeningHours?.openNow,  // DB 캐시에서도 복원됨!
                     photos = photos,
                     link = linkMap[place.id] ?: "",
                     weekdayText = placeDetails.regularOpeningHours?.weekdayDescriptions,
