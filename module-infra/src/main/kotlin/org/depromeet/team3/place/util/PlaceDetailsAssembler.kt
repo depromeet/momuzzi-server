@@ -1,8 +1,5 @@
 package org.depromeet.team3.place.util
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import org.depromeet.team3.common.GooglePlacesApiProperties
 import org.depromeet.team3.place.PlaceQuery
@@ -23,41 +20,54 @@ class PlaceDetailsAssembler(
     private val logger = LoggerFactory.getLogger(PlaceDetailsAssembler::class.java)
 
     /**
-     * 여러 장소의 상세 정보를 동시에 병렬로 가져와서 PlaceDetailResult로 변환
+     * 여러 장소의 상세 정보를 배치로 가져와서 PlaceDetailResult로 변환
+     * (DB 캐싱 + 병렬 API 호출 + 배치 INSERT)
      */
     suspend fun fetchPlaceDetailsInParallel(
         places: List<PlacesTextSearchResponse.Place>
     ): List<PlaceDetailResult> = coroutineScope {
-        places.map { place ->
-            async(Dispatchers.IO) {
-                try {
-                    val placeDetails = placeQuery.getPlaceDetails(place.id)
-                    
-                    val topReview = extractTopReview(placeDetails)
-                    val photos = extractPhotos(placeDetails)
-                    val priceRange = extractPriceRange(placeDetails)
-                    val addressDescriptor = placeAddressResolver.resolveAddressDescriptor(placeDetails)
-                    val koreanName = PlaceFormatter.extractKoreanName(place.displayName.text)
-                    
-                    PlaceDetailResult(
-                        name = koreanName,
-                        address = place.formattedAddress,
-                        rating = place.rating ?: 0.0,
-                        userRatingsTotal = place.userRatingCount ?: 0,
-                        openNow = place.currentOpeningHours?.openNow,
-                        photos = photos,
-                        link = PlaceFormatter.generateNaverPlaceLink(koreanName),
-                        weekdayText = placeDetails?.regularOpeningHours?.weekdayDescriptions,
-                        topReview = topReview,
-                        priceRange = priceRange,
-                        addressDescriptor = addressDescriptor?.description
-                    )
-                } catch (e: Exception) {
-                    logger.warn("장소 상세 정보 조회 실패: place=${place.displayName.text}", e)
-                    null
-                }
+        try {
+            // 1. openNow와 link 정보를 미리 추출 (Text Search 응답에서)
+            val openNowMap = places.associate { it.id to it.currentOpeningHours?.openNow }
+            val koreanNames = places.associate { 
+                it.id to PlaceFormatter.extractKoreanName(it.displayName.text) 
             }
-        }.awaitAll().filterNotNull()
+            val linkMap = koreanNames.mapValues { (_, name) -> 
+                PlaceFormatter.generateNaverPlaceLink(name) 
+            }
+            
+            // 2. 배치로 Details 조회 (DB 캐싱 + 병렬 API 호출 + 배치 저장)
+            val placeIds = places.map { it.id }
+            val detailsMap = placeQuery.getPlaceDetailsBatch(placeIds, openNowMap, linkMap)
+            
+            // 3. 각 place를 PlaceDetailResult로 변환
+            places.mapNotNull { place ->
+                val placeDetails = detailsMap[place.id] ?: return@mapNotNull null
+                
+                val topReview = extractTopReview(placeDetails)
+                val photos = extractPhotos(placeDetails)
+                val priceRange = extractPriceRange(placeDetails)
+                val addressDescriptor = placeAddressResolver.resolveAddressDescriptor(placeDetails)
+                val koreanName = koreanNames[place.id] ?: place.displayName.text
+                
+                PlaceDetailResult(
+                    name = koreanName,
+                    address = place.formattedAddress,
+                    rating = place.rating ?: 0.0,
+                    userRatingsTotal = place.userRatingCount ?: 0,
+                    openNow = place.currentOpeningHours?.openNow,
+                    photos = photos,
+                    link = linkMap[place.id] ?: "",
+                    weekdayText = placeDetails.regularOpeningHours?.weekdayDescriptions,
+                    topReview = topReview,
+                    priceRange = priceRange,
+                    addressDescriptor = addressDescriptor?.description
+                )
+            }
+        } catch (e: Exception) {
+            logger.warn("장소 상세 정보 배치 조회 실패", e)
+            emptyList()
+        }
     }
     
     /**

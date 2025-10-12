@@ -35,19 +35,19 @@ class SearchPlacesService(
     suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse = coroutineScope {
         val queryKey = request.query.trim().lowercase()
         
-        // 1. Google Places API 호출
+        // 1. Google Places API 호출 (10개)
         val response = fetchPlacesFromGoogle(queryKey)
+        val allPlaces = response.places ?: return@coroutineScope PlacesSearchResponse(emptyList())
         
-        // 2. Offset 관리 + Mutex 보호
-        val places = response.places ?: return@coroutineScope PlacesSearchResponse(emptyList())
-        val selectedPlaces = searchPlaceOffsetManager.selectWithOffset(queryKey, request.maxResults, places)
+        // 2. 전체 10개에 대해 Details 조회 및 DB 저장 (배치)
+        val allPlaceDetails = placeDetailsAssembler.fetchPlaceDetailsInParallel(allPlaces)
+        
+        // 3. Offset 관리 - DB에 저장된 전체 결과 중 5개씩 선택
+        val selectedDetails = searchPlaceOffsetManager.selectWithOffset(queryKey, request.maxResults, allPlaceDetails)
             ?: return@coroutineScope PlacesSearchResponse(emptyList())
         
-        // 3. 상세 정보 병렬 조회 및 변환
-        val placeDetails = placeDetailsAssembler.fetchPlaceDetailsInParallel(selectedPlaces)
-        
         // 4. infra 레이어의 결과를 API 응답 DTO로 변환
-        val items = placeDetails.map { detail ->
+        val items = selectedDetails.map { detail ->
             PlacesSearchResponse.PlaceItem(
                 name = detail.name,
                 address = detail.address,

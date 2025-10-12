@@ -5,4 +5,6 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface PlaceJpaRepository : JpaRepository<PlaceEntity, Long> {
+    fun findByGooglePlaceId(googlePlaceId: String): PlaceEntity?
+    fun findByGooglePlaceIdIn(googlePlaceIds: List<String>): List<PlaceEntity>
 }

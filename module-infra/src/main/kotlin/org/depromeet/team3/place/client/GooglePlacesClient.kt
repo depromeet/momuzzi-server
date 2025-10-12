@@ -47,14 +47,15 @@ class GooglePlacesClient(
      */
     suspend fun getPlaceDetails(placeId: String): PlaceDetailsResponse? = withContext(Dispatchers.IO) {
         try {
-            googlePlacesRestClient.get()
+            val response = googlePlacesRestClient.get()
                 .uri("/v1/places/{placeId}?languageCode=ko", placeId)
                 .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
                 .header("X-Goog-FieldMask", buildPlaceDetailsFieldMask())
                 .retrieve()
                 .body(PlaceDetailsResponse::class.java)
+            response
         } catch (e: Exception) {
-            logger.error(e) { "장소 상세 정보 조회 실패: placeId=$placeId" }
+            logger.error(e) { "장소 상세 정보 조회 실패: placeId=$placeId, error=${e.message}" }
             null
         }
     }
