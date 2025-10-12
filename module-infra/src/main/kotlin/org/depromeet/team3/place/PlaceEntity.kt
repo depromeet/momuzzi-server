@@ -5,42 +5,59 @@ import org.depromeet.team3.common.BaseTimeEntity
 import org.depromeet.team3.menu.MenuEntity
 
 @Entity
-@Table(name = "tb_restaurants")
+@Table(
+    name = "tb_place",
+    indexes = [
+        Index(name = "idx_google_place_id", columnList = "google_place_id")
+    ]
+)
 class PlaceEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
     
-    @Column(nullable = false)
+    @Column(name = "google_place_id", unique = true, length = 500)
+    val googlePlaceId: String? = null,
+    
+    @Column(nullable = false, length = 500)
     val name: String,
     
-    @Column(nullable = false)
-    val category: String,
+    @Column(nullable = false, length = 1000)
+    val address: String,
     
     @Column(nullable = false)
     val rating: Double,
     
-    @Column(name = "review_count", nullable = false)
-    val reviewCount: Int,
+    @Column(name = "user_ratings_total", nullable = false)
+    val userRatingsTotal: Int,
     
-    @Column(nullable = false)
-    val address: String,
+    @Column(name = "open_now")
+    val openNow: Boolean? = null,
     
-    @Column(name = "closest_station", nullable = false)
-    val closestStation: String,
+    @Column(name = "link", length = 1000)
+    val link: String? = null,
     
-    @Column(name = "working_hours", nullable = false)
-    val workingHours: String,
+    @Column(name = "weekday_text", columnDefinition = "TEXT")
+    val weekdayText: String? = null,
     
-    @Column(name = "phone_no", nullable = false)
-    val phoneNo: String,
+    @Column(name = "top_review_rating")
+    val topReviewRating: Double? = null,
     
-    @Column(columnDefinition = "TEXT")
-    val descriptions: String,
+    @Column(name = "top_review_text", columnDefinition = "TEXT")
+    val topReviewText: String? = null,
+    
+    @Column(name = "price_range_start", length = 100)
+    val priceRangeStart: String? = null,
+    
+    @Column(name = "price_range_end", length = 100)
+    val priceRangeEnd: String? = null,
+    
+    @Column(name = "address_descriptor", length = 500)
+    val addressDescriptor: String? = null,
     
     @Column(name = "is_deleted", nullable = false)
     val isDeleted: Boolean = false,
     
-    @OneToMany(mappedBy = "place", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "place", fetch = FetchType.LAZY, cascade = [CascadeType.ALL])
     val menus: MutableList<MenuEntity> = mutableListOf()
 ) : BaseTimeEntity()

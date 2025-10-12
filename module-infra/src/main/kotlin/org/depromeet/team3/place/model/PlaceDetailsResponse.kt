@@ -14,6 +14,8 @@ data class PlaceDetailsResponse(
     val rating: Double? = null,
     @JsonProperty("userRatingCount")
     val userRatingCount: Int? = null,
+    @JsonProperty("currentOpeningHours")
+    val currentOpeningHours: CurrentOpeningHours? = null,
     @JsonProperty("regularOpeningHours")
     val regularOpeningHours: OpeningHours? = null,
     val reviews: List<Review>? = null,
@@ -27,6 +29,13 @@ data class PlaceDetailsResponse(
     data class DisplayName(
         val text: String,
         val languageCode: String? = null
+    )
+    
+    data class CurrentOpeningHours(
+        @JsonProperty("openNow")
+        val openNow: Boolean? = null,
+        @JsonProperty("weekdayDescriptions")
+        val weekdayDescriptions: List<String>? = null
     )
     
     data class OpeningHours(
