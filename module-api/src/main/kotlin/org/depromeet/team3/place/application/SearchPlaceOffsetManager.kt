@@ -18,12 +18,22 @@ class SearchPlaceOffsetManager(
     private val logger = LoggerFactory.getLogger(SearchPlaceOffsetManager::class.java)
     
     /**
-     * 검색어별 현재 offset을 관리하는 메모리 캐시
+     * Offset 상태를 나타내는 데이터 클래스
+     * @param offset 현재 offset 위치
+     * @param exhausted 검색어가 소진되었는지 여부 (최대 호출 횟수 도달 또는 결과 크기 초과)
+     */
+    private data class OffsetState(
+        val offset: Int,
+        val exhausted: Boolean = false
+    )
+    
+    /**
+     * 검색어별 현재 offset 상태를 관리하는 메모리 캐시
      */
     private val queryOffsetCache = Caffeine.newBuilder()
-        .expireAfterAccess(60, TimeUnit.MINUTES)
+        .expireAfterAccess(120, TimeUnit.MINUTES)
         .maximumSize(500)
-        .build<String, Int>()
+        .build<String, OffsetState>()
     
     /**
      * 검색어별 Mutex를 관리하는 맵
@@ -33,6 +43,7 @@ class SearchPlaceOffsetManager(
     /**
      * Offset 관리 + Mutex 보호
      * 같은 query에 대한 동시 요청을 Mutex로 직렬화하여 offset을 원자적으로 읽고 갱신
+     * exhausted 상태를 추적하여 중복 페이지 노출을 방지
      * 
      * @return Pair<startIndex, shouldReturnEmpty>
      */
@@ -48,23 +59,33 @@ class SearchPlaceOffsetManager(
         
         try {
             mutex.withLock {
-                val currentOffset = queryOffsetCache.getIfPresent(queryKey) ?: 0
+                val currentState = queryOffsetCache.getIfPresent(queryKey) ?: OffsetState(offset = 0)
+                
+                // 이미 소진된 상태라면 offset을 초기화하고 처음부터 다시 시작
+                if (currentState.exhausted) {
+                    logger.debug("검색어 소진 상태 -> 처음부터 재시작: query=$queryKey")
+                    startIndex = 0
+                    queryOffsetCache.put(queryKey, OffsetState(offset = maxResults))
+                    return@withLock
+                }
+                
+                val currentOffset = currentState.offset
                 val currentCallCount = currentOffset / maxResults
                 
                 when {
                     currentCallCount >= maxCallCount -> {
-                        logger.debug("검색어의 최대 호출 횟수 도달: query=$queryKey")
-                        queryOffsetCache.invalidate(queryKey)
+                        logger.debug("검색어의 최대 호출 횟수 도달 -> 다음 호출 시 처음부터 재시작: query=$queryKey")
+                        queryOffsetCache.put(queryKey, OffsetState(currentOffset, exhausted = true))
                         shouldReturnEmpty = true
                     }
                     currentOffset >= items.size -> {
-                        logger.debug("검색어의 offset이 결과 크기 초과: query=$queryKey")
-                        queryOffsetCache.invalidate(queryKey)
+                        logger.debug("검색어의 offset이 결과 크기 초과 -> 다음 호출 시 처음부터 재시작: query=$queryKey")
+                        queryOffsetCache.put(queryKey, OffsetState(currentOffset, exhausted = true))
                         shouldReturnEmpty = true
                     }
                     else -> {
                         startIndex = currentOffset
-                        queryOffsetCache.put(queryKey, currentOffset + maxResults)
+                        queryOffsetCache.put(queryKey, OffsetState(currentOffset + maxResults))
                         logger.debug("검색어 offset 갱신: query=$queryKey, offset: $currentOffset -> ${currentOffset + maxResults}")
                     }
                 }
