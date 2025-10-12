@@ -7,8 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.depromeet.team3.place.PlaceQuery
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.exception.PlaceSearchException
-import org.depromeet.team3.place.model.PlacesTextSearchResponse
-import org.depromeet.team3.place.util.PlaceDetailsAssembler
+import org.depromeet.team3.place.util.PlaceDetailsProcessor
 import org.depromeet.team3.place.util.PlaceTestDataFactory
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -28,7 +27,7 @@ class SearchPlacesServiceTest {
     private lateinit var searchPlaceOffsetManager: SearchPlaceOffsetManager
 
     @Mock
-    private lateinit var placeDetailsAssembler: PlaceDetailsAssembler
+    private lateinit var placeDetailsProcessor: PlaceDetailsProcessor
     
     private lateinit var searchPlacesService: SearchPlacesService
 
@@ -37,7 +36,7 @@ class SearchPlacesServiceTest {
         searchPlacesService = SearchPlacesService(
             placeQuery = placeQuery,
             searchPlaceOffsetManager = searchPlaceOffsetManager,
-            placeDetailsAssembler = placeDetailsAssembler
+            placeDetailsProcessor = placeDetailsProcessor
         )
     }
 
@@ -52,7 +51,7 @@ class SearchPlacesServiceTest {
         
         // 전체 10개에 대한 Details
         val allPlaceDetails = googleResponse.places!!.map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
+            PlaceDetailsProcessor.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
                 rating = place.rating ?: 0.0,
@@ -61,7 +60,7 @@ class SearchPlacesServiceTest {
                 photos = listOf("https://example.com/photo.jpg"),
                 link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
                 weekdayText = listOf("월요일: 10:00~22:00"),
-                topReview = PlaceDetailsAssembler.ReviewResult(
+                topReview = PlaceDetailsProcessor.ReviewResult(
                     rating = 5,
                     text = "정말 맛있어요!"
                 ),
@@ -70,12 +69,12 @@ class SearchPlacesServiceTest {
             )
         }
         
-        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(googleResponse.places!!))
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(googleResponse.places!!))
             .thenReturn(allPlaceDetails)
         
         // Offset 관리자가 첫 5개 선택
         val selectedDetails = allPlaceDetails.take(5)
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsProcessor.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
             .thenReturn(selectedDetails)
 
         // when
@@ -88,8 +87,8 @@ class SearchPlacesServiceTest {
         assertThat(response.items[0].topReview?.rating).isEqualTo(5)
         
         verify(placeQuery).textSearch("강남역 맛집", 10)
-        verify(placeDetailsAssembler).fetchPlaceDetailsInParallel(googleResponse.places!!)
-        verify(searchPlaceOffsetManager).selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(eq("강남역 맛집"), eq(5), eq(allPlaceDetails))
+        verify(placeDetailsProcessor).fetchPlaceDetailsInParallel(googleResponse.places!!)
+        verify(searchPlaceOffsetManager).selectWithOffset<PlaceDetailsProcessor.PlaceDetailResult>(eq("강남역 맛집"), eq(5), eq(allPlaceDetails))
     }
 
     @Test
@@ -103,7 +102,7 @@ class SearchPlacesServiceTest {
         
         // 전체 10개 Details
         val allPlaceDetails = googleResponse.places!!.map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
+            PlaceDetailsProcessor.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
                 rating = place.rating ?: 0.0,
@@ -118,11 +117,11 @@ class SearchPlacesServiceTest {
             )
         }
         
-        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(any()))
             .thenReturn(allPlaceDetails)
         
         // 첫 번째 요청은 0-4번, 두 번째 요청은 5-9번
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsProcessor.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
             .thenReturn(allPlaceDetails.subList(0, 5))
             .thenReturn(allPlaceDetails.subList(5, 10))
 
@@ -154,7 +153,7 @@ class SearchPlacesServiceTest {
             .thenReturn(googleResponse)
         
         val allPlaceDetails = googleResponse.places!!.map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
+            PlaceDetailsProcessor.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
                 rating = place.rating ?: 0.0,
@@ -169,11 +168,11 @@ class SearchPlacesServiceTest {
             )
         }
         
-        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(any()))
             .thenReturn(allPlaceDetails)
         
         // 첫 번째와 두 번째 요청에 대해 다른 페이지 반환
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsProcessor.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
             .thenReturn(allPlaceDetails.subList(0, 5))
             .thenReturn(allPlaceDetails.subList(5, 10))
 
@@ -207,7 +206,7 @@ class SearchPlacesServiceTest {
             .thenReturn(googleResponse)
         
         val allPlaceDetails = googleResponse.places!!.map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
+            PlaceDetailsProcessor.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
                 rating = place.rating ?: 0.0,
@@ -222,11 +221,11 @@ class SearchPlacesServiceTest {
             )
         }
         
-        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(any()))
             .thenReturn(allPlaceDetails)
         
         // 처음 두 번은 정상 반환, 세 번째는 null 반환 (최대 호출 횟수 초과)
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsProcessor.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
             .thenReturn(allPlaceDetails.subList(0, 5))
             .thenReturn(allPlaceDetails.subList(5, 10))
             .thenReturn(null)
@@ -305,7 +304,7 @@ class SearchPlacesServiceTest {
         
         // 10개 요청했지만 4개만 성공적으로 조회됨 (API 에러 등)
         val placeDetails = googleResponse.places!!.take(4).map { place ->
-            PlaceDetailsAssembler.PlaceDetailResult(
+            PlaceDetailsProcessor.PlaceDetailResult(
                 name = place.displayName.text,
                 address = place.formattedAddress,
                 rating = place.rating ?: 0.0,
@@ -320,11 +319,11 @@ class SearchPlacesServiceTest {
             )
         }
         
-        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(any()))
             .thenReturn(placeDetails)
         
         // Offset은 4개 중 4개 선택
-        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsAssembler.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlaceDetailsProcessor.PlaceDetailResult>(anyOrNull(), anyOrNull(), anyOrNull()))
             .thenReturn(placeDetails)
 
         // when

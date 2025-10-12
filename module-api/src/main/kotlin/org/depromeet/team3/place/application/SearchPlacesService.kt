@@ -3,7 +3,7 @@ package org.depromeet.team3.place.application
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import org.depromeet.team3.place.util.PlaceDetailsAssembler
+import org.depromeet.team3.place.util.PlaceDetailsProcessor
 import org.depromeet.team3.place.PlaceQuery
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service
 class SearchPlacesService(
     private val placeQuery: PlaceQuery,
     private val searchPlaceOffsetManager: SearchPlaceOffsetManager,
-    private val placeDetailsAssembler: PlaceDetailsAssembler
+    private val placeDetailsProcessor: PlaceDetailsProcessor
 ) {
     private val logger = LoggerFactory.getLogger(SearchPlacesService::class.java)
     
@@ -40,7 +40,7 @@ class SearchPlacesService(
         val allPlaces = response.places ?: return@coroutineScope PlacesSearchResponse(emptyList())
         
         // 2. 전체 10개에 대해 Details 조회 및 DB 저장 (배치)
-        val allPlaceDetails = placeDetailsAssembler.fetchPlaceDetailsInParallel(allPlaces)
+        val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(allPlaces)
         
         // 3. Offset 관리 - DB에 저장된 전체 결과 중 5개씩 선택
         val selectedDetails = searchPlaceOffsetManager.selectWithOffset(queryKey, request.maxResults, allPlaceDetails)

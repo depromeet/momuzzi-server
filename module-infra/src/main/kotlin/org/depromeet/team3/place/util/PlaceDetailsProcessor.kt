@@ -12,12 +12,12 @@ import org.springframework.stereotype.Component
  * 장소 상세 정보 병렬 조회 및 DTO 변환 담당
  */
 @Component
-class PlaceDetailsAssembler(
+class PlaceDetailsProcessor(
     private val placeQuery: PlaceQuery,
     private val placeAddressResolver: PlaceAddressResolver,
     private val googlePlacesApiProperties: GooglePlacesApiProperties
 ) {
-    private val logger = LoggerFactory.getLogger(PlaceDetailsAssembler::class.java)
+    private val logger = LoggerFactory.getLogger(PlaceDetailsProcessor::class.java)
 
     /**
      * 여러 장소의 상세 정보를 배치로 가져와서 PlaceDetailResult로 변환
