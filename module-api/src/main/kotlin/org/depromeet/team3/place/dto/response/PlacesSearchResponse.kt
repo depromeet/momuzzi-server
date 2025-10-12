@@ -12,11 +12,22 @@ data class PlacesSearchResponse(
         val photos: List<String>?,
         val link: String,
         val weekdayText: List<String>?,
-        val topReview: Review?
+        val topReview: Review?,
+        val priceRange: PriceRange?,
+        val addressDescriptor: AddressDescriptor?
     ) {
         data class Review(
             val rating: Int,
             val text: String
+        )
+        
+        data class PriceRange(
+            val startPrice: String?,
+            val endPrice: String?
+        )
+        
+        data class AddressDescriptor(
+            val description: String
         )
     }
 }

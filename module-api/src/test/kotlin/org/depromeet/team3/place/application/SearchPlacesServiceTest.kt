@@ -4,10 +4,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
-import org.depromeet.team3.common.GooglePlacesApiProperties
 import org.depromeet.team3.place.PlaceQuery
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.exception.PlaceSearchException
+import org.depromeet.team3.place.model.PlacesTextSearchResponse
+import org.depromeet.team3.place.util.PlaceDetailsAssembler
 import org.depromeet.team3.place.util.PlaceTestDataFactory
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,20 +24,20 @@ class SearchPlacesServiceTest {
     @Mock
     private lateinit var placeQuery: PlaceQuery
 
-    private lateinit var googlePlacesApiProperties: GooglePlacesApiProperties
+    @Mock
+    private lateinit var searchPlaceOffsetManager: SearchPlaceOffsetManager
+
+    @Mock
+    private lateinit var placeDetailsAssembler: PlaceDetailsAssembler
     
     private lateinit var searchPlacesService: SearchPlacesService
 
     @BeforeEach
     fun setUp() {
-        googlePlacesApiProperties = GooglePlacesApiProperties(
-            baseUrl = "https://maps.googleapis.com/maps/api/place",
-            apiKey = "test-api-key"
-        )
-        
         searchPlacesService = SearchPlacesService(
             placeQuery = placeQuery,
-            googlePlacesApiProperties = googlePlacesApiProperties
+            searchPlaceOffsetManager = searchPlaceOffsetManager,
+            placeDetailsAssembler = placeDetailsAssembler
         )
     }
 
@@ -49,11 +50,31 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        // Mock place details for each result
-        googleResponse.results.take(5).forEach { result ->
-            whenever(placeQuery.getPlaceDetails(result.placeId))
-                .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
+        val selectedPlaces = googleResponse.places!!.take(5)
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(selectedPlaces)
+        
+        val placeDetails = selectedPlaces.map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = listOf("월요일: 10:00~22:00"),
+                topReview = PlaceDetailsAssembler.ReviewResult(
+                    rating = 5,
+                    text = "정말 맛있어요!"
+                ),
+                priceRange = null,
+                addressDescriptor = null
+            )
         }
+        
+        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+            .thenReturn(placeDetails)
 
         // when
         val response = searchPlacesService.textSearch(request)
@@ -65,7 +86,8 @@ class SearchPlacesServiceTest {
         assertThat(response.items[0].topReview?.rating).isEqualTo(5)
         
         verify(placeQuery).textSearch("강남역 맛집", 10)
-        verify(placeQuery, times(5)).getPlaceDetails(any())
+        verify(searchPlaceOffsetManager).selectWithOffset<PlacesTextSearchResponse.Place>(eq("강남역 맛집"), eq(5), anyOrNull())
+        verify(placeDetailsAssembler).fetchPlaceDetailsInParallel(any())
     }
 
     @Test
@@ -77,10 +99,50 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        googleResponse.results.forEach { result ->
-            whenever(placeQuery.getPlaceDetails(result.placeId))
-                .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
+        // 첫 번째 요청은 0-4번 인덱스
+        val firstPagePlaces = googleResponse.places!!.subList(0, 5)
+        // 두 번째 요청은 5-9번 인덱스
+        val secondPagePlaces = googleResponse.places!!.subList(5, 10)
+        
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(firstPagePlaces)
+            .thenReturn(secondPagePlaces)
+        
+        val firstPageDetails = firstPagePlaces.map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
         }
+        
+        val secondPageDetails = secondPagePlaces.map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
+        }
+        
+        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+            .thenReturn(firstPageDetails)
+            .thenReturn(secondPageDetails)
 
         // when - 첫 번째 요청
         val firstResponse = searchPlacesService.textSearch(request)
@@ -109,10 +171,49 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        googleResponse.results.forEach { result ->
-            whenever(placeQuery.getPlaceDetails(result.placeId))
-                .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
+        // 첫 번째와 두 번째 요청에 대해 다른 페이지 반환
+        val firstPagePlaces = googleResponse.places!!.subList(0, 5)
+        val secondPagePlaces = googleResponse.places!!.subList(5, 10)
+        
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(firstPagePlaces)
+            .thenReturn(secondPagePlaces)
+        
+        val firstPageDetails = firstPagePlaces.map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
         }
+        
+        val secondPageDetails = secondPagePlaces.map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
+        }
+        
+        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+            .thenReturn(firstPageDetails)
+            .thenReturn(secondPageDetails)
 
         // when - 동시에 2개의 요청 실행
         val results = listOf(
@@ -143,10 +244,14 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        googleResponse.results.forEach { result ->
-            whenever(placeQuery.getPlaceDetails(result.placeId))
-                .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
-        }
+        // 처음 두 번은 정상 반환, 세 번째는 null 반환 (최대 호출 횟수 초과)
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(googleResponse.places!!.subList(0, 5))
+            .thenReturn(googleResponse.places!!.subList(5, 10))
+            .thenReturn(null)
+        
+        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+            .thenReturn(emptyList())
 
         // when - 첫 번째, 두 번째 요청
         searchPlacesService.textSearch(request)
@@ -180,16 +285,13 @@ class SearchPlacesServiceTest {
     }
 
     @Test
-    fun `맛집 검색 - ZERO_RESULTS는 빈 목록 반환`(): Unit = runBlocking {
+    fun `맛집 검색 - places가 null이면 빈 목록 반환`(): Unit = runBlocking {
         // given
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
-        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(
-            resultCount = 0,
-            status = "ZERO_RESULTS"
-        )
+        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 0)
         
         whenever(placeQuery.textSearch(any(), any()))
-            .thenReturn(googleResponse)
+            .thenReturn(googleResponse.copy(places = null))
 
         // when
         val response = searchPlacesService.textSearch(request)
@@ -199,28 +301,23 @@ class SearchPlacesServiceTest {
     }
 
     @Test
-    fun `맛집 검색 실패 - Google API 에러 상태 코드`() {
+    fun `맛집 검색 - places가 empty이면 빈 목록 반환`(): Unit = runBlocking {
         // given
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
-        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(status = "INVALID_REQUEST")
+        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 0)
         
-        runBlocking {
-            whenever(placeQuery.textSearch(any(), any()))
-                .thenReturn(googleResponse)
-        }
+        whenever(placeQuery.textSearch(any(), any()))
+            .thenReturn(googleResponse.copy(places = emptyList()))
 
-        // when & then
-        val exception = assertThrows<PlaceSearchException> {
-            runBlocking {
-                searchPlacesService.textSearch(request)
-            }
-        }
-        
-        assertThat(exception.message).isEqualTo("Google Places API 응답 상태: INVALID_REQUEST")
+        // when
+        val response = searchPlacesService.textSearch(request)
+
+        // then - 빈 목록 반환
+        assertThat(response.items).isEmpty()
     }
 
     @Test
-    fun `맛집 검색 - 상세 정보 조회 실패 시 해당 항목만 제외`(): Unit = runBlocking {
+    fun `맛집 검색 - 상세 정보 조회 결과가 적으면 그만큼만 반환`(): Unit = runBlocking {
         // given
         val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10)
@@ -228,22 +325,35 @@ class SearchPlacesServiceTest {
         whenever(placeQuery.textSearch(any(), any()))
             .thenReturn(googleResponse)
         
-        // 첫 번째와 세 번째는 성공, 두 번째는 실패
-        googleResponse.results.take(5).forEachIndexed { index, result ->
-            if (index == 1) {
-                whenever(placeQuery.getPlaceDetails(result.placeId))
-                    .thenThrow(RuntimeException("Detail fetch failed"))
-            } else {
-                whenever(placeQuery.getPlaceDetails(result.placeId))
-                    .thenReturn(PlaceTestDataFactory.createGooglePlaceDetailsResponse(result.placeId))
-            }
+        val selectedPlaces = googleResponse.places!!.take(5)
+        whenever(searchPlaceOffsetManager.selectWithOffset<PlacesTextSearchResponse.Place>(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenReturn(selectedPlaces)
+        
+        // 5개 요청했지만 4개만 성공적으로 조회됨
+        val placeDetails = selectedPlaces.take(4).map { place ->
+            PlaceDetailsAssembler.PlaceDetailResult(
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
         }
+        
+        whenever(placeDetailsAssembler.fetchPlaceDetailsInParallel(any()))
+            .thenReturn(placeDetails)
 
         // when
         val response = searchPlacesService.textSearch(request)
 
-        // then - 실패한 항목만 제외되고 4개 반환
+        // then - 4개만 반환
         assertThat(response.items).hasSize(4)
-        assertThat(response.items.map { it.name }).doesNotContain("맛집 2")
+        assertThat(response.items.map { it.name }).doesNotContain("맛집 5")
     }
 }

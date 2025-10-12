@@ -56,4 +56,4 @@ api:
   google:
     places:
       api-key: ${GOOGLE_PLACES_API_KEY}
-      base-url: https://maps.googleapis.com/maps/api/place
+      base-url: https://places.googleapis.com
