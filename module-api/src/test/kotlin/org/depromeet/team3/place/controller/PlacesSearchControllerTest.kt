@@ -45,7 +45,9 @@ class PlacesSearchControllerTest {
                     topReview = PlacesSearchResponse.PlaceItem.Review(
                         rating = 5,
                         text = "정말 맛있어요!"
-                    )
+                    ),
+                    priceRange = null,
+                    addressDescriptor = null
                 )
             )
         )
@@ -123,6 +125,13 @@ class PlacesSearchControllerTest {
                     topReview = PlacesSearchResponse.PlaceItem.Review(
                         rating = 4 + index % 2,
                         text = "리뷰 $index"
+                    ),
+                    priceRange = PlacesSearchResponse.PlaceItem.PriceRange(
+                        startPrice = "KRW ${10000 * index}",
+                        endPrice = "KRW ${20000 * index}"
+                    ),
+                    addressDescriptor = PlacesSearchResponse.PlaceItem.AddressDescriptor(
+                        description = "강남역 근처"
                     )
                 )
             }
@@ -157,7 +166,9 @@ class PlacesSearchControllerTest {
                     photos = listOf("https://example.com/photo.jpg"),
                     link = "https://m.place.naver.com/place/list?query=카페 & 맛집",
                     weekdayText = null,
-                    topReview = null
+                    topReview = null,
+                    priceRange = null,
+                    addressDescriptor = null
                 )
             )
         )
