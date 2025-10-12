@@ -3,8 +3,6 @@ package org.depromeet.team3.meeting.util
 import org.depromeet.team3.auth.UserEntity
 import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingEntity
-import org.depromeet.team3.station.StationEntity
-import org.depromeet.team3.station.util.StationTestDataFactory
 import java.time.LocalDateTime
 
 /**
@@ -38,8 +36,8 @@ object MeetingTestDataFactory {
         attendeeCount: Int = 2,
         isClosed: Boolean = false,
         endAt: java.time.LocalDateTime? = null,
-        hostUser: UserEntity = createUserEntity(),
-        station: StationEntity = StationTestDataFactory.createStationEntity()
+        stationId: Long = 1L,
+        hostUser: UserEntity = createUserEntity()
     ): MeetingEntity {
         val meeting = MeetingEntity(
             id = id,
@@ -47,8 +45,8 @@ object MeetingTestDataFactory {
             attendeeCount = attendeeCount,
             isClosed = isClosed,
             endAt = endAt,
-            hostUser = hostUser,
-            station = station
+            stationId = stationId,
+            hostUser = hostUser
         )
         // id를 리플렉션으로 설정 (테스트용)
         if (id != null) {
