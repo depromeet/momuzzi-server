@@ -37,7 +37,7 @@ enum class ErrorCode(
     DATABASE_ERROR("S002", "데이터베이스 오류가 발생했습니다.", 500),
     EXTERNAL_API_ERROR("S003", "외부 API 호출 중 오류가 발생했습니다.", 500),
 
-    // OAuth 관련 에러
+    // OAuth 관련 에러 (O001~O099)
     KAKAO_INVALID_GRANT("O001", "카카오 인증 코드가 유효하지 않습니다.", 401),
     KAKAO_AUTH_FAILED("O002", "카카오 인증에 실패했습니다.", 401),
     KAKAO_JSON_PARSE_ERROR("O003", "카카오 응답 데이터 파싱에 실패했습니다.", 500),
@@ -45,6 +45,22 @@ enum class ErrorCode(
     KAKAO_RATE_LIMIT_EXCEEDED("O005", "카카오 API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.", 429),
     SOCIAL_LOGIN_INVALID_STATE("O006", "OAuth state 값이 유효하지 않습니다.", 400),
     ALREADY_REGISTERED_WITH_OTHER_LOGIN("O007", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409),
+    KAKAO_INVALID_REDIRECT_URI("O008", "허용되지 않은 redirect_uri입니다.", 400),
+    KAKAO_PROFILE_REQUEST_FAILED("O009", "카카오 프로필 정보 요청에 실패했습니다.", 500),
+
+    // JWT 토큰 관련 에러 (J001~J099)
+    JWT_TOKEN_MISSING("J001", "JWT 토큰이 누락되었습니다.", 401),
+    JWT_TOKEN_INVALID("J002", "유효하지 않은 JWT 토큰입니다.", 401),
+    JWT_TOKEN_EXPIRED("J003", "만료된 JWT 토큰입니다.", 401),
+    JWT_TOKEN_MALFORMED("J004", "잘못된 형식의 JWT 토큰입니다.", 401),
+    JWT_SIGNATURE_INVALID("J005", "JWT 서명이 유효하지 않습니다.", 401),
+    JWT_TOKEN_UNSUPPORTED("J006", "지원하지 않는 JWT 토큰입니다.", 401),
+    ACCESS_TOKEN_INVALID("J007", "유효하지 않은 Access Token입니다.", 401),
+    REFRESH_TOKEN_INVALID("J008", "유효하지 않은 Refresh Token입니다.", 401),
+    REFRESH_TOKEN_EXPIRED("J009", "만료된 Refresh Token입니다.", 401),
+    REFRESH_TOKEN_MISMATCH("J010", "Refresh Token이 일치하지 않습니다.", 401),
+    USER_NOT_FOUND_FOR_TOKEN("J011", "토큰에 해당하는 사용자를 찾을 수 없습니다.", 404),
+    TOKEN_USER_ID_INVALID("J012", "토큰의 사용자 ID가 유효하지 않습니다.", 401),
 
     // 초대 토큰 관련 에러 (T001~T099)
     INVALID_INVITE_TOKEN("T001", "유효하지 않은 초대 토큰입니다.", 400),

@@ -39,7 +39,7 @@ class KakaoOAuthClient(
 
         if (!allowedRedirectUris.contains(trimmedRedirectUri)) {
             log.error("허용되지 않은 redirect_uri: {}", trimmedRedirectUri)
-            throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
+            throw AuthException(ErrorCode.KAKAO_INVALID_REDIRECT_URI)
         }
 
 
@@ -91,14 +91,17 @@ class KakaoOAuthClient(
             log.error("카카오 API HTTP 에러 - 상태코드: {}", e.statusCode)
             throw AuthException(ErrorCode.KAKAO_API_ERROR)
         } catch (e: Exception) {
-            when (e.javaClass.simpleName) {
-                "JsonProcessingException" -> {
-                    log.error("카카오 응답 JSON 파싱 오류: {}", e.message)
-                    throw AuthException(ErrorCode.KAKAO_JSON_PARSE_ERROR)
-                }
-                else -> {
-                    log.error("카카오 API 호출 중 오류 발생: {}", e.message)
-                    throw AuthException(ErrorCode.KAKAO_API_ERROR)
+            when (e) {
+                is AuthException -> throw e
+                else -> when (e.javaClass.simpleName) {
+                    "JsonProcessingException" -> {
+                        log.error("카카오 응답 JSON 파싱 오류: {}", e.message)
+                        throw AuthException(ErrorCode.KAKAO_JSON_PARSE_ERROR)
+                    }
+                    else -> {
+                        log.error("카카오 API 호출 중 오류 발생: {}", e.message)
+                        throw AuthException(ErrorCode.KAKAO_API_ERROR)
+                    }
                 }
             }
         }
@@ -136,7 +139,7 @@ class KakaoOAuthClient(
                 }
                 else -> {
                     log.error("카카오 프로필 요청 중 오류 발생: {}", e.message)
-                    throw AuthException(ErrorCode.KAKAO_API_ERROR)
+                    throw AuthException(ErrorCode.KAKAO_PROFILE_REQUEST_FAILED)
                 }
             }
         }
