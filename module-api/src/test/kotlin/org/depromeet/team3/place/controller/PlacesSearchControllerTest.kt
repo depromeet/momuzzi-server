@@ -96,7 +96,9 @@ class PlacesSearchControllerTest {
         // given
         val query = "강남역 맛집"
 
-        coEvery { searchPlacesService.textSearch(any()) } throws PlaceSearchException("맛집 검색 중 오류가 발생했습니다")
+        coEvery { searchPlacesService.textSearch(any()) } throws PlaceSearchException(
+            org.depromeet.team3.common.exception.ErrorCode.PLACE_SEARCH_FAILED
+        )
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))
@@ -104,7 +106,8 @@ class PlacesSearchControllerTest {
             .andReturn()
 
         mockMvc.perform(asyncDispatch(mvcResult))
-            .andExpect(status().is5xxServerError)
+            .andExpect(status().isInternalServerError)
+            .andExpect(jsonPath("$.error.code").value("P001"))
     }
 
     @Test

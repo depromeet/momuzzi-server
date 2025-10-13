@@ -79,26 +79,67 @@ class GooglePlacesClientTest {
 //    }
 
     @Test
-    fun `텍스트 검색 실패 - 예외 발생 시 null 반환`(): Unit = runBlocking {
+    fun `텍스트 검색 실패 - 예외 발생 시 PlaceSearchException 던짐`(): Unit = runBlocking {
         // given
         val query = "강남역 맛집"
         
-        // Mock 설정
+        // Mock 설정 - 전체 체인 구성
         val requestBodyUriSpec = mock<RestClient.RequestBodyUriSpec>()
         val requestBodySpec = mock<RestClient.RequestBodySpec>()
+        val responseSpec = mock<RestClient.ResponseSpec>()
         
         whenever(restClient.post()).thenReturn(requestBodyUriSpec)
         whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.header(any<String>(), any<String>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.body(any())).thenReturn(requestBodySpec)
-        whenever(requestBodySpec.retrieve()).thenThrow(RuntimeException("API Error"))
+        whenever(requestBodySpec.retrieve()).thenReturn(responseSpec)
+        whenever(responseSpec.body(PlacesTextSearchResponse::class.java)).thenThrow(RuntimeException("API Error"))
 
-        // when
-        val result = googlePlacesClient.textSearch(query, 5)
-
-        // then
-        assertThat(result).isNull()
+        // when & then
+        val exception = org.junit.jupiter.api.assertThrows<org.depromeet.team3.place.exception.PlaceSearchException> {
+            runBlocking {
+                googlePlacesClient.textSearch(query, 5)
+            }
+        }
+        
+        assertThat(exception.errorCode.code).isEqualTo("P001")
     }
+
+//    @Test
+//    fun `텍스트 검색 실패 - API 키 인증 실패`(): Unit = runBlocking {
+//        // given
+//        val query = "강남역 맛집"
+//
+//        // Mock 설정 - 전체 체인 구성
+//        val requestBodyUriSpec = mock<RestClient.RequestBodyUriSpec>()
+//        val requestBodySpec = mock<RestClient.RequestBodySpec>()
+//        val responseSpec = mock<RestClient.ResponseSpec>()
+//
+//        whenever(restClient.post()).thenReturn(requestBodyUriSpec)
+//        whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodySpec)
+//        whenever(requestBodySpec.header(any<String>(), any<String>())).thenReturn(requestBodySpec)
+//        whenever(requestBodySpec.body(any())).thenReturn(requestBodySpec)
+//        whenever(requestBodySpec.retrieve()).thenReturn(responseSpec)
+//        whenever(responseSpec.body(PlacesTextSearchResponse::class.java)).thenThrow(
+//            org.springframework.web.client.HttpClientErrorException.Unauthorized.create(
+//                org.springframework.http.HttpStatus.UNAUTHORIZED,
+//                "Unauthorized",
+//                org.springframework.http.HttpHeaders.EMPTY,
+//                ByteArray(0),
+//                null
+//            )
+//        )
+//
+//        // when & then
+//        val exception = org.junit.jupiter.api.assertThrows<org.depromeet.team3.place.exception.PlaceSearchException> {
+//            runBlocking {
+//                googlePlacesClient.textSearch(query, 5)
+//            }
+//        }
+//
+//        assertThat(exception.errorCode.code).isEqualTo("P008")
+//        assertThat(exception.message).contains("Google Places API 키가 유효하지 않습니다")
+//    }
 
     @Test
     fun `Place Details 조회 성공`(): Unit = runBlocking {
@@ -168,24 +209,64 @@ class GooglePlacesClientTest {
     }
 
     @Test
-    fun `Place Details 조회 실패 - 예외 발생 시 null 반환`(): Unit = runBlocking {
+    fun `Place Details 조회 실패 - 예외 발생 시 PlaceSearchException 던짐`(): Unit = runBlocking {
         // given
         val placeId = "place_1"
         
-        // Mock 설정
+        // Mock 설정 - 전체 체인 구성
         val requestHeadersUriSpec = mock<RestClient.RequestHeadersUriSpec<*>>()
         val requestHeadersSpec = mock<RestClient.RequestHeadersSpec<*>>()
+        val responseSpec = mock<RestClient.ResponseSpec>()
         
         whenever(restClient.get()).thenReturn(requestHeadersUriSpec)
         whenever(requestHeadersUriSpec.uri(any<String>(), anyVararg<Any>())).thenReturn(requestHeadersSpec)
         whenever(requestHeadersSpec.header(any<String>(), any<String>())).thenReturn(requestHeadersSpec)
-        whenever(requestHeadersSpec.retrieve()).thenThrow(RuntimeException("API Error"))
+        whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+        whenever(responseSpec.body(PlaceDetailsResponse::class.java)).thenThrow(RuntimeException("API Error"))
 
-        // when
-        val result = googlePlacesClient.getPlaceDetails(placeId)
+        // when & then
+        val exception = org.junit.jupiter.api.assertThrows<org.depromeet.team3.place.exception.PlaceSearchException> {
+            runBlocking {
+                googlePlacesClient.getPlaceDetails(placeId)
+            }
+        }
+        
+        assertThat(exception.errorCode.code).isEqualTo("P005")
+    }
 
-        // then
-        assertThat(result).isNull()
+    @Test
+    fun `Place Details 조회 실패 - 장소를 찾을 수 없음`(): Unit = runBlocking {
+        // given
+        val placeId = "invalid_place_id"
+        
+        // Mock 설정 - 전체 체인 구성
+        val requestHeadersUriSpec = mock<RestClient.RequestHeadersUriSpec<*>>()
+        val requestHeadersSpec = mock<RestClient.RequestHeadersSpec<*>>()
+        val responseSpec = mock<RestClient.ResponseSpec>()
+        
+        whenever(restClient.get()).thenReturn(requestHeadersUriSpec)
+        whenever(requestHeadersUriSpec.uri(any<String>(), anyVararg<Any>())).thenReturn(requestHeadersSpec)
+        whenever(requestHeadersSpec.header(any<String>(), any<String>())).thenReturn(requestHeadersSpec)
+        whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+        whenever(responseSpec.body(PlaceDetailsResponse::class.java)).thenThrow(
+            org.springframework.web.client.HttpClientErrorException.NotFound.create(
+                org.springframework.http.HttpStatus.NOT_FOUND,
+                "Not Found",
+                org.springframework.http.HttpHeaders.EMPTY,
+                ByteArray(0),
+                null
+            )
+        )
+
+        // when & then
+        val exception = org.junit.jupiter.api.assertThrows<org.depromeet.team3.place.exception.PlaceSearchException> {
+            runBlocking {
+                googlePlacesClient.getPlaceDetails(placeId)
+            }
+        }
+        
+        assertThat(exception.errorCode.code).isEqualTo("P004")
+        assertThat(exception.message).contains("장소를 찾을 수 없습니다")
     }
 
     /**
