@@ -83,10 +83,10 @@ enum class ErrorCode(
     PLACE_SEARCH_FAILED("P001", "맛집 검색 중 오류가 발생했습니다.", 500),
     PLACE_API_ERROR("P002", "Google Places API 호출 중 오류가 발생했습니다.", 500),
     PLACE_API_RESPONSE_NULL("P003", "Google Places API 응답이 없습니다.", 500),
-    PLACE_NOT_FOUND("P004", "장소를 찾을 수 없습니다.", 404),
+    PLACE_DETAILS_NOT_FOUND("P004", "장소를 찾을 수 없습니다.", 404),
     PLACE_DETAILS_FETCH_FAILED("P005", "장소 상세 정보 조회에 실패했습니다.", 500),
     PLACE_NEARBY_SEARCH_FAILED("P006", "주변 장소 검색에 실패했습니다.", 500),
     PLACE_INVALID_QUERY("P007", "유효하지 않은 검색어입니다.", 400),
     PLACE_API_KEY_INVALID("P008", "Google Places API 키가 유효하지 않습니다.", 500),
-    PLACE_API_QUOTA_EXCEEDED("P009", "Google Places API 할당량을 초과했습니다.", 429),
+    PLACE_API_QUOTA_EXCEEDED("P009", "Google Places API 할당량을 초과했습니다.", 429)
 }

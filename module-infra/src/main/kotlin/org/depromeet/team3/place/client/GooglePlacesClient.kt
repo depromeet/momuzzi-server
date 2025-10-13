@@ -6,11 +6,15 @@ import kotlinx.coroutines.withContext
 import org.depromeet.team3.common.GooglePlacesApiProperties
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.place.exception.PlaceSearchException
+import org.depromeet.team3.place.model.NearbySearchRequest
+import org.depromeet.team3.place.model.NearbySearchResponse
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.depromeet.team3.place.model.PlacesTextSearchRequest
 import org.depromeet.team3.place.model.PlacesTextSearchResponse
 import org.springframework.stereotype.Component
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientException
 
 @Component
 class GooglePlacesClient(
@@ -43,37 +47,37 @@ class GooglePlacesClient(
                 errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
                 detail = mapOf("query" to query)
             )
-        } catch (e: org.springframework.web.client.HttpClientErrorException) {
+        } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
                     logger.error(e) { "Google Places API 인증 실패: API 키가 유효하지 않습니다" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_KEY_INVALID
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_KEY_INVALID
                     )
                 }
                 429 -> {
                     logger.error(e) { "Google Places API 할당량 초과" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_QUOTA_EXCEEDED
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_QUOTA_EXCEEDED
                     )
                 }
                 else -> {
                     logger.error(e) { "Google Places API HTTP 에러 - 상태코드: ${e.statusCode}" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_ERROR
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_ERROR
                     )
                 }
             }
-        } catch (e: org.springframework.web.client.RestClientException) {
+        } catch (e: RestClientException) {
             logger.error(e) { "Google Places API 통신 오류: ${e.message}" }
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_API_ERROR,
+            throw PlaceSearchException(
+                ErrorCode.PLACE_API_ERROR,
                 detail = mapOf("error" to e.message)
             )
         } catch (e: Exception) {
             logger.error(e) { "텍스트 검색 실패: query=$query" }
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_SEARCH_FAILED,
+            throw PlaceSearchException(
+                ErrorCode.PLACE_SEARCH_FAILED,
                 detail = mapOf("query" to query, "error" to e.message)
             )
         }
@@ -95,38 +99,38 @@ class GooglePlacesClient(
                 errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
                 detail = mapOf("placeId" to placeId)
             )
-        } catch (e: org.springframework.web.client.HttpClientErrorException) {
+        } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
                     logger.error(e) { "Google Places API 인증 실패: API 키가 유효하지 않습니다" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_KEY_INVALID
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_KEY_INVALID
                     )
                 }
                 404 -> {
                     logger.error(e) { "장소를 찾을 수 없음: placeId=$placeId" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_NOT_FOUND,
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_DETAILS_NOT_FOUND,
                         detail = mapOf("placeId" to placeId)
                     )
                 }
                 else -> {
                     logger.error(e) { "Google Places API HTTP 에러 - 상태코드: ${e.statusCode}" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_ERROR
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_ERROR
                     )
                 }
             }
-        } catch (e: org.springframework.web.client.RestClientException) {
+        } catch (e: RestClientException) {
             logger.error(e) { "Google Places API 통신 오류: ${e.message}" }
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_API_ERROR,
+            throw PlaceSearchException(
+                ErrorCode.PLACE_API_ERROR,
                 detail = mapOf("error" to e.message)
             )
         } catch (e: Exception) {
             logger.error(e) { "장소 상세 정보 조회 실패: placeId=$placeId, error=${e.message}" }
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_DETAILS_FETCH_FAILED,
+            throw PlaceSearchException(
+                ErrorCode.PLACE_DETAILS_FETCH_FAILED,
                 detail = mapOf("placeId" to placeId, "error" to e.message)
             )
         }
@@ -135,14 +139,14 @@ class GooglePlacesClient(
     /**
      * Nearby Search - 주변 지하철역 검색 (New API)
      */
-    suspend fun searchNearby(latitude: Double, longitude: Double, radius: Double = 1000.0): org.depromeet.team3.place.model.NearbySearchResponse = withContext(Dispatchers.IO) {
+    suspend fun searchNearby(latitude: Double, longitude: Double, radius: Double = 1000.0): NearbySearchResponse = withContext(Dispatchers.IO) {
         try {
-            val request = org.depromeet.team3.place.model.NearbySearchRequest(
+            val request = NearbySearchRequest(
                 includedTypes = listOf("subway_station", "transit_station", "train_station"),
                 maxResultCount = 1,
-                locationRestriction = org.depromeet.team3.place.model.NearbySearchRequest.LocationRestriction(
-                    circle = org.depromeet.team3.place.model.NearbySearchRequest.LocationRestriction.Circle(
-                        center = org.depromeet.team3.place.model.NearbySearchRequest.LocationRestriction.Circle.Center(
+                locationRestriction = NearbySearchRequest.LocationRestriction(
+                    circle = NearbySearchRequest.LocationRestriction.Circle(
+                        center = NearbySearchRequest.LocationRestriction.Circle.Center(
                             latitude = latitude,
                             longitude = longitude
                         ),
@@ -159,37 +163,37 @@ class GooglePlacesClient(
                 .header("Accept-Language", "ko")
                 .body(request)
                 .retrieve()
-                .body(org.depromeet.team3.place.model.NearbySearchResponse::class.java)
+                .body(NearbySearchResponse::class.java)
             
             response ?: throw PlaceSearchException(
                 errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
                 detail = mapOf("latitude" to latitude, "longitude" to longitude)
             )
-        } catch (e: org.springframework.web.client.HttpClientErrorException) {
+        } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
                     logger.error(e) { "Google Places API 인증 실패: API 키가 유효하지 않습니다" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_KEY_INVALID
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_KEY_INVALID
                     )
                 }
                 else -> {
                     logger.error(e) { "Google Places API HTTP 에러 - 상태코드: ${e.statusCode}" }
-                    throw org.depromeet.team3.place.exception.PlaceSearchException(
-                        org.depromeet.team3.common.exception.ErrorCode.PLACE_API_ERROR
+                    throw PlaceSearchException(
+                        ErrorCode.PLACE_API_ERROR
                     )
                 }
             }
-        } catch (e: org.springframework.web.client.RestClientException) {
+        } catch (e: RestClientException) {
             logger.error(e) { "Google Places API 통신 오류: ${e.message}" }
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_API_ERROR,
+            throw PlaceSearchException(
+                ErrorCode.PLACE_API_ERROR,
                 detail = mapOf("error" to e.message)
             )
         } catch (e: Exception) {
             logger.error(e) { "주변 역 검색 실패: lat=$latitude, lng=$longitude" }
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_NEARBY_SEARCH_FAILED,
+            throw PlaceSearchException(
+                ErrorCode.PLACE_NEARBY_SEARCH_FAILED,
                 detail = mapOf("latitude" to latitude, "longitude" to longitude, "error" to e.message)
             )
         }
