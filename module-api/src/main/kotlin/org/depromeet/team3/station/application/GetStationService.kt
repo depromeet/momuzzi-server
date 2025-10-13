@@ -1,6 +1,6 @@
-package org.depromeet.team3.sattion.application
+package org.depromeet.team3.station.application
 
-import org.depromeet.team3.sattion.dto.response.StationResponse
+import org.depromeet.team3.station.dto.response.StationResponse
 import org.depromeet.team3.station.StationRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

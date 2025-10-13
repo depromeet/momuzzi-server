@@ -1,4 +1,4 @@
-package org.depromeet.team3.sattion.controller
+package org.depromeet.team3.station.controller
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
@@ -7,8 +7,8 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.annotation.UserId
 import org.depromeet.team3.common.response.DpmApiResponse
-import org.depromeet.team3.sattion.application.GetStationService
-import org.depromeet.team3.sattion.dto.response.StationResponse
+import org.depromeet.team3.station.application.GetStationService
+import org.depromeet.team3.station.dto.response.StationResponse
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController

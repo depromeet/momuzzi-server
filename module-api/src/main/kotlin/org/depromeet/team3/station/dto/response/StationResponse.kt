@@ -1,4 +1,4 @@
-package org.depromeet.team3.sattion.dto.response
+package org.depromeet.team3.station.dto.response
 
 import io.swagger.v3.oas.annotations.media.Schema
 
