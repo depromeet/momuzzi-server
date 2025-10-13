@@ -84,13 +84,28 @@ class SearchPlacesService(
      * Google Places API 호출
      */
     private suspend fun fetchPlacesFromGoogle(query: String): PlacesTextSearchResponse {
+        if (query.isBlank()) {
+            throw PlaceSearchException(
+                org.depromeet.team3.common.exception.ErrorCode.PLACE_INVALID_QUERY,
+                detail = mapOf("query" to query)
+            )
+        }
+        
         return try {
             withContext(Dispatchers.IO) {
                 placeQuery.textSearch(query, totalFetchSize)
-            } ?: throw PlaceSearchException("Google Places API 응답이 null입니다")
+            } ?: throw PlaceSearchException(
+                org.depromeet.team3.common.exception.ErrorCode.PLACE_API_RESPONSE_NULL,
+                detail = mapOf("query" to query)
+            )
+        } catch (e: PlaceSearchException) {
+            throw e
         } catch (e: Exception) {
             logger.error("Google Places API 호출 실패: query=$query", e)
-            throw PlaceSearchException("맛집 검색 중 오류가 발생했습니다", e)
+            throw PlaceSearchException(
+                org.depromeet.team3.common.exception.ErrorCode.PLACE_SEARCH_FAILED,
+                detail = mapOf("query" to query, "error" to e.message)
+            )
         }.also { response ->
             if (response.places.isNullOrEmpty()) {
                 logger.debug("검색 결과 없음: places is null or empty")

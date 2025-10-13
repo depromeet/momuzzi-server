@@ -258,7 +258,45 @@ class SearchPlacesServiceTest {
             }
         }
         
-        assertThat(exception.message).isEqualTo("맛집 검색 중 오류가 발생했습니다")
+        assertThat(exception.errorCode.code).isEqualTo("P001")
+        assertThat(exception.message).contains("맛집 검색 중 오류가 발생했습니다")
+    }
+
+    @Test
+    fun `맛집 검색 실패 - 빈 검색어`() {
+        // given
+        val request = PlacesSearchRequest(query = "", maxResults = 5)
+
+        // when & then
+        val exception = assertThrows<PlaceSearchException> {
+            runBlocking {
+                searchPlacesService.textSearch(request)
+            }
+        }
+        
+        assertThat(exception.errorCode.code).isEqualTo("P007")
+        assertThat(exception.message).contains("유효하지 않은 검색어입니다")
+    }
+
+    @Test
+    fun `맛집 검색 실패 - Google API 응답 null`() {
+        // given
+        val request = PlacesSearchRequest(query = "강남역 맛집", maxResults = 5)
+        
+        runBlocking {
+            whenever(placeQuery.textSearch(any(), any()))
+                .thenReturn(null)
+        }
+
+        // when & then
+        val exception = assertThrows<PlaceSearchException> {
+            runBlocking {
+                searchPlacesService.textSearch(request)
+            }
+        }
+        
+        assertThat(exception.errorCode.code).isEqualTo("P003")
+        assertThat(exception.message).contains("Google Places API 응답이 없습니다")
     }
 
     @Test

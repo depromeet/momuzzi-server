@@ -56,18 +56,18 @@ class JwtAuthenticationFilter(
         response: HttpServletResponse
     ): AuthResult {
         val accessToken = jwtTokenProvider.extractToken(request)
+            ?: return AuthResult.Failed
 
         return when {
             // 유효한 Access Token이 있는 경우
-            accessToken != null && jwtTokenProvider.validateAccessToken(accessToken) -> {
+            jwtTokenProvider.validateAccessToken(accessToken) -> {
                 val userId = extractUserId(accessToken)
+                    ?: throw AuthException(ErrorCode.TOKEN_USER_ID_INVALID)
                 AuthResult.Success(userId)
             }
             
             // Access Token이 유효하지 않은 경우
-            else -> {
-                AuthResult.Failed
-            }
+            else -> throw AuthException(ErrorCode.ACCESS_TOKEN_INVALID)
         }
     }
 
