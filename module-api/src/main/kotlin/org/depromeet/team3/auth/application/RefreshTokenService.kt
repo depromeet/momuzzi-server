@@ -28,31 +28,19 @@ class RefreshTokenService(
         
         // 1. Refresh Token 검증
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            throw AuthException(
-                ErrorCode.KAKAO_AUTH_FAILED,
-                detail = mapOf("reason" to "Refresh Token이 유효하지 않습니다")
-            )
+            throw AuthException(ErrorCode.REFRESH_TOKEN_INVALID)
         }
 
         // 2. 사용자 정보 조회 (Query Repository 사용)
         val userId = jwtTokenProvider.getUserIdFromToken(refreshToken)?.toLongOrNull()
-            ?: throw AuthException(
-                ErrorCode.KAKAO_AUTH_FAILED,
-                detail = mapOf("reason" to "사용자 정보를 찾을 수 없습니다")
-            )
+            ?: throw AuthException(ErrorCode.TOKEN_USER_ID_INVALID)
 
         val user = userQueryRepository.findById(userId)
-            ?: throw AuthException(
-                ErrorCode.KAKAO_AUTH_FAILED,
-                detail = mapOf("reason" to "사용자를 찾을 수 없습니다")
-            )
+            ?: throw AuthException(ErrorCode.USER_NOT_FOUND_FOR_TOKEN)
 
         // 3. 토큰 일치성 검증
         if (user.refreshToken != refreshToken) {
-            throw AuthException(
-                ErrorCode.KAKAO_AUTH_FAILED,
-                detail = mapOf("reason" to "Refresh Token이 일치하지 않습니다")
-            )
+            throw AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH)
         }
 
         // 4. 새로운 토큰 생성 및 저장 (Command Repository 사용)

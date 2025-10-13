@@ -8,6 +8,7 @@ import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.dto.response.InviteTokenResponse
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
 import org.depromeet.team3.meeting.exception.InvalidInviteTokenException
+import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.util.DataEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,7 +16,8 @@ import java.time.ZoneOffset
 
 @Service
 class InviteTokenService(
-    private val meetingRepository: MeetingRepository
+    private val meetingRepository: MeetingRepository,
+    private val meetingAttendeeRepository: MeetingAttendeeRepository
 ) {
     
     private companion object {
@@ -54,6 +56,11 @@ class InviteTokenService(
 
         if (meeting.isClosed) {
             throw InvalidInviteTokenException(ErrorCode.MEETING_ALREADY_CLOSED)
+        }
+
+        val currentAttendeeCount = meetingAttendeeRepository.countByMeetingId(meetingId)
+        if (currentAttendeeCount >= meeting.attendeeCount) {
+            throw IllegalStateException("Meeting is full. Current: $currentAttendeeCount, Max: ${meeting.attendeeCount}")
         }
 
         return ValidateInviteTokenResponse(meetingId)
