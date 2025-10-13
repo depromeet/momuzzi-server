@@ -1,6 +1,8 @@
 package org.depromeet.team3.mapper
 
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meetingplace.MeetingPlaceJpaRepository
+import org.depromeet.team3.meetingplace.exception.MeetingPlaceException
 import org.depromeet.team3.placelike.PlaceLike
 import org.depromeet.team3.placelike.PlaceLikeEntity
 import org.springframework.stereotype.Component
@@ -21,7 +23,12 @@ class PlaceLikeMapper(
 
     fun toEntity(domain: PlaceLike): PlaceLikeEntity {
         val meetingPlace = meetingPlaceJpaRepository.findById(domain.meetingPlaceId)
-            .orElseThrow { IllegalArgumentException("MeetingPlace not found: ${domain.meetingPlaceId}") }
+            .orElseThrow { 
+                MeetingPlaceException(
+                    errorCode = ErrorCode.MEETING_PLACE_NOT_FOUND,
+                    detail = mapOf("meetingPlaceId" to domain.meetingPlaceId)
+                )
+            }
 
         return PlaceLikeEntity(
             id = domain.id,

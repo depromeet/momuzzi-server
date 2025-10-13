@@ -13,6 +13,7 @@ enum class ErrorCode(
     INVALID_PARAMETER("C002", "유효하지 않은 파라미터입니다.", 400),
     MISSING_PARAMETER("C003", "필수 파라미터가 누락되었습니다.", 400),
     INVALID_JSON("C004", "잘못된 JSON 형식입니다.", 400),
+    USER_ID_REQUIRED("C005", "사용자 ID가 필요합니다.", 400),
 
     // 404 Not Found
     RESOURCE_NOT_FOUND("C404", "요청한 리소스를 찾을 수 없습니다.", 404),
@@ -22,6 +23,11 @@ enum class ErrorCode(
     PARTICIPANT_NOT_FOUND("C4044", "참가자를 찾을 수 없습니다.", 404),
     SURVEY_NOT_FOUND("C4045", "설문을 찾을 수 없습니다.", 404),
     SURVEY_RESULT_NOT_FOUND("C4046", "설문 결과를 찾을 수 없습니다.", 404),
+    MEETING_PLACE_NOT_FOUND("C4047", "해당 모임에 추천되지 않은 맛집입니다.", 404),
+    PLACE_NOT_FOUND("C4048", "맛집 정보를 찾을 수 없습니다.", 404),
+    USER_NOT_FOUND("C4049", "사용자를 찾을 수 없습니다.", 404),
+    STATION_NOT_FOUND("C4050", "역 정보를 찾을 수 없습니다.", 404),
+    MENU_NOT_FOUND("C4051", "메뉴를 찾을 수 없습니다.", 404),
 
     // 409 Conflict
     RESOURCE_CONFLICT("C409", "리소스 충돌이 발생했습니다.", 409),
@@ -31,6 +37,9 @@ enum class ErrorCode(
     DUPLICATE_CATEGORY_NAME("C4094", "같은 부모 하위에 동일한 이름의 카테고리가 이미 존재합니다.", 409),
     DUPLICATE_CATEGORY_ORDER("C4095", "같은 부모 하위에 동일한 순서의 카테고리가 이미 존재합니다.", 409),
     SURVEY_ALREADY_SUBMITTED("C4096", "이미 설문을 제출했습니다.", 409),
+    MEETING_ALREADY_CLOSED("C4097", "이미 종료된 모임입니다.", 409),
+    MEETING_ALREADY_JOINED("C4098", "이미 참가한 모임입니다.", 409),
+    MEETING_FULL("C4099", "모임 인원이 가득 찼습니다.", 409),
 
     // 5xx Server Errors
     INTERNAL_SERVER_ERROR("S001", "서버 내부 오류가 발생했습니다.", 500),
@@ -69,7 +78,6 @@ enum class ErrorCode(
     INVALID_EXPIRY_TIME_IN_TOKEN("T004", "토큰의 만료 시간 형식이 올바르지 않습니다.", 400),
     TOKEN_EXPIRED("T005", "만료된 초대 토큰입니다.", 401),
     MEETING_NOT_FOUND_FOR_TOKEN("T006", "토큰에 해당하는 모임을 찾을 수 없습니다.", 404),
-    MEETING_ALREADY_CLOSED("T007", "이미 종료된 모임입니다.", 409),
 
     // Place 관련 에러 (P001~P099)
     PLACE_SEARCH_FAILED("P001", "맛집 검색 중 오류가 발생했습니다.", 500),

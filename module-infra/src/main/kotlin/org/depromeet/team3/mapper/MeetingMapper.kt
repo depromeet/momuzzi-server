@@ -1,8 +1,11 @@
 package org.depromeet.team3.mapper
 
+import org.depromeet.team3.auth.exception.UserException
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingEntity
 import org.depromeet.team3.station.StationJpaRepository
+import org.depromeet.team3.station.exception.StationException
 import org.depromeet.team3.auth.UserRepository
 import org.springframework.stereotype.Component
 
@@ -29,10 +32,20 @@ class MeetingMapper(
     
     override fun toEntity(domain: Meeting): MeetingEntity {
         val userEntity = userRepository.findById(domain.hostUserId)
-            .orElseThrow { IllegalArgumentException(" user doesn't exist") }
+            .orElseThrow { 
+                UserException(
+                    errorCode = ErrorCode.USER_NOT_FOUND,
+                    detail = mapOf("userId" to domain.hostUserId)
+                )
+            }
 
         val stationEntity = stationJpaRepository.findById(domain.stationId)
-            .orElseThrow { IllegalArgumentException(" station doesn't exist") }
+            .orElseThrow { 
+                StationException(
+                    errorCode = ErrorCode.STATION_NOT_FOUND,
+                    detail = mapOf("stationId" to domain.stationId)
+                )
+            }
 
         return MeetingEntity(
             id = domain.id,

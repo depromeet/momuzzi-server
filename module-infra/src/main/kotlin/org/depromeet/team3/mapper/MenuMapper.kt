@@ -1,8 +1,10 @@
 package org.depromeet.team3.mapper
 
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.menu.Menu
 import org.depromeet.team3.menu.MenuEntity
 import org.depromeet.team3.place.PlaceJpaRepository
+import org.depromeet.team3.place.exception.PlaceException
 import org.springframework.stereotype.Component
 
 @Component
@@ -25,8 +27,11 @@ class MenuMapper(
     
     override fun toEntity(domain: Menu): MenuEntity {
         val placeEntity = placeJpaRepository.findById(domain.placeId)
-            .orElseThrow { IllegalArgumentException(
-                "could not find place with id: ${domain.placeId}")
+            .orElseThrow { 
+                PlaceException(
+                    errorCode = ErrorCode.PLACE_NOT_FOUND,
+                    detail = mapOf("placeId" to domain.placeId)
+                )
             }
 
         return MenuEntity(

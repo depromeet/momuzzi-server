@@ -51,6 +51,7 @@ class PlaceDetailsProcessor(
                 val koreanName = koreanNames[place.id] ?: place.displayName.text
                 
                 PlaceDetailResult(
+                    placeId = place.id,
                     name = koreanName,
                     address = place.formattedAddress,
                     rating = place.rating ?: 0.0,
@@ -65,8 +66,12 @@ class PlaceDetailsProcessor(
                 )
             }
         } catch (e: Exception) {
-            logger.warn("장소 상세 정보 배치 조회 실패", e)
-            emptyList()
+            logger.error("장소 상세 정보 배치 조회 실패", e)
+            throw org.depromeet.team3.place.exception.PlaceSearchException(
+                errorCode = org.depromeet.team3.common.exception.ErrorCode.EXTERNAL_API_ERROR,
+                message = "장소 상세 정보 조회 중 오류가 발생했습니다",
+                cause = e
+            )
         }
     }
     
@@ -77,11 +82,12 @@ class PlaceDetailsProcessor(
         placeDetails: PlaceDetailsResponse?
     ): ReviewResult? {
         return placeDetails?.reviews
+            ?.filter { it.text != null && it.text.text.isNotBlank() }
             ?.maxByOrNull { it.rating }
             ?.let { review ->
                 ReviewResult(
                     rating = review.rating.toInt(),
-                    text = review.text.text
+                    text = review.text?.text ?: ""
                 )
             }
     }
@@ -124,6 +130,7 @@ class PlaceDetailsProcessor(
      * 장소 상세 정보 결과 DTO
      */
     data class PlaceDetailResult(
+        val placeId: String,
         val name: String,
         val address: String,
         val rating: Double,

@@ -9,7 +9,8 @@ dependencies {
     implementation("com.linecorp.kotlin-jdsl:jpql-render:3.5.5")
     implementation("com.linecorp.kotlin-jdsl:hibernate-support:3.5.5")
     implementation("com.linecorp.kotlin-jdsl:spring-data-jpa-support:3.5.5")
-    
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
+
     // HTTP Client
     implementation("org.apache.httpcomponents.client5:httpclient5:5.3.1")
     implementation("org.apache.httpcomponents.core5:httpcore5:5.2.4")

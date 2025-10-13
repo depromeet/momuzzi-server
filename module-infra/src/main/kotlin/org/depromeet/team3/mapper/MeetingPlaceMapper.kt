@@ -2,10 +2,11 @@ package org.depromeet.team3.mapper
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import org.depromeet.team3.meeting.MeetingEntity
+import org.depromeet.team3.common.exception.ErrorCode
+import org.depromeet.team3.meeting.exception.MeetingException
 import org.depromeet.team3.meetingplace.MeetingPlace
 import org.depromeet.team3.meetingplace.MeetingPlaceEntity
-import org.depromeet.team3.place.PlaceEntity
+import org.depromeet.team3.place.exception.PlaceException
 import org.springframework.stereotype.Component
 
 @Component
@@ -34,9 +35,19 @@ class MeetingPlaceMapper(
 
     fun toEntity(domain: MeetingPlace): MeetingPlaceEntity {
         val meeting = meetingJpaRepository.findById(domain.meetingId)
-            .orElseThrow { IllegalArgumentException("Meeting not found: ${domain.meetingId}") }
+            .orElseThrow { 
+                MeetingException(
+                    errorCode = ErrorCode.MEETING_NOT_FOUND,
+                    detail = mapOf("meetingId" to domain.meetingId)
+                )
+            }
         val place = placeJpaRepository.findById(domain.placeId)
-            .orElseThrow { IllegalArgumentException("Place not found: ${domain.placeId}") }
+            .orElseThrow { 
+                PlaceException(
+                    errorCode = ErrorCode.PLACE_NOT_FOUND,
+                    detail = mapOf("placeId" to domain.placeId)
+                )
+            }
 
         val likedUserIdsJson = objectMapper.writeValueAsString(domain.likedUserIds.toList())
 

@@ -4,6 +4,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.depromeet.team3.common.GooglePlacesApiProperties
+import org.depromeet.team3.common.exception.ErrorCode
+import org.depromeet.team3.place.exception.PlaceSearchException
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.depromeet.team3.place.model.PlacesTextSearchRequest
 import org.depromeet.team3.place.model.PlacesTextSearchResponse
@@ -21,7 +23,7 @@ class GooglePlacesClient(
     /**
      * 텍스트 검색 (New API)
      */
-    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse? = withContext(Dispatchers.IO) {
+    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse = withContext(Dispatchers.IO) {
         try {
             val request = PlacesTextSearchRequest(
                 textQuery = query,
@@ -29,13 +31,18 @@ class GooglePlacesClient(
                 maxResultCount = maxResults
             )
             
-            googlePlacesRestClient.post()
+            val response = googlePlacesRestClient.post()
                 .uri("/v1/places:searchText")
                 .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
                 .header("X-Goog-FieldMask", buildTextSearchFieldMask())
                 .body(request)
                 .retrieve()
                 .body(PlacesTextSearchResponse::class.java)
+            
+            response ?: throw PlaceSearchException(
+                errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
+                detail = mapOf("query" to query)
+            )
         } catch (e: org.springframework.web.client.HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
@@ -75,7 +82,7 @@ class GooglePlacesClient(
     /**
      * Place Details 조회 (New API)
      */
-    suspend fun getPlaceDetails(placeId: String): PlaceDetailsResponse? = withContext(Dispatchers.IO) {
+    suspend fun getPlaceDetails(placeId: String): PlaceDetailsResponse = withContext(Dispatchers.IO) {
         try {
             val response = googlePlacesRestClient.get()
                 .uri("/v1/places/{placeId}?languageCode=ko", placeId)
@@ -83,7 +90,11 @@ class GooglePlacesClient(
                 .header("X-Goog-FieldMask", buildPlaceDetailsFieldMask())
                 .retrieve()
                 .body(PlaceDetailsResponse::class.java)
-            response
+            
+            response ?: throw PlaceSearchException(
+                errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
+                detail = mapOf("placeId" to placeId)
+            )
         } catch (e: org.springframework.web.client.HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
@@ -124,7 +135,7 @@ class GooglePlacesClient(
     /**
      * Nearby Search - 주변 지하철역 검색 (New API)
      */
-    suspend fun searchNearby(latitude: Double, longitude: Double, radius: Double = 1000.0): org.depromeet.team3.place.model.NearbySearchResponse? = withContext(Dispatchers.IO) {
+    suspend fun searchNearby(latitude: Double, longitude: Double, radius: Double = 1000.0): org.depromeet.team3.place.model.NearbySearchResponse = withContext(Dispatchers.IO) {
         try {
             val request = org.depromeet.team3.place.model.NearbySearchRequest(
                 includedTypes = listOf("subway_station", "transit_station", "train_station"),
@@ -141,7 +152,7 @@ class GooglePlacesClient(
                 rankPreference = "DISTANCE"
             )
             
-            googlePlacesRestClient.post()
+            val response = googlePlacesRestClient.post()
                 .uri("/v1/places:searchNearby")
                 .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
                 .header("X-Goog-FieldMask", "places.id,places.displayName,places.location")
@@ -149,6 +160,11 @@ class GooglePlacesClient(
                 .body(request)
                 .retrieve()
                 .body(org.depromeet.team3.place.model.NearbySearchResponse::class.java)
+            
+            response ?: throw PlaceSearchException(
+                errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
+                detail = mapOf("latitude" to latitude, "longitude" to longitude)
+            )
         } catch (e: org.springframework.web.client.HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {

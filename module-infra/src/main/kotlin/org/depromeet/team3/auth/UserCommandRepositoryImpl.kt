@@ -1,6 +1,8 @@
 package org.depromeet.team3.auth
 
 import jakarta.transaction.Transactional
+import org.depromeet.team3.auth.exception.UserException
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.mapper.UserMapper
 import org.springframework.stereotype.Repository
 
@@ -24,6 +26,9 @@ class UserCommandRepositoryImpl(
     override fun delete(user: User) {
         user.id?.let { userId ->
             userJpaRepository.deleteById(userId)
-        } ?: throw IllegalArgumentException("삭제할 사용자의 ID가 없습니다")
+        } ?: throw UserException(
+            errorCode = ErrorCode.USER_ID_REQUIRED,
+            message = "삭제할 사용자의 ID가 없습니다"
+        )
     }
 }
