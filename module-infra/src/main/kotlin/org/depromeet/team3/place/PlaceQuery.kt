@@ -45,17 +45,20 @@ class PlaceQuery(
     
     /**
      * 여러 Place Details 조회 (배치 DB 캐싱 + 병렬 API 호출)
+     * 
+     * 주의: DB 캐싱은 placeIds 목록에 있는 것만 조회하므로, 
+     * Google API에서 반환한 placeId만 전달해야 함
      */
     suspend fun getPlaceDetailsBatch(
         placeIds: List<String>,
         openNowMap: Map<String, Boolean?> = emptyMap(),
         linkMap: Map<String, String?> = emptyMap()
     ): Map<String, PlaceDetailsResponse> = coroutineScope {
-        // 1. DB에서 일괄 조회 (1번의 쿼리)
+        // 1. DB에서 일괄 조회 (1번의 쿼리) - placeIds에 포함된 것만 조회
         val cachedPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
             .filter { !it.isDeleted }
             .associateBy { it.googlePlaceId!! }
-        
+
         // 2. DB에 없는 것만 병렬로 API 호출
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }
         val apiResults = uncachedIds.map { placeId ->
@@ -69,7 +72,7 @@ class PlaceQuery(
                 }
             }
         }.awaitAll().filterNotNull()
-        
+
         // 3. API 결과를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 받기
         val savedEntities = if (apiResults.isNotEmpty()) {
             savePlacesToDbBatch(apiResults)
@@ -85,15 +88,22 @@ class PlaceQuery(
         apiResults.forEach { (response, _, _) ->
             result[response.id] = response
         }
-        
+
         return@coroutineScope result
     }
     
     /**
      * DB에 저장 (API 응답 기반)
+     * googlePlaceId가 이미 존재하면 저장하지 않음 (unique 제약조건)
      */
     private fun savePlaceToDb(response: PlaceDetailsResponse, openNow: Boolean?, link: String?): PlaceEntity? {
         try {
+            // 이미 존재하는지 체크 (unique 제약조건 위반 방지)
+            val existing = placeJpaRepository.findByGooglePlaceId(response.id)
+            if (existing != null) {
+                return existing
+            }
+            
             val entity = PlaceEntity(
                 googlePlaceId = response.id,
                 name = response.displayName?.text ?: "",
@@ -121,10 +131,25 @@ class PlaceQuery(
     
     /**
      * 여러 Place를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 반환
+     * 이미 존재하는 googlePlaceId는 저장하지 않음
      */
     private fun savePlacesToDbBatch(results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>): List<PlaceEntity> {
         try {
-            val entities = results.map { (response, openNow, link) ->
+            // 1. 이미 존재하는 placeId 확인
+            val placeIds = results.map { it.first.id }
+            val existingPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
+                .associateBy { it.googlePlaceId }
+            
+            // 2. 존재하지 않는 것만 필터링
+            val newResults = results.filter { (response, _, _) ->
+                response.id !in existingPlaces.keys
+            }
+            
+            if (newResults.isEmpty()) {
+                return existingPlaces.values.toList()
+            }
+
+            val entities = newResults.map { (response, openNow, link) ->
                 PlaceEntity(
                     googlePlaceId = response.id,
                     name = response.displayName?.text ?: "",
@@ -143,7 +168,9 @@ class PlaceQuery(
                     }
                 )
             }
-            return placeJpaRepository.saveAll(entities).toList()
+            
+            val savedEntities = placeJpaRepository.saveAll(entities).toList()
+            return existingPlaces.values.toList() + savedEntities
         } catch (e: Exception) {
             println("DB 배치 저장 실패: ${e.message}")
             return emptyList()

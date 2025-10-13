@@ -2,7 +2,9 @@ package org.depromeet.team3.place.util
 
 import kotlinx.coroutines.coroutineScope
 import org.depromeet.team3.common.GooglePlacesApiProperties
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.place.PlaceQuery
+import org.depromeet.team3.place.exception.PlaceSearchException
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.depromeet.team3.place.model.PlacesTextSearchResponse
 import org.slf4j.LoggerFactory
@@ -53,7 +55,7 @@ class PlaceDetailsProcessor(
                 PlaceDetailResult(
                     placeId = place.id,
                     name = koreanName,
-                    address = place.formattedAddress,
+                    address = place.formattedAddress.replace("대한민국 ", ""),
                     rating = place.rating ?: 0.0,
                     userRatingsTotal = place.userRatingCount ?: 0,
                     openNow = placeDetails.currentOpeningHours?.openNow,  // DB 캐시에서도 복원됨!
@@ -67,10 +69,9 @@ class PlaceDetailsProcessor(
             }
         } catch (e: Exception) {
             logger.error("장소 상세 정보 배치 조회 실패", e)
-            throw org.depromeet.team3.place.exception.PlaceSearchException(
-                errorCode = org.depromeet.team3.common.exception.ErrorCode.EXTERNAL_API_ERROR,
-                message = "장소 상세 정보 조회 중 오류가 발생했습니다",
-                cause = e
+            throw PlaceSearchException(
+                errorCode = ErrorCode.EXTERNAL_API_ERROR,
+                message = "장소 상세 정보 조회 중 오류가 발생했습니다"
             )
         }
     }
