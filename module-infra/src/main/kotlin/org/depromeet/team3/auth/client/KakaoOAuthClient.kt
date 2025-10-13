@@ -78,30 +78,36 @@ class KakaoOAuthClient(
 
             objectMapper.readValue(response.body, KakaoResponse.OAuthToken::class.java)
 
-        } catch (e: HttpClientErrorException.Unauthorized) {
-            log.error("카카오 인증 실패 (401): {}", e.responseBodyAsString)
-            throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
-        } catch (e: HttpClientErrorException.BadRequest) {
-            log.error("카카오 API Bad Request (400): {}", e.responseBodyAsString)
-            throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
-        } catch (e: HttpClientErrorException.TooManyRequests) {
-            log.error("카카오 API Rate Limit 초과 (429): {}", e.responseBodyAsString)
-            throw AuthException(ErrorCode.KAKAO_RATE_LIMIT_EXCEEDED)
         } catch (e: HttpClientErrorException) {
-            log.error("카카오 API HTTP 에러 - 상태코드: {}", e.statusCode)
-            throw AuthException(ErrorCode.KAKAO_API_ERROR)
+            when (e.statusCode.value()) {
+                400 -> {
+                    log.error("카카오 API Bad Request (400): {}", e.responseBodyAsString)
+                    throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
+                }
+                401 -> {
+                    log.error("카카오 인증 실패 (401): {}", e.responseBodyAsString)
+                    throw AuthException(ErrorCode.KAKAO_INVALID_GRANT)
+                }
+                429 -> {
+                    log.error("카카오 API Rate Limit 초과 (429): {}", e.responseBodyAsString)
+                    throw AuthException(ErrorCode.KAKAO_RATE_LIMIT_EXCEEDED)
+                }
+                else -> {
+                    log.error("카카오 API HTTP 에러 - 상태코드: {}", e.statusCode)
+                    throw AuthException(ErrorCode.KAKAO_API_ERROR)
+                }
+            }
+        } catch (e: AuthException) {
+            throw e
         } catch (e: Exception) {
-            when (e) {
-                is AuthException -> throw e
-                else -> when (e.javaClass.simpleName) {
-                    "JsonProcessingException" -> {
-                        log.error("카카오 응답 JSON 파싱 오류: {}", e.message)
-                        throw AuthException(ErrorCode.KAKAO_JSON_PARSE_ERROR)
-                    }
-                    else -> {
-                        log.error("카카오 API 호출 중 오류 발생: {}", e.message)
-                        throw AuthException(ErrorCode.KAKAO_API_ERROR)
-                    }
+            when (e.javaClass.simpleName) {
+                "JsonProcessingException" -> {
+                    log.error("카카오 응답 JSON 파싱 오류: {}", e.message)
+                    throw AuthException(ErrorCode.KAKAO_JSON_PARSE_ERROR)
+                }
+                else -> {
+                    log.error("카카오 API 호출 중 오류 발생: {}", e.message)
+                    throw AuthException(ErrorCode.KAKAO_API_ERROR)
                 }
             }
         }
@@ -131,6 +137,19 @@ class KakaoOAuthClient(
             )
 
             objectMapper.readValue(response.body, KakaoResponse.KakaoProfile::class.java)
+        } catch (e: HttpClientErrorException) {
+            when (e.statusCode.value()) {
+                401 -> {
+                    log.error("카카오 프로필 조회 인증 실패 (401): {}", e.responseBodyAsString)
+                    throw AuthException(ErrorCode.KAKAO_AUTH_FAILED)
+                }
+                else -> {
+                    log.error("카카오 프로필 요청 중 HTTP 에러 - 상태코드: {}", e.statusCode)
+                    throw AuthException(ErrorCode.KAKAO_PROFILE_REQUEST_FAILED)
+                }
+            }
+        } catch (e: AuthException) {
+            throw e
         } catch (e: Exception) {
             when (e.javaClass.simpleName) {
                 "JsonProcessingException" -> {
