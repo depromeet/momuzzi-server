@@ -6,7 +6,10 @@ import org.depromeet.team3.common.BaseTimeEntity
 import org.depromeet.team3.meeting.MeetingEntity
 
 @Entity
-@Table(name = "tb_meeting_attendees")
+@Table(
+    name = "tb_meeting_attendees",
+    uniqueConstraints = [UniqueConstraint(name = "uk_meeting_attendee", columnNames = ["meeting_id", "user_id"])]
+)
 class MeetingAttendeeEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
