@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
+import org.springframework.dao.DataIntegrityViolationException
 
 @ExtendWith(MockitoExtension::class)
 class SearchPlaceLikeServiceTest {
@@ -49,10 +50,16 @@ class SearchPlaceLikeServiceTest {
             placeId = placeId
         )
 
+        val savedPlaceLike = PlaceLike(
+            id = 1L,
+            meetingPlaceId = meetingPlaceId,
+            userId = userId
+        )
+
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
-            .thenReturn(null)
+        whenever(placeLikeRepository.save(any()))
+            .thenReturn(savedPlaceLike)
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(1L)
 
@@ -85,16 +92,10 @@ class SearchPlaceLikeServiceTest {
             placeId = placeId
         )
 
-        val existingLike = PlaceLike(
-            id = 1L,
-            meetingPlaceId = meetingPlaceId,
-            userId = userId
-        )
-
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
-            .thenReturn(existingLike)
+        whenever(placeLikeRepository.save(any()))
+            .thenThrow(DataIntegrityViolationException("Duplicate entry"))
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(0L)
 
@@ -105,8 +106,12 @@ class SearchPlaceLikeServiceTest {
         assertThat(result.isLiked).isFalse()
         assertThat(result.likeCount).isEqualTo(0)
 
+        verify(placeLikeRepository).save(
+            argThat { placeLike ->
+                placeLike.meetingPlaceId == meetingPlaceId && placeLike.userId == userId 
+            }
+        )
         verify(placeLikeRepository).deleteByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
-        verify(placeLikeRepository, never()).save(any())
     }
 
     @Test
@@ -145,10 +150,16 @@ class SearchPlaceLikeServiceTest {
             placeId = placeId
         )
 
+        val savedPlaceLike = PlaceLike(
+            id = 1L,
+            meetingPlaceId = meetingPlaceId,
+            userId = userId
+        )
+
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
-            .thenReturn(null)
+        whenever(placeLikeRepository.save(any()))
+            .thenReturn(savedPlaceLike)
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(5L) // 다른 사용자들이 이미 4개 좋아요
 
@@ -161,7 +172,7 @@ class SearchPlaceLikeServiceTest {
     }
 
     @Test
-    fun `좋아요 토글 - findByMeetingPlaceIdAndUserIdForUpdate 메서드 호출 확인`(): Unit = runBlocking {
+    fun `좋아요 토글 - try-catch 로직 동작 확인`(): Unit = runBlocking {
         // given
         val meetingId = 1L
         val userId = 100L
@@ -174,38 +185,7 @@ class SearchPlaceLikeServiceTest {
             placeId = placeId
         )
 
-        whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
-            .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
-            .thenReturn(null)
-        whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
-            .thenReturn(1L)
-
-        // when
-        searchPlaceLikeService.toggle(meetingId, userId, placeId)
-
-        // then
-        // findByMeetingPlaceIdAndUserIdForUpdate가 호출되었는지 확인 (락을 걸기 위한 메서드)
-        verify(placeLikeRepository).findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId)
-        // 기존의 findByMeetingPlaceIdAndUserId는 호출되지 않아야 함
-        verify(placeLikeRepository, never()).findByMeetingPlaceIdAndUserId(any(), any())
-    }
-
-    @Test
-    fun `좋아요 토글 - 동시성 테스트를 위한 락 메서드 사용 확인`(): Unit = runBlocking {
-        // given
-        val meetingId = 1L
-        val userId = 100L
-        val placeId = 200L
-        val meetingPlaceId = 10L
-
-        val meetingPlace = MeetingPlace(
-            id = meetingPlaceId,
-            meetingId = meetingId,
-            placeId = placeId
-        )
-
-        val existingLike = PlaceLike(
+        val savedPlaceLike = PlaceLike(
             id = 1L,
             meetingPlaceId = meetingPlaceId,
             userId = userId
@@ -213,8 +193,43 @@ class SearchPlaceLikeServiceTest {
 
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
-            .thenReturn(existingLike)
+        whenever(placeLikeRepository.save(any()))
+            .thenReturn(savedPlaceLike)
+        whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
+            .thenReturn(1L)
+
+        // when
+        searchPlaceLikeService.toggle(meetingId, userId, placeId)
+
+        // then
+        // save 메서드가 호출되었는지 확인
+        verify(placeLikeRepository).save(
+            argThat { placeLike ->
+                placeLike.meetingPlaceId == meetingPlaceId && placeLike.userId == userId 
+            }
+        )
+        // delete는 호출되지 않아야 함
+        verify(placeLikeRepository, never()).deleteByMeetingPlaceIdAndUserId(any(), any())
+    }
+
+    @Test
+    fun `좋아요 토글 - DataIntegrityViolationException 발생 시 삭제 로직 확인`(): Unit = runBlocking {
+        // given
+        val meetingId = 1L
+        val userId = 100L
+        val placeId = 200L
+        val meetingPlaceId = 10L
+
+        val meetingPlace = MeetingPlace(
+            id = meetingPlaceId,
+            meetingId = meetingId,
+            placeId = placeId
+        )
+
+        whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
+            .thenReturn(meetingPlace)
+        whenever(placeLikeRepository.save(any()))
+            .thenThrow(DataIntegrityViolationException("Duplicate entry"))
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(0L)
 
@@ -222,9 +237,13 @@ class SearchPlaceLikeServiceTest {
         searchPlaceLikeService.toggle(meetingId, userId, placeId)
 
         // then
-        // 락을 걸기 위한 forUpdate 메서드가 호출되었는지 확인
-        verify(placeLikeRepository).findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId)
-        // 기존의 일반 조회 메서드는 호출되지 않아야 함
-        verify(placeLikeRepository, never()).findByMeetingPlaceIdAndUserId(any(), any())
+        // save 메서드가 호출되었는지 확인
+        verify(placeLikeRepository).save(
+            argThat { placeLike ->
+                placeLike.meetingPlaceId == meetingPlaceId && placeLike.userId == userId 
+            }
+        )
+        // 예외 발생 시 delete가 호출되었는지 확인
+        verify(placeLikeRepository).deleteByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
     }
 }

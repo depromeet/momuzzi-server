@@ -28,14 +28,6 @@ class PlaceLikeQuery(
             ?.let { placeLikeMapper.toDomain(it) }
     }
 
-    @Transactional
-    override suspend fun findByMeetingPlaceIdAndUserIdForUpdate(
-        meetingPlaceId: Long,
-        userId: Long
-    ): PlaceLike? = withContext(Dispatchers.IO) {
-        placeLikeJpaRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId)
-            ?.let { placeLikeMapper.toDomain(it) }
-    }
 
     @Transactional
     override suspend fun deleteByMeetingPlaceIdAndUserId(
