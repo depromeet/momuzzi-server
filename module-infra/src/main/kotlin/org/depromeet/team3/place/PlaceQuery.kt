@@ -113,12 +113,10 @@ class PlaceQuery(
             }
         }.awaitAll().filterNotNull()
 
-        // 3. API 결과를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 받기
-        val savedEntities = if (apiResults.isNotEmpty()) {
-            savePlacesToDbBatch(apiResults)
-        } else {
-            emptyList()
-        }
+            // 3. API 결과를 한 번에 DB 저장 (배치 INSERT)
+            if (apiResults.isNotEmpty()) {
+                savePlacesToDbBatch(apiResults)
+            }
         
         // 4. 결과 합치기
         val result = mutableMapOf<String, PlaceDetailsResponse>()
