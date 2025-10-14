@@ -100,7 +100,7 @@ class SearchPlacesServiceTest {
         assertThat(response.items[0].topReview).isNotNull
         assertThat(response.items[0].topReview?.rating).isEqualTo(5)
         
-        verify(placeQuery).textSearch("강남역 맛집", 10)
+        verify(placeQuery).textSearch("강남역 맛집", 15)
         verify(placeDetailsProcessor).fetchPlaceDetailsInParallel(googleResponse.places!!)
         verify(placeQuery).findByGooglePlaceIds(any())
     }

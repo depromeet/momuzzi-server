@@ -40,32 +40,58 @@ class PlaceDetailsProcessor(
             
             // 2. 배치로 Details 조회 (DB 캐싱 + 병렬 API 호출 + 배치 저장)
             val placeIds = places.map { it.id }
+            logger.debug("Place Details 배치 조회 시작: placeIds=$placeIds")
             val detailsMap = placeQuery.getPlaceDetailsBatch(placeIds, openNowMap, linkMap)
+            logger.debug("Place Details 배치 조회 완료: detailsMap 크기=${detailsMap.size}")
             
             // 3. 각 place를 PlaceDetailResult로 변환
             places.mapNotNull { place ->
-                val placeDetails = detailsMap[place.id] ?: return@mapNotNull null
+                val placeDetails = detailsMap[place.id]
+                if (placeDetails == null) {
+                    logger.warn("PlaceDetails 없음: placeId=${place.id}")
+                    return@mapNotNull null
+                }
                 
-                val topReview = extractTopReview(placeDetails)
-                val photos = extractPhotos(placeDetails)
-                val priceRange = extractPriceRange(placeDetails)
-                val addressDescriptor = placeAddressResolver.resolveAddressDescriptor(placeDetails)
-                val koreanName = koreanNames[place.id] ?: place.displayName.text
-                
-                PlaceDetailResult(
-                    placeId = place.id,
-                    name = koreanName,
-                    address = place.formattedAddress.replace("대한민국 ", ""),
-                    rating = place.rating ?: 0.0,
-                    userRatingsTotal = place.userRatingCount ?: 0,
-                    openNow = placeDetails.currentOpeningHours?.openNow,  // DB 캐시에서도 복원됨!
-                    photos = photos,
-                    link = linkMap[place.id] ?: "",
-                    weekdayText = placeDetails.regularOpeningHours?.weekdayDescriptions,
-                    topReview = topReview,
-                    priceRange = priceRange,
-                    addressDescriptor = addressDescriptor?.description
-                )
+                try {
+                    val topReview = extractTopReview(placeDetails)
+                    val photos = extractPhotos(placeDetails)
+                    val priceRange = extractPriceRange(placeDetails)
+                    val addressDescriptor = placeAddressResolver.resolveAddressDescriptor(placeDetails)
+                    val koreanName = koreanNames[place.id] ?: place.displayName.text
+                    val openNowValue = placeDetails.currentOpeningHours?.openNow ?: place.currentOpeningHours?.openNow
+                    
+                    PlaceDetailResult(
+                        placeId = place.id,
+                        name = koreanName,
+                        address = place.formattedAddress.replace("대한민국 ", ""),
+                        rating = place.rating ?: 0.0,
+                        userRatingsTotal = place.userRatingCount ?: 0,
+                        openNow = openNowValue,
+                        photos = photos,
+                        link = linkMap[place.id] ?: "",
+                        weekdayText = placeDetails.regularOpeningHours?.weekdayDescriptions,
+                        topReview = topReview,
+                        priceRange = priceRange,
+                        addressDescriptor = addressDescriptor?.description
+                    )
+                } catch (e: Exception) {
+                    logger.warn("장소 변환 실패: placeId=${place.id}, error=${e.message}")
+                    // 변환 실패 시에도 기본 정보는 반환
+                    PlaceDetailResult(
+                        placeId = place.id,
+                        name = place.displayName.text,
+                        address = place.formattedAddress.replace("대한민국 ", ""),
+                        rating = place.rating ?: 0.0,
+                        userRatingsTotal = place.userRatingCount ?: 0,
+                        openNow = place.currentOpeningHours?.openNow,
+                        photos = null,
+                        link = linkMap[place.id] ?: "",
+                        weekdayText = null,
+                        topReview = null,
+                        priceRange = null,
+                        addressDescriptor = null
+                    )
+                }
             }
         } catch (e: Exception) {
             logger.error("장소 상세 정보 배치 조회 실패", e)
@@ -82,15 +108,20 @@ class PlaceDetailsProcessor(
     private fun extractTopReview(
         placeDetails: PlaceDetailsResponse?
     ): ReviewResult? {
-        return placeDetails?.reviews
-            ?.filter { it.text != null && it.text.text.isNotBlank() }
-            ?.maxByOrNull { it.rating }
-            ?.let { review ->
-                ReviewResult(
-                    rating = review.rating.toInt(),
-                    text = review.text?.text ?: ""
-                )
-            }
+        return try {
+            placeDetails?.reviews
+                ?.filter { it.text != null && it.text.text.isNotBlank() }
+                ?.maxByOrNull { it.rating }
+                ?.let { review ->
+                    ReviewResult(
+                        rating = review.rating.toInt(),
+                        text = review.text?.text ?: ""
+                    )
+                }
+        } catch (e: Exception) {
+            logger.warn("리뷰 추출 실패: ${e.message}")
+            null
+        }
     }
     
     /**
@@ -99,8 +130,35 @@ class PlaceDetailsProcessor(
     private fun extractPhotos(
         placeDetails: PlaceDetailsResponse?
     ): List<String>? {
-        return placeDetails?.photos?.take(5)?.map { photo ->
-            PlaceFormatter.generatePhotoUrl(photo.name, googlePlacesApiProperties.apiKey)
+        return try {
+            if (placeDetails?.photos == null) {
+                logger.debug("placeDetails.photos가 null입니다. placeId: ${placeDetails?.id}")
+                return null
+            }
+            
+            if (placeDetails.photos.isEmpty()) {
+                logger.debug("placeDetails.photos가 비어있습니다. placeId: ${placeDetails.id}")
+                return null
+            }
+            
+            logger.debug("사진 추출 시작. placeId: ${placeDetails.id}, photos 개수: ${placeDetails.photos.size}")
+            
+            val photoUrls = placeDetails.photos.take(5).mapNotNull { photo ->
+                try {
+                    val photoUrl = PlaceFormatter.generatePhotoUrl(photo.name, googlePlacesApiProperties.apiKey)
+                    logger.debug("사진 URL 생성 성공: ${photo.name} -> $photoUrl")
+                    photoUrl
+                } catch (e: Exception) {
+                    logger.warn("사진 URL 생성 실패: photoName=${photo.name}, error=${e.message}")
+                    null
+                }
+            }
+            
+            logger.debug("사진 URL 추출 완료. placeId: ${placeDetails.id}, 생성된 URL 개수: ${photoUrls.size}")
+            photoUrls
+        } catch (e: Exception) {
+            logger.warn("사진 추출 실패: placeId=${placeDetails?.id}, error=${e.message}")
+            null
         }
     }
     
@@ -110,11 +168,16 @@ class PlaceDetailsProcessor(
     private fun extractPriceRange(
         placeDetails: PlaceDetailsResponse?
     ): PriceRangeResult? {
-        return placeDetails?.priceRange?.let { range ->
-            PriceRangeResult(
-                startPrice = formatMoney(range.startPrice),
-                endPrice = formatMoney(range.endPrice)
-            )
+        return try {
+            placeDetails?.priceRange?.let { range ->
+                PriceRangeResult(
+                    startPrice = formatMoney(range.startPrice),
+                    endPrice = formatMoney(range.endPrice)
+                )
+            }
+        } catch (e: Exception) {
+            logger.warn("가격대 추출 실패: ${e.message}")
+            null
         }
     }
     
@@ -122,9 +185,14 @@ class PlaceDetailsProcessor(
      * Money 객체를 문자열로 포맷
      */
     private fun formatMoney(money: PlaceDetailsResponse.PriceRange.Money?): String? {
-        if (money == null) return null
-        val amount = money.units ?: "0"
-        return "${money.currencyCode} $amount"
+        return try {
+            if (money == null) return null
+            val amount = money.units ?: "0"
+            "${money.currencyCode} $amount"
+        } catch (e: Exception) {
+            logger.warn("가격 포맷 실패: ${e.message}")
+            null
+        }
     }
     
     /**

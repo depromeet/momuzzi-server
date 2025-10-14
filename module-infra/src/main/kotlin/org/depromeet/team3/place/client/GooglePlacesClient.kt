@@ -25,7 +25,7 @@ class GooglePlacesClient(
     private val logger = KotlinLogging.logger { GooglePlacesClient::class.java.name }
 
     /**
-     * 텍스트 검색 (New API)
+     * 텍스트 검색
      */
     suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse = withContext(Dispatchers.IO) {
         try {
@@ -88,10 +88,12 @@ class GooglePlacesClient(
      */
     suspend fun getPlaceDetails(placeId: String): PlaceDetailsResponse = withContext(Dispatchers.IO) {
         try {
+            val fieldMask = buildPlaceDetailsFieldMask()
+
             val response = googlePlacesRestClient.get()
                 .uri("/v1/places/{placeId}?languageCode=ko", placeId)
                 .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
-                .header("X-Goog-FieldMask", buildPlaceDetailsFieldMask())
+                .header("X-Goog-FieldMask", fieldMask)
                 .retrieve()
                 .body(PlaceDetailsResponse::class.java)
             
@@ -99,6 +101,7 @@ class GooglePlacesClient(
                 errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
                 detail = mapOf("placeId" to placeId)
             )
+            response
         } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
@@ -209,7 +212,8 @@ class GooglePlacesClient(
             "places.formattedAddress",
             "places.rating",
             "places.userRatingCount",
-            "places.currentOpeningHours"
+            "places.currentOpeningHours",
+            "places.types"
         ).joinToString(",")
     }
     
