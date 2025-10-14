@@ -57,7 +57,8 @@ class PlaceQuery(
         // 1. DB에서 일괄 조회 (1번의 쿼리) - placeIds에 포함된 것만 조회
         val cachedPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
             .filter { !it.isDeleted }
-            .associateBy { it.googlePlaceId!! }
+            .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
+            .toMap()
 
         // 2. DB에 없는 것만 병렬로 API 호출
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }

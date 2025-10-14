@@ -26,8 +26,11 @@ class SearchPlaceLikeService(
                 )
             )
 
-        // meetingPlace.id를 로컬 변수에 저장 (smart cast 이슈 해결)
-        val meetingPlaceId = meetingPlace.id!!
+        val meetingPlaceId = meetingPlace.id
+            ?: throw MeetingPlaceException(
+                errorCode = ErrorCode.MEETING_PLACE_NOT_FOUND,
+                detail = mapOf("meetingId" to meetingId, "placeId" to placeId)
+            )
 
         // 2. 기존 좋아요 확인
         val existingLike = placeLikeRepository.findByMeetingPlaceIdAndUserId(

@@ -13,10 +13,10 @@ class PlaceLikeQuery(
 ) : PlaceLikeRepository {
 
     @Transactional
-    override suspend fun save(placeLike: PlaceLike): PlaceLike = withContext(Dispatchers.IO) {
+    override suspend fun save(placeLike: PlaceLike): PlaceLike  {
         val entity = placeLikeMapper.toEntity(placeLike)
         val saved = placeLikeJpaRepository.save(entity)
-        placeLikeMapper.toDomain(saved)
+        return placeLikeMapper.toDomain(saved)
     }
 
     @Transactional(readOnly = true)

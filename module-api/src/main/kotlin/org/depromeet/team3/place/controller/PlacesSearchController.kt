@@ -41,7 +41,6 @@ class PlacesSearchController(
     ): DpmApiResponse<PlacesSearchResponse> {
         val request = PlacesSearchRequest(
             query = query,
-            maxResults = 10,
             meetingId = meetingId,
             userId = userId
         )

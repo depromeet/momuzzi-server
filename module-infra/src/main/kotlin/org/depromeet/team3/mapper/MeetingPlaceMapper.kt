@@ -11,8 +11,8 @@ class MeetingPlaceMapper {
     fun toDomain(entity: MeetingPlaceEntity): MeetingPlace {
         return MeetingPlace(
             id = entity.id,
-            meetingId = entity.meeting.id!!,
-            placeId = entity.place.id!!,
+            meetingId = requireNotNull(entity.meeting.id) { "Meeting ID must not be null" },
+            placeId = requireNotNull(entity.place.id) { "Place ID must not be null" },
             likeCount = entity.likeCount,
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt

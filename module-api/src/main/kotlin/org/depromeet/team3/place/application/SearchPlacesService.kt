@@ -32,7 +32,6 @@ class SearchPlacesService(
 
     /**
      * 맛집 검색 및 전체 결과 반환
-     *
      * @param request 검색 요청 (검색어, 결과 개수, meetingId)
      * @return 검색 결과 목록 (좋아요 순으로 정렬됨)
      */
@@ -128,8 +127,10 @@ class SearchPlacesService(
     private suspend fun getPlaceStringIdToDbIdMap(googlePlaceIds: List<String>): Map<String, Long> {
         return withContext(Dispatchers.IO) {
             placeQuery.findByGooglePlaceIds(googlePlaceIds)
-                .mapNotNull { place -> 
-                    place.googlePlaceId?.let { it to place.id!! }
+                .mapNotNull { place ->
+                    val dbId = place.id ?: return@mapNotNull null
+                    val gId = place.googlePlaceId ?: return@mapNotNull null
+                    gId to dbId
                 }
                 .toMap()
         }
@@ -185,7 +186,9 @@ class SearchPlacesService(
         val placeLikes = placeLikeRepository.findByMeetingPlaceIds(meetingPlaceIds)
         
         // MeetingPlace ID -> Place DB ID 매핑
-        val meetingPlaceIdToPlaceDbId = meetingPlaces.associate { it.id!! to it.placeId }
+        val meetingPlaceIdToPlaceDbId = meetingPlaces
+            .filter { it.id != null }
+            .associate { it.id!! to it.placeId }
         
         // Place DB ID별 좋아요 정보 그룹화
         val likesByPlaceDbId = placeLikes
@@ -217,10 +220,7 @@ class SearchPlacesService(
         return try {
             withContext(Dispatchers.IO) {
                 placeQuery.textSearch(query, totalFetchSize)
-            } ?: throw PlaceSearchException(
-                org.depromeet.team3.common.exception.ErrorCode.PLACE_API_RESPONSE_NULL,
-                detail = mapOf("query" to query)
-            )
+            }
         } catch (e: PlaceSearchException) {
             throw e
         } catch (e: Exception) {

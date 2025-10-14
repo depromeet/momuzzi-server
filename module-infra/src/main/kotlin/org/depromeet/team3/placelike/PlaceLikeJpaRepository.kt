@@ -7,10 +7,6 @@ import org.springframework.stereotype.Repository
 @Repository
 interface PlaceLikeJpaRepository : JpaRepository<PlaceLikeEntity, Long> {
     fun findByMeetingPlaceIdAndUserId(meetingPlaceId: Long, userId: Long): PlaceLikeEntity?
-    
-    @Modifying
-    fun deleteByMeetingPlaceIdAndUserId(meetingPlaceId: Long, userId: Long)
-    
     fun countByMeetingPlaceId(meetingPlaceId: Long): Long
     fun findByMeetingPlaceIdIn(meetingPlaceIds: List<Long>): List<PlaceLikeEntity>
 }

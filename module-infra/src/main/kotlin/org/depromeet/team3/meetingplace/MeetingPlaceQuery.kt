@@ -22,8 +22,8 @@ class MeetingPlaceQuery(
 ) : MeetingPlaceRepository {
 
     @Transactional
-    override suspend fun save(meetingPlace: MeetingPlace): MeetingPlace = withContext(Dispatchers.IO) {
-        // Meeting과 Place 조회
+    override suspend fun save(meetingPlace: MeetingPlace): MeetingPlace {
+
         val meeting = meetingJpaRepository.findById(meetingPlace.meetingId)
             .orElseThrow { 
                 MeetingException(
@@ -39,14 +39,13 @@ class MeetingPlaceQuery(
                 )
             }
         
-        // Entity 변환 및 저장
         val entity = meetingPlaceMapper.toEntity(meetingPlace, meeting, place)
         val saved = meetingPlaceJpaRepository.save(entity)
-        meetingPlaceMapper.toDomain(saved)
+        return meetingPlaceMapper.toDomain(saved)
     }
 
     @Transactional
-    override suspend fun saveAll(meetingPlaces: List<MeetingPlace>): List<MeetingPlace> = withContext(Dispatchers.IO) {
+    override suspend fun saveAll(meetingPlaces: List<MeetingPlace>): List<MeetingPlace> {
         // Meeting과 Place를 미리 조회 (N+1 방지)
         val meetingIds = meetingPlaces.map { it.meetingId }.distinct()
         val placeIds = meetingPlaces.map { it.placeId }.distinct()
@@ -72,30 +71,28 @@ class MeetingPlaceQuery(
         
         // 저장
         val saved = meetingPlaceJpaRepository.saveAll(entities)
-        saved.map { meetingPlaceMapper.toDomain(it) }
+        return saved.map { meetingPlaceMapper.toDomain(it) }
     }
 
     @Transactional(readOnly = true)
-    override suspend fun findByMeetingId(meetingId: Long): List<MeetingPlace> = withContext(Dispatchers.IO) {
-        meetingPlaceJpaRepository.findByMeetingId(meetingId)
+    override suspend fun findByMeetingId(meetingId: Long): List<MeetingPlace> {
+        return meetingPlaceJpaRepository.findByMeetingId(meetingId)
             .map { meetingPlaceMapper.toDomain(it) }
     }
 
     @Transactional(readOnly = true)
-    override suspend fun findByMeetingIdAndPlaceId(meetingId: Long, placeId: Long): MeetingPlace? =
-        withContext(Dispatchers.IO) {
-            meetingPlaceJpaRepository.findByMeetingIdAndPlaceId(meetingId, placeId)
-                ?.let { meetingPlaceMapper.toDomain(it) }
-        }
+    override suspend fun findByMeetingIdAndPlaceId(meetingId: Long, placeId: Long): MeetingPlace? {
+        return meetingPlaceJpaRepository.findByMeetingIdAndPlaceId(meetingId, placeId)
+            ?.let { meetingPlaceMapper.toDomain(it) }
+    }
 
     @Transactional
-    override suspend fun deleteByMeetingId(meetingId: Long) = withContext(Dispatchers.IO) {
+    override suspend fun deleteByMeetingId(meetingId: Long) {
         meetingPlaceJpaRepository.deleteByMeetingId(meetingId)
     }
 
     @Transactional(readOnly = true)
-    override suspend fun existsByMeetingIdAndPlaceId(meetingId: Long, placeId: Long): Boolean =
-        withContext(Dispatchers.IO) {
-            meetingPlaceJpaRepository.existsByMeetingIdAndPlaceId(meetingId, placeId)
-        }
+    override suspend fun existsByMeetingIdAndPlaceId(meetingId: Long, placeId: Long): Boolean {
+        return meetingPlaceJpaRepository.existsByMeetingIdAndPlaceId(meetingId, placeId)
+    }
 }
