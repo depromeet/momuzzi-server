@@ -51,7 +51,7 @@ class SearchPlaceLikeServiceTest {
 
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserId(meetingPlaceId, userId))
+        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
             .thenReturn(null)
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(1L)
@@ -93,7 +93,7 @@ class SearchPlaceLikeServiceTest {
 
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserId(meetingPlaceId, userId))
+        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
             .thenReturn(existingLike)
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(0L)
@@ -147,7 +147,7 @@ class SearchPlaceLikeServiceTest {
 
         whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
             .thenReturn(meetingPlace)
-        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserId(meetingPlaceId, userId))
+        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
             .thenReturn(null)
         whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
             .thenReturn(5L) // 다른 사용자들이 이미 4개 좋아요
@@ -158,5 +158,73 @@ class SearchPlaceLikeServiceTest {
         // then
         assertThat(result.isLiked).isTrue()
         assertThat(result.likeCount).isEqualTo(5) // 4 + 1 = 5
+    }
+
+    @Test
+    fun `좋아요 토글 - findByMeetingPlaceIdAndUserIdForUpdate 메서드 호출 확인`(): Unit = runBlocking {
+        // given
+        val meetingId = 1L
+        val userId = 100L
+        val placeId = 200L
+        val meetingPlaceId = 10L
+
+        val meetingPlace = MeetingPlace(
+            id = meetingPlaceId,
+            meetingId = meetingId,
+            placeId = placeId
+        )
+
+        whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
+            .thenReturn(meetingPlace)
+        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
+            .thenReturn(null)
+        whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
+            .thenReturn(1L)
+
+        // when
+        searchPlaceLikeService.toggle(meetingId, userId, placeId)
+
+        // then
+        // findByMeetingPlaceIdAndUserIdForUpdate가 호출되었는지 확인 (락을 걸기 위한 메서드)
+        verify(placeLikeRepository).findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId)
+        // 기존의 findByMeetingPlaceIdAndUserId는 호출되지 않아야 함
+        verify(placeLikeRepository, never()).findByMeetingPlaceIdAndUserId(any(), any())
+    }
+
+    @Test
+    fun `좋아요 토글 - 동시성 테스트를 위한 락 메서드 사용 확인`(): Unit = runBlocking {
+        // given
+        val meetingId = 1L
+        val userId = 100L
+        val placeId = 200L
+        val meetingPlaceId = 10L
+
+        val meetingPlace = MeetingPlace(
+            id = meetingPlaceId,
+            meetingId = meetingId,
+            placeId = placeId
+        )
+
+        val existingLike = PlaceLike(
+            id = 1L,
+            meetingPlaceId = meetingPlaceId,
+            userId = userId
+        )
+
+        whenever(meetingPlaceRepository.findByMeetingIdAndPlaceId(meetingId, placeId))
+            .thenReturn(meetingPlace)
+        whenever(placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId))
+            .thenReturn(existingLike)
+        whenever(placeLikeRepository.countByMeetingPlaceId(meetingPlaceId))
+            .thenReturn(0L)
+
+        // when
+        searchPlaceLikeService.toggle(meetingId, userId, placeId)
+
+        // then
+        // 락을 걸기 위한 forUpdate 메서드가 호출되었는지 확인
+        verify(placeLikeRepository).findByMeetingPlaceIdAndUserIdForUpdate(meetingPlaceId, userId)
+        // 기존의 일반 조회 메서드는 호출되지 않아야 함
+        verify(placeLikeRepository, never()).findByMeetingPlaceIdAndUserId(any(), any())
     }
 }

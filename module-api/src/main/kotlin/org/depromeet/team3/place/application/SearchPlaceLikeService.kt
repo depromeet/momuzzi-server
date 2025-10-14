@@ -33,18 +33,16 @@ class SearchPlaceLikeService(
             )
 
         // 2. 기존 좋아요 확인
-        val existingLike = placeLikeRepository.findByMeetingPlaceIdAndUserId(
+        val existingLike = placeLikeRepository.findByMeetingPlaceIdAndUserIdForUpdate(
             meetingPlaceId = meetingPlaceId,
             userId = userId
         )
 
-        // 3. 토글 처리
+        // 3. 좋아요 처리
         val isLiked = if (existingLike != null) {
-            // 좋아요 취소
             placeLikeRepository.deleteByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
             false
         } else {
-            // 좋아요 추가
             placeLikeRepository.save(
                 PlaceLike(
                     meetingPlaceId = meetingPlaceId,
