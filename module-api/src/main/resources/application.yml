@@ -32,7 +32,7 @@ management:
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
-  access-token-validity: 4320000   # 12시간
+  access-token-validity: 43200000   # 12시간
   refresh-token-validity: 604800000   # 1주일
 
 # 앱 설정
