@@ -17,7 +17,7 @@ class PlaceQuery(
     /**
      * 텍스트 검색
      */
-    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse? {
+    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse {
         return googlePlacesClient.textSearch(query, maxResults)
     }
 
@@ -26,7 +26,7 @@ class PlaceQuery(
      * 1. DB에서 googlePlaceId로 조회
      * 2. 없으면 API 호출 후 DB 저장
      */
-    suspend fun getPlaceDetails(placeId: String, openNow: Boolean? = null, link: String? = null): PlaceDetailsResponse? {
+    suspend fun getPlaceDetails(placeId: String, openNow: Boolean? = null, link: String? = null): PlaceDetailsResponse {
         // 1. DB 조회
         val cachedPlace = placeJpaRepository.findByGooglePlaceId(placeId)
         if (cachedPlace != null && !cachedPlace.isDeleted) {
@@ -35,7 +35,7 @@ class PlaceQuery(
         }
         
         // 2. API 호출
-        val apiResponse = googlePlacesClient.getPlaceDetails(placeId) ?: return null
+        val apiResponse = googlePlacesClient.getPlaceDetails(placeId)
         
         // 3. DB 저장 (비동기로 처리, 응답은 바로 반환)
         savePlaceToDb(apiResponse, openNow, link)
@@ -45,30 +45,40 @@ class PlaceQuery(
     
     /**
      * 여러 Place Details 조회 (배치 DB 캐싱 + 병렬 API 호출)
+     * 
+     * 주의: DB 캐싱은 placeIds 목록에 있는 것만 조회하므로, 
+     * Google API에서 반환한 placeId만 전달해야 함
      */
     suspend fun getPlaceDetailsBatch(
         placeIds: List<String>,
         openNowMap: Map<String, Boolean?> = emptyMap(),
         linkMap: Map<String, String?> = emptyMap()
     ): Map<String, PlaceDetailsResponse> = coroutineScope {
-        // 1. DB에서 일괄 조회 (1번의 쿼리)
+        // 1. DB에서 일괄 조회 (1번의 쿼리) - placeIds에 포함된 것만 조회
         val cachedPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
             .filter { !it.isDeleted }
-            .associateBy { it.googlePlaceId!! }
-        
+            .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
+            .toMap()
+
         // 2. DB에 없는 것만 병렬로 API 호출
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }
         val apiResults = uncachedIds.map { placeId ->
             async(Dispatchers.IO) {
-                googlePlacesClient.getPlaceDetails(placeId)?.let { response ->
+                try {
+                    val response = googlePlacesClient.getPlaceDetails(placeId)
                     Triple(response, openNowMap[placeId], linkMap[placeId])
+                } catch (e: Exception) {
+                    // 개별 place 조회 실패는 로깅만 하고 계속 진행
+                    null
                 }
             }
         }.awaitAll().filterNotNull()
-        
-        // 3. API 결과를 한 번에 DB 저장 (배치 INSERT)
-        if (apiResults.isNotEmpty()) {
+
+        // 3. API 결과를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 받기
+        val savedEntities = if (apiResults.isNotEmpty()) {
             savePlacesToDbBatch(apiResults)
+        } else {
+            emptyList()
         }
         
         // 4. 결과 합치기
@@ -79,15 +89,22 @@ class PlaceQuery(
         apiResults.forEach { (response, _, _) ->
             result[response.id] = response
         }
-        
+
         return@coroutineScope result
     }
     
     /**
      * DB에 저장 (API 응답 기반)
+     * googlePlaceId가 이미 존재하면 저장하지 않음 (unique 제약조건)
      */
-    private fun savePlaceToDb(response: PlaceDetailsResponse, openNow: Boolean?, link: String?) {
+    private fun savePlaceToDb(response: PlaceDetailsResponse, openNow: Boolean?, link: String?): PlaceEntity? {
         try {
+            // 이미 존재하는지 체크 (unique 제약조건 위반 방지)
+            val existing = placeJpaRepository.findByGooglePlaceId(response.id)
+            if (existing != null) {
+                return existing
+            }
+            
             val entity = PlaceEntity(
                 googlePlaceId = response.id,
                 name = response.displayName?.text ?: "",
@@ -105,19 +122,35 @@ class PlaceQuery(
                     "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
                 }
             )
-            placeJpaRepository.save(entity)
+            return placeJpaRepository.save(entity)
         } catch (e: Exception) {
             // 저장 실패해도 API 응답은 정상 반환
             println("DB 저장 실패: ${e.message}")
+            return null
         }
     }
     
     /**
-     * 여러 Place를 한 번에 DB 저장 (배치 INSERT)
+     * 여러 Place를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 반환
+     * 이미 존재하는 googlePlaceId는 저장하지 않음
      */
-    private fun savePlacesToDbBatch(results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>) {
+    private fun savePlacesToDbBatch(results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>): List<PlaceEntity> {
         try {
-            val entities = results.map { (response, openNow, link) ->
+            // 1. 이미 존재하는 placeId 확인
+            val placeIds = results.map { it.first.id }
+            val existingPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
+                .associateBy { it.googlePlaceId }
+            
+            // 2. 존재하지 않는 것만 필터링
+            val newResults = results.filter { (response, _, _) ->
+                response.id !in existingPlaces.keys
+            }
+            
+            if (newResults.isEmpty()) {
+                return existingPlaces.values.toList()
+            }
+
+            val entities = newResults.map { (response, openNow, link) ->
                 PlaceEntity(
                     googlePlaceId = response.id,
                     name = response.displayName?.text ?: "",
@@ -136,9 +169,12 @@ class PlaceQuery(
                     }
                 )
             }
-            placeJpaRepository.saveAll(entities)
+            
+            val savedEntities = placeJpaRepository.saveAll(entities).toList()
+            return existingPlaces.values.toList() + savedEntities
         } catch (e: Exception) {
             println("DB 배치 저장 실패: ${e.message}")
+            return emptyList()
         }
     }
     
@@ -163,7 +199,7 @@ class PlaceQuery(
                     weekdayDescriptions = entity.weekdayText.split("\n")
                 )
             } else null,
-            reviews = if (entity.topReviewRating != null && entity.topReviewText != null) {
+            reviews = if (entity.topReviewRating != null && !entity.topReviewText.isNullOrBlank()) {
                 listOf(
                     PlaceDetailsResponse.Review(
                         authorAttribution = PlaceDetailsResponse.Review.AuthorAttribution(""),
@@ -209,21 +245,26 @@ class PlaceQuery(
      * 주변 지하철역 검색
      */
     suspend fun searchNearbyStation(latitude: Double, longitude: Double): NearbyStationInfo? {
-        val response = googlePlacesClient.searchNearby(latitude, longitude)
-        val station = response?.places?.firstOrNull() ?: return null
-        
-        // 거리 계산 (Haversine formula)
-        val distance = calculateDistance(
-            lat1 = latitude,
-            lon1 = longitude,
-            lat2 = station.location.latitude,
-            lon2 = station.location.longitude
-        )
-        
-        return NearbyStationInfo(
-            name = station.displayName.text,
-            distance = distance.toInt()
-        )
+        return try {
+            val response = googlePlacesClient.searchNearby(latitude, longitude)
+            val station = response.places?.firstOrNull() ?: return null
+            
+            // 거리 계산 (Haversine formula)
+            val distance = calculateDistance(
+                lat1 = latitude,
+                lon1 = longitude,
+                lat2 = station.location.latitude,
+                lon2 = station.location.longitude
+            )
+            
+            NearbyStationInfo(
+                name = station.displayName.text,
+                distance = distance.toInt()
+            )
+        } catch (e: Exception) {
+            // 주변 역 검색 실패 시 null 반환 (선택적 기능)
+            null
+        }
     }
     
     /**
@@ -242,6 +283,13 @@ class PlaceQuery(
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
         
         return earthRadius * c
+    }
+    
+    /**
+     * Google Place ID 목록으로 Place 엔티티 조회
+     */
+    fun findByGooglePlaceIds(googlePlaceIds: List<String>): List<PlaceEntity> {
+        return placeJpaRepository.findByGooglePlaceIdIn(googlePlaceIds)
     }
     
     data class NearbyStationInfo(

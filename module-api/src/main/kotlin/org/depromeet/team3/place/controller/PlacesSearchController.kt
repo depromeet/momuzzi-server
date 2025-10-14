@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.depromeet.team3.common.ContextConstants
+import org.depromeet.team3.common.annotation.UserId
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.depromeet.team3.place.application.SearchPlacesService
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
@@ -24,7 +25,7 @@ class PlacesSearchController(
 
     @Operation(
         summary = "맛집 데이터 검색",
-        description = "키워드 입력으로 맛집 데이터를 반환 받습니다."
+        description = "키워드 입력으로 맛집 데이터를 반환 받습니다. meetingId를 포함하면 좋아요 정보가 함께 반환되며 좋아요순으로 정렬됩니다."
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "검색 성공"),
@@ -33,9 +34,16 @@ class PlacesSearchController(
     @GetMapping
     suspend fun textSearch(
         @Parameter(description = "검색 키워드", example = "강남역 야장 맛집", required = true)
-        @RequestParam query: String
+        @RequestParam query: String,
+        @Parameter(description = "모임 ID (선택사항, 좋아요 정보 포함시)", example = "1", required = false)
+        @RequestParam(required = false) meetingId: Long?,
+        @UserId userId: Long?
     ): DpmApiResponse<PlacesSearchResponse> {
-        val request = PlacesSearchRequest(query, 5)
+        val request = PlacesSearchRequest(
+            query = query,
+            meetingId = meetingId,
+            userId = userId
+        )
         val response = searchPlacesService.textSearch(request)
 
         return DpmApiResponse.ok(response)

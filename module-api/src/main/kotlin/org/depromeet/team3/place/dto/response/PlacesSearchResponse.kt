@@ -4,6 +4,7 @@ data class PlacesSearchResponse(
     val items: List<PlaceItem>
 ) {
     data class PlaceItem(
+        val placeId: Long,
         val name: String,
         val address: String,
         val rating: Double?,
@@ -14,7 +15,9 @@ data class PlacesSearchResponse(
         val weekdayText: List<String>?,
         val topReview: Review?,
         val priceRange: PriceRange?,
-        val addressDescriptor: AddressDescriptor?
+        val addressDescriptor: AddressDescriptor?,
+        val likeCount: Int = 0,
+        val isLiked: Boolean = false
     ) {
         data class Review(
             val rating: Int,
