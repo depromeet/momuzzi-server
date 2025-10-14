@@ -28,6 +28,7 @@ class PlaceLikeQuery(
             ?.let { placeLikeMapper.toDomain(it) }
     }
 
+
     @Transactional
     override suspend fun deleteByMeetingPlaceIdAndUserId(
         meetingPlaceId: Long,

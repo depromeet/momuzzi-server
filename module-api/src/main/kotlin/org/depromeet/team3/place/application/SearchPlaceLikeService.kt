@@ -5,6 +5,7 @@ import org.depromeet.team3.meetingplace.MeetingPlaceRepository
 import org.depromeet.team3.meetingplace.exception.MeetingPlaceException
 import org.depromeet.team3.placelike.PlaceLike
 import org.depromeet.team3.placelike.PlaceLikeRepository
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -32,19 +33,8 @@ class SearchPlaceLikeService(
                 detail = mapOf("meetingId" to meetingId, "placeId" to placeId)
             )
 
-        // 2. 기존 좋아요 확인
-        val existingLike = placeLikeRepository.findByMeetingPlaceIdAndUserId(
-            meetingPlaceId = meetingPlaceId,
-            userId = userId
-        )
-
-        // 3. 토글 처리
-        val isLiked = if (existingLike != null) {
-            // 좋아요 취소
-            placeLikeRepository.deleteByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
-            false
-        } else {
-            // 좋아요 추가
+        // 2. 좋아요 처리
+        val isLiked = try {
             placeLikeRepository.save(
                 PlaceLike(
                     meetingPlaceId = meetingPlaceId,
@@ -52,9 +42,12 @@ class SearchPlaceLikeService(
                 )
             )
             true
+        } catch (e: DataIntegrityViolationException) {
+            placeLikeRepository.deleteByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
+            false
         }
 
-        // 4. 현재 좋아요 수 조회
+        // 3. 현재 좋아요 수 조회
         val likeCount = placeLikeRepository.countByMeetingPlaceId(meetingPlaceId).toInt()
 
         return PlaceLikeResult(

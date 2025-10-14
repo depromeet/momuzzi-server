@@ -218,9 +218,22 @@ class SearchPlacesService(
         }
         
         return try {
-            withContext(Dispatchers.IO) {
+            val response = withContext(Dispatchers.IO) {
                 placeQuery.textSearch(query, totalFetchSize)
             }
+            
+            if (response == null) {
+                throw PlaceSearchException(
+                    org.depromeet.team3.common.exception.ErrorCode.PLACE_API_RESPONSE_NULL,
+                    detail = mapOf("query" to query)
+                )
+            }
+            
+            if (response.places.isNullOrEmpty()) {
+                logger.debug("검색 결과 없음: places is null or empty")
+            }
+            
+            response
         } catch (e: PlaceSearchException) {
             throw e
         } catch (e: Exception) {
@@ -229,10 +242,6 @@ class SearchPlacesService(
                 org.depromeet.team3.common.exception.ErrorCode.PLACE_SEARCH_FAILED,
                 detail = mapOf("query" to query, "error" to e.message)
             )
-        }.also { response ->
-            if (response.places.isNullOrEmpty()) {
-                logger.debug("검색 결과 없음: places is null or empty")
-            }
         }
     }
     

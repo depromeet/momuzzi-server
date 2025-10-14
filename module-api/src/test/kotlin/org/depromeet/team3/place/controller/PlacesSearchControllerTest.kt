@@ -34,6 +34,7 @@ class PlacesSearchControllerTest {
         val mockResponse = PlacesSearchResponse(
             items = listOf(
                 PlacesSearchResponse.PlaceItem(
+                    placeId = 1L,
                     name = "맛집 1",
                     address = "서울시 강남구",
                     rating = 4.5,
@@ -117,6 +118,7 @@ class PlacesSearchControllerTest {
         val mockResponse = PlacesSearchResponse(
             items = (1..5).map { index ->
                 PlacesSearchResponse.PlaceItem(
+                    placeId = index.toLong(),
                     name = "맛집 $index",
                     address = "서울시 강남구 $index",
                     rating = 4.0 + (index * 0.1),
@@ -161,6 +163,7 @@ class PlacesSearchControllerTest {
         val mockResponse = PlacesSearchResponse(
             items = listOf(
                 PlacesSearchResponse.PlaceItem(
+                    placeId = 1L,
                     name = "카페 & 맛집",
                     address = "서울시 강남구",
                     rating = 4.5,
