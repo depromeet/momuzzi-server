@@ -28,7 +28,7 @@ class SearchPlacesService(
 ) {
     private val logger = LoggerFactory.getLogger(SearchPlacesService::class.java)
     
-    private val totalFetchSize = 10
+    private val totalFetchSize = 15  // 10개 보장을 위해 더 많이 요청
 
     /**
      * 맛집 검색 및 전체 결과 반환
@@ -38,71 +38,100 @@ class SearchPlacesService(
     suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse = coroutineScope {
         val queryKey = request.query.trim().lowercase()
         
-        // 1. Google Places API 호출 (10개)
+        // 1. Google Places API 호출
         val response = fetchPlacesFromGoogle(queryKey)
+        
+        // 2. Google Places API 결과를 그대로 사용
         val allPlaces = response.places ?: return@coroutineScope PlacesSearchResponse(emptyList())
         
-        // 2. 전체 10개에 대해 Details 조회 및 DB 저장 (배치)
-        val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(allPlaces)
+        if (allPlaces.isEmpty()) {
+            return@coroutineScope PlacesSearchResponse(emptyList())
+        }
         
-        // 3. meetingId가 있으면 MeetingPlace 생성 또는 조회
+        // 3. 10개를 확실히 보장하기 위해 처리
+        val placesToProcess = if (allPlaces.size >= 10) {
+            allPlaces.take(10)
+        } else {
+            allPlaces
+        }
+        
+        // 4. PlaceDetails 조회 및 DB 저장 (배치)
+        val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(placesToProcess)
+        
+        if (allPlaceDetails.isEmpty()) {
+            return@coroutineScope PlacesSearchResponse(emptyList())
+        }
+        
+        // 5. 필터링 없이 Google 결과 그대로 사용
+        val relevantPlaceDetails = allPlaceDetails
+        
+        // 6. meetingId가 있으면 MeetingPlace 생성 또는 조회
         val meetingPlaces = if (request.meetingId != null) {
-            val placeDbIds = getPlaceDbIds(allPlaceDetails.map { it.placeId })
+            val placeDbIds = getPlaceDbIds(relevantPlaceDetails.map { it.placeId })
             createOrGetMeetingPlaces(request.meetingId, placeDbIds)
         } else {
             emptyList()
         }
         
-        // 4. Google Place ID -> DB Place ID 매핑
-        val googlePlaceIds = allPlaceDetails.map { it.placeId }
+        // 7. Google Place ID -> DB Place ID 매핑
+        val googlePlaceIds = relevantPlaceDetails.map { it.placeId }
         val placeIdMap = getPlaceStringIdToDbIdMap(googlePlaceIds)
         
-        // 5. 좋아요 정보 매핑 (PlaceLike 테이블 기반)
+        // 8. 좋아요 정보 매핑 (PlaceLike 테이블 기반)
         val likesMap = if (meetingPlaces.isNotEmpty()) {
             buildLikesMap(googlePlaceIds, meetingPlaces, request.userId)
         } else {
             emptyMap()
         }
         
-        // 6. infra 레이어의 결과를 API 응답 DTO로 변환
-        val items = allPlaceDetails.mapNotNull { detail ->
-            // DB Place ID가 없으면 스킵 (이론적으로는 발생하지 않아야 함)
-            val placeDbId = placeIdMap[detail.placeId] ?: return@mapNotNull null
-            val likeInfo = likesMap[detail.placeId] ?: PlaceLikeInfo(0, false)
-            
-            PlacesSearchResponse.PlaceItem(
-                placeId = placeDbId,
-                name = detail.name,
-                address = detail.address,
-                rating = detail.rating,
-                userRatingsTotal = detail.userRatingsTotal,
-                openNow = detail.openNow,
-                photos = detail.photos,
-                link = detail.link,
-                weekdayText = detail.weekdayText,
-                topReview = detail.topReview?.let { review ->
-                    PlacesSearchResponse.PlaceItem.Review(
-                        rating = review.rating,
-                        text = review.text
-                    )
-                },
-                priceRange = detail.priceRange?.let { priceRange ->
-                    PlacesSearchResponse.PlaceItem.PriceRange(
-                        startPrice = priceRange.startPrice,
-                        endPrice = priceRange.endPrice
-                    )
-                },
-                addressDescriptor = detail.addressDescriptor?.let { desc ->
-                    PlacesSearchResponse.PlaceItem.AddressDescriptor(
-                        description = desc
-                    )
-                },
-                likeCount = likeInfo.likeCount,
-                isLiked = likeInfo.isLiked
-            )
+        // 9. infra 레이어의 결과를 API 응답 DTO로 변환
+        val items = relevantPlaceDetails.mapNotNull { detail ->
+            try {
+                // DB Place ID가 없으면 스킵 (이론적으로는 발생하지 않아야 함)
+                val placeDbId = placeIdMap[detail.placeId]
+                if (placeDbId == null) {
+                    logger.warn("DB Place ID 없음: googlePlaceId=${detail.placeId}, name=${detail.name}")
+                    return@mapNotNull null
+                }
+                val likeInfo = likesMap[detail.placeId] ?: PlaceLikeInfo(0, false)
+                
+                PlacesSearchResponse.PlaceItem(
+                    placeId = placeDbId,
+                    name = detail.name,
+                    address = detail.address,
+                    rating = detail.rating,
+                    userRatingsTotal = detail.userRatingsTotal,
+                    openNow = detail.openNow,
+                    photos = detail.photos,
+                    link = detail.link,
+                    weekdayText = detail.weekdayText,
+                    topReview = detail.topReview?.let { review ->
+                        PlacesSearchResponse.PlaceItem.Review(
+                            rating = review.rating,
+                            text = review.text
+                        )
+                    },
+                    priceRange = detail.priceRange?.let { priceRange ->
+                        PlacesSearchResponse.PlaceItem.PriceRange(
+                            startPrice = priceRange.startPrice,
+                            endPrice = priceRange.endPrice
+                        )
+                    },
+                    addressDescriptor = detail.addressDescriptor?.let { desc ->
+                        PlacesSearchResponse.PlaceItem.AddressDescriptor(
+                            description = desc
+                        )
+                    },
+                    likeCount = likeInfo.likeCount,
+                    isLiked = likeInfo.isLiked
+                )
+            } catch (e: Exception) {
+                logger.warn("장소 응답 변환 실패: placeId=${detail.placeId}, error=${e.message}")
+                null
+            }
         }
         
-        // 7. meetingId가 있으면 좋아요 많은 순으로 정렬, 없으면 구글 기본 순서 유지
+        // 10. meetingId가 있으면 좋아요 많은 순으로 정렬, 없으면 구글 기본 순서 유지
         val sortedItems = if (request.meetingId != null) {
             items.sortedByDescending { it.likeCount }
         } else {
@@ -111,6 +140,7 @@ class SearchPlacesService(
         
         PlacesSearchResponse(sortedItems)
     }
+
 
     /**
      * Google Place ID(String)를 DB Place ID(Long)로 변환

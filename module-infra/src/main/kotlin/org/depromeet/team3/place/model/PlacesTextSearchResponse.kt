@@ -18,7 +18,8 @@ data class PlacesTextSearchResponse(
         @JsonProperty("userRatingCount")
         val userRatingCount: Int? = null,
         @JsonProperty("currentOpeningHours")
-        val currentOpeningHours: OpeningHours? = null
+        val currentOpeningHours: OpeningHours? = null,
+        val types: List<String>? = null
     ) {
         data class DisplayName(
             val text: String,

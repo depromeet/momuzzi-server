@@ -8,6 +8,7 @@ import org.depromeet.team3.place.client.GooglePlacesClient
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.depromeet.team3.place.model.PlacesTextSearchResponse
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 @Repository
 class PlaceQuery(
@@ -55,10 +56,48 @@ class PlaceQuery(
         linkMap: Map<String, String?> = emptyMap()
     ): Map<String, PlaceDetailsResponse> = coroutineScope {
         // 1. DB에서 일괄 조회 (1번의 쿼리) - placeIds에 포함된 것만 조회
-        val cachedPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
+        val cachedPlaces: MutableMap<String, PlaceEntity> = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
             .filter { !it.isDeleted }
             .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
             .toMap()
+            .toMutableMap()
+        
+        // 1-1. photos가 없는 기존 데이터는 API로 다시 조회해서 업데이트
+        val placesNeedingPhotos = cachedPlaces.values.filter { entity: PlaceEntity -> entity.photos.isNullOrBlank() }
+        if (placesNeedingPhotos.isNotEmpty()) {
+            println("Photos가 없는 기존 데이터 발견: ${placesNeedingPhotos.size}개, placeIds=${placesNeedingPhotos.map { it.googlePlaceId }}")
+            
+            // photos가 없는 장소들을 API로 다시 조회
+            val photoUpdateResults = placesNeedingPhotos.map { entity: PlaceEntity ->
+                entity.googlePlaceId?.let { placeId: String ->
+                    try {
+                        val response = googlePlacesClient.getPlaceDetails(placeId)
+                        Triple(response, openNowMap[placeId], linkMap[placeId])
+                    } catch (e: Exception) {
+                        println("Photos 업데이트 실패: placeId=$placeId, error=${e.message}")
+                        null
+                    }
+                }
+            }.filterNotNull()
+            
+            // photos 정보 업데이트
+            if (photoUpdateResults.isNotEmpty()) {
+                updatePhotosInDb(photoUpdateResults, openNowMap, linkMap)
+                
+                // 업데이트 후 다시 조회해서 캐시 갱신
+                val updatedPlaceIds = photoUpdateResults.map { it.first.id }
+                val updatedPlaces: Map<String, PlaceEntity> = placeJpaRepository.findByGooglePlaceIdIn(updatedPlaceIds)
+                    .filter { !it.isDeleted }
+                    .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
+                    .toMap()
+                
+                // 업데이트된 데이터만 교체 (기존 캐시는 유지)
+                updatedPlaces.forEach { (id, entity) ->
+                    cachedPlaces[id] = entity
+                }
+                println("캐시 갱신 완료: ${updatedPlaces.size}개")
+            }
+        }
 
         // 2. DB에 없는 것만 병렬로 API 호출
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }
@@ -83,12 +122,13 @@ class PlaceQuery(
         
         // 4. 결과 합치기
         val result = mutableMapOf<String, PlaceDetailsResponse>()
-        cachedPlaces.forEach { (id, entity) ->
+        cachedPlaces.forEach { (id: String, entity: PlaceEntity) ->
             result[id] = convertToPlaceDetailsResponse(entity)
         }
         apiResults.forEach { (response, _, _) ->
             result[response.id] = response
         }
+        
 
         return@coroutineScope result
     }
@@ -120,12 +160,12 @@ class PlaceQuery(
                 priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
                 addressDescriptor = response.addressDescriptor?.landmarks?.firstOrNull()?.let {
                     "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
-                }
+                },
+                photos = response.photos?.take(5)?.joinToString(",") { it.name }
             )
             return placeJpaRepository.save(entity)
         } catch (e: Exception) {
             // 저장 실패해도 API 응답은 정상 반환
-            println("DB 저장 실패: ${e.message}")
             return null
         }
     }
@@ -166,14 +206,14 @@ class PlaceQuery(
                     priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
                     addressDescriptor = response.addressDescriptor?.landmarks?.firstOrNull()?.let {
                         "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
-                    }
+                    },
+                    photos = response.photos?.take(5)?.joinToString(",") { it.name }
                 )
             }
             
             val savedEntities = placeJpaRepository.saveAll(entities).toList()
             return existingPlaces.values.toList() + savedEntities
         } catch (e: Exception) {
-            println("DB 배치 저장 실패: ${e.message}")
             return emptyList()
         }
     }
@@ -182,63 +222,155 @@ class PlaceQuery(
      * Entity를 PlaceDetailsResponse로 변환
      */
     private fun convertToPlaceDetailsResponse(entity: PlaceEntity): PlaceDetailsResponse {
-        return PlaceDetailsResponse(
-            id = entity.googlePlaceId!!,
-            displayName = PlaceDetailsResponse.DisplayName(text = entity.name),
-            formattedAddress = entity.address,
-            rating = entity.rating,
-            userRatingCount = entity.userRatingsTotal,
-            currentOpeningHours = if (entity.openNow != null || !entity.weekdayText.isNullOrBlank()) {
-                PlaceDetailsResponse.CurrentOpeningHours(
-                    openNow = entity.openNow,
-                    weekdayDescriptions = entity.weekdayText?.split("\n")
-                )
-            } else null,
-            regularOpeningHours = if (!entity.weekdayText.isNullOrBlank()) {
-                PlaceDetailsResponse.OpeningHours(
-                    weekdayDescriptions = entity.weekdayText.split("\n")
-                )
-            } else null,
-            reviews = if (entity.topReviewRating != null && !entity.topReviewText.isNullOrBlank()) {
-                listOf(
-                    PlaceDetailsResponse.Review(
-                        authorAttribution = PlaceDetailsResponse.Review.AuthorAttribution(""),
-                        rating = entity.topReviewRating,
-                        relativePublishTimeDescription = "",
-                        text = PlaceDetailsResponse.Review.TextContent(entity.topReviewText)
+        return try {
+            PlaceDetailsResponse(
+                id = entity.googlePlaceId ?: "",
+                displayName = PlaceDetailsResponse.DisplayName(text = entity.name),
+                formattedAddress = entity.address,
+                rating = entity.rating,
+                userRatingCount = entity.userRatingsTotal,
+                currentOpeningHours = if (entity.openNow != null || !entity.weekdayText.isNullOrBlank()) {
+                    PlaceDetailsResponse.CurrentOpeningHours(
+                        openNow = entity.openNow,
+                        weekdayDescriptions = entity.weekdayText?.split("\n")
                     )
-                )
-            } else null,
-            priceRange = if (entity.priceRangeStart != null || entity.priceRangeEnd != null) {
-                PlaceDetailsResponse.PriceRange(
-                    startPrice = entity.priceRangeStart?.let { parseMoney(it) },
-                    endPrice = entity.priceRangeEnd?.let { parseMoney(it) }
-                )
-            } else null,
-            addressDescriptor = if (!entity.addressDescriptor.isNullOrBlank()) {
-                PlaceDetailsResponse.AddressDescriptor(
-                    landmarks = listOf(
-                        PlaceDetailsResponse.AddressDescriptor.Landmark(
-                            name = "",
-                            displayName = PlaceDetailsResponse.AddressDescriptor.Landmark.TextContent(
-                                text = entity.addressDescriptor
+                } else null,
+                regularOpeningHours = if (!entity.weekdayText.isNullOrBlank()) {
+                    PlaceDetailsResponse.OpeningHours(
+                        weekdayDescriptions = entity.weekdayText.split("\n")
+                    )
+                } else null,
+                reviews = if (entity.topReviewRating != null && !entity.topReviewText.isNullOrBlank()) {
+                    listOf(
+                        PlaceDetailsResponse.Review(
+                            authorAttribution = PlaceDetailsResponse.Review.AuthorAttribution(""),
+                            rating = entity.topReviewRating,
+                            relativePublishTimeDescription = "",
+                            text = PlaceDetailsResponse.Review.TextContent(entity.topReviewText)
+                        )
+                    )
+                } else null,
+                priceRange = if (entity.priceRangeStart != null || entity.priceRangeEnd != null) {
+                    PlaceDetailsResponse.PriceRange(
+                        startPrice = entity.priceRangeStart?.let { parseMoney(it) },
+                        endPrice = entity.priceRangeEnd?.let { parseMoney(it) }
+                    )
+                } else null,
+                addressDescriptor = if (!entity.addressDescriptor.isNullOrBlank()) {
+                    PlaceDetailsResponse.AddressDescriptor(
+                        landmarks = listOf(
+                            PlaceDetailsResponse.AddressDescriptor.Landmark(
+                                name = "",
+                                displayName = PlaceDetailsResponse.AddressDescriptor.Landmark.TextContent(
+                                    text = entity.addressDescriptor
+                                )
                             )
                         )
                     )
-                )
-            } else null
-        )
+                } else null,
+                photos = if (!entity.photos.isNullOrBlank()) {
+                    val photoList = entity.photos.split(",").map { photoName ->
+                        PlaceDetailsResponse.Photo(
+                            name = photoName.trim(),
+                            widthPx = 400,
+                            heightPx = 400
+                        )
+                    }
+                    photoList
+                } else {
+                    null
+                }
+            )
+        } catch (e: Exception) {
+            // 변환 실패 시 기본값으로 반환
+            PlaceDetailsResponse(
+                id = entity.googlePlaceId ?: "",
+                displayName = PlaceDetailsResponse.DisplayName(text = entity.name),
+                formattedAddress = entity.address,
+                rating = entity.rating,
+                userRatingCount = entity.userRatingsTotal,
+                currentOpeningHours = null,
+                regularOpeningHours = null,
+                reviews = null,
+                priceRange = null,
+                addressDescriptor = null,
+                photos = null
+            )
+        }
+    }
+    
+    /**
+     * 기존 Place 데이터의 photos 정보 업데이트
+     */
+    @Transactional
+    private fun updatePhotosInDb(
+        results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>,
+        openNowMap: Map<String, Boolean?>,
+        linkMap: Map<String, String?>
+    ) {
+        try {
+            val placeIds = results.map { it.first.id }
+            val existingPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
+                .associateBy { it.googlePlaceId }
+            
+            val updatedEntities = results.mapNotNull { (response, _, _) ->
+                val existingEntity = existingPlaces[response.id]
+                if (existingEntity != null) {
+                    // photos 정보만 업데이트 (새로운 엔티티 생성)
+                    val photosStr = response.photos?.take(5)?.joinToString(",") { it.name }
+                    val updatedEntity = PlaceEntity(
+                        id = existingEntity.id,
+                        googlePlaceId = existingEntity.googlePlaceId,
+                        name = existingEntity.name,
+                        address = existingEntity.address,
+                        rating = existingEntity.rating,
+                        userRatingsTotal = existingEntity.userRatingsTotal,
+                        openNow = openNowMap[response.id] ?: existingEntity.openNow,
+                        link = linkMap[response.id] ?: existingEntity.link,
+                        weekdayText = response.regularOpeningHours?.weekdayDescriptions?.joinToString("\n") ?: existingEntity.weekdayText,
+                        topReviewRating = response.reviews?.firstOrNull()?.rating ?: existingEntity.topReviewRating,
+                        topReviewText = response.reviews?.firstOrNull()?.text?.text ?: existingEntity.topReviewText,
+                        priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existingEntity.priceRangeStart,
+                        priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existingEntity.priceRangeEnd,
+                        addressDescriptor = response.addressDescriptor?.landmarks?.firstOrNull()?.let {
+                            "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
+                        } ?: existingEntity.addressDescriptor,
+                        photos = photosStr,
+                        isDeleted = existingEntity.isDeleted
+                    )
+                    println("데이터 업데이트: placeId=${response.id}, photos=${photosStr?.let { "있음" } ?: "없음"}, openNow=${openNowMap[response.id]}, addressDescriptor=${response.addressDescriptor?.landmarks?.isNotEmpty() == true}")
+                    updatedEntity
+                } else {
+                    null
+                }
+            }
+            
+            if (updatedEntities.isNotEmpty()) {
+                placeJpaRepository.saveAll(updatedEntities)
+                println("Photos 업데이트 완료: ${updatedEntities.size}개")
+            }
+        } catch (e: Exception) {
+            println("Photos 업데이트 실패: ${e.message}")
+        }
     }
     
     /**
      * "KRW 10000" 형식을 Money로 파싱
      */
     private fun parseMoney(priceStr: String): PlaceDetailsResponse.PriceRange.Money {
-        val parts = priceStr.split(" ")
-        return PlaceDetailsResponse.PriceRange.Money(
-            currencyCode = parts.getOrNull(0) ?: "KRW",
-            units = parts.getOrNull(1)
-        )
+        return try {
+            val parts = priceStr.split(" ")
+            PlaceDetailsResponse.PriceRange.Money(
+                currencyCode = parts.getOrNull(0) ?: "KRW",
+                units = parts.getOrNull(1)
+            )
+        } catch (e: Exception) {
+            // 파싱 실패 시 기본값 반환
+            PlaceDetailsResponse.PriceRange.Money(
+                currencyCode = "KRW",
+                units = null
+            )
+        }
     }
     
     /**

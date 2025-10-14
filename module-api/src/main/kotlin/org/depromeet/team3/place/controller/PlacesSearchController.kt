@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.slf4j.LoggerFactory
 
 @Tag(name = "맛집 데이터", description = "구글 플레이스 맛집 검색 API")
 @RestController
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 class PlacesSearchController(
     private val searchPlacesService: SearchPlacesService
 ) {
+    private val logger = LoggerFactory.getLogger(PlacesSearchController::class.java)
 
     @Operation(
         summary = "맛집 데이터 검색",
@@ -45,7 +47,6 @@ class PlacesSearchController(
             userId = userId
         )
         val response = searchPlacesService.textSearch(request)
-
         return DpmApiResponse.ok(response)
     }
 }
