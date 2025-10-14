@@ -3,7 +3,6 @@ package org.depromeet.team3.place.application
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meetingplace.MeetingPlace
 import org.depromeet.team3.meetingplace.MeetingPlaceRepository
 import org.depromeet.team3.place.util.PlaceDetailsProcessor
@@ -12,6 +11,7 @@ import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
 import org.depromeet.team3.place.exception.PlaceSearchException
 import org.depromeet.team3.place.model.PlacesTextSearchResponse
+import org.depromeet.team3.placelike.PlaceLikeRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -23,7 +23,8 @@ import org.springframework.stereotype.Service
 class SearchPlacesService(
     private val placeQuery: PlaceQuery,
     private val placeDetailsProcessor: PlaceDetailsProcessor,
-    private val meetingPlaceRepository: MeetingPlaceRepository
+    private val meetingPlaceRepository: MeetingPlaceRepository,
+    private val placeLikeRepository: PlaceLikeRepository
 ) {
     private val logger = LoggerFactory.getLogger(SearchPlacesService::class.java)
     
@@ -53,34 +54,25 @@ class SearchPlacesService(
             emptyList()
         }
         
-        // 4. 좋아요 정보 매핑 (MeetingPlace에 좋아요 정보 포함되어 있음)
+        // 4. Google Place ID -> DB Place ID 매핑
+        val googlePlaceIds = allPlaceDetails.map { it.placeId }
+        val placeIdMap = getPlaceStringIdToDbIdMap(googlePlaceIds)
+        
+        // 5. 좋아요 정보 매핑 (PlaceLike 테이블 기반)
         val likesMap = if (meetingPlaces.isNotEmpty()) {
-            val placeStringIdToDbId = getPlaceStringIdToDbIdMap(allPlaceDetails.map { it.placeId })
-            val meetingPlaceByPlaceDbId = meetingPlaces.associateBy { it.placeId }
-            
-            allPlaceDetails.associate { detail ->
-                val placeDbId = placeStringIdToDbId[detail.placeId]
-                val meetingPlace = if (placeDbId != null) meetingPlaceByPlaceDbId[placeDbId] else null
-                
-                detail.placeId to PlaceLikeInfo(
-                    likeCount = meetingPlace?.likeCount ?: 0,
-                    isLiked = if (request.userId != null && meetingPlace != null) {
-                        meetingPlace.isLikedBy(request.userId)
-                    } else {
-                        false
-                    }
-                )
-            }
+            buildLikesMap(googlePlaceIds, meetingPlaces, request.userId)
         } else {
             emptyMap()
         }
         
-        // 5. infra 레이어의 결과를 API 응답 DTO로 변환
-        val items = allPlaceDetails.map { detail ->
+        // 6. infra 레이어의 결과를 API 응답 DTO로 변환
+        val items = allPlaceDetails.mapNotNull { detail ->
+            // DB Place ID가 없으면 스킵 (이론적으로는 발생하지 않아야 함)
+            val placeDbId = placeIdMap[detail.placeId] ?: return@mapNotNull null
             val likeInfo = likesMap[detail.placeId] ?: PlaceLikeInfo(0, false)
             
             PlacesSearchResponse.PlaceItem(
-                placeId = detail.placeId,
+                placeId = placeDbId,
                 name = detail.name,
                 address = detail.address,
                 rating = detail.rating,
@@ -111,7 +103,7 @@ class SearchPlacesService(
             )
         }
         
-        // 6. meetingId가 있으면 좋아요 많은 순으로 정렬, 없으면 구글 기본 순서 유지
+        // 7. meetingId가 있으면 좋아요 많은 순으로 정렬, 없으면 구글 기본 순서 유지
         val sortedItems = if (request.meetingId != null) {
             items.sortedByDescending { it.likeCount }
         } else {
@@ -167,6 +159,47 @@ class SearchPlacesService(
             existingMeetingPlaces + saved
         } else {
             existingMeetingPlaces
+        }
+    }
+
+    /**
+     * 좋아요 정보 맵 생성
+     * - PlaceLike 테이블에서 좋아요 데이터를 조회하여 각 Place별 좋아요 수와 사용자 좋아요 여부 계산
+     */
+    private suspend fun buildLikesMap(
+        googlePlaceIds: List<String>,
+        meetingPlaces: List<MeetingPlace>,
+        userId: Long?
+    ): Map<String, PlaceLikeInfo> {
+        // Google Place ID -> DB Place ID 매핑
+        val placeStringIdToDbId = getPlaceStringIdToDbIdMap(googlePlaceIds)
+        
+        // MeetingPlace ID 목록 추출
+        val meetingPlaceIds = meetingPlaces.mapNotNull { it.id }
+        
+        if (meetingPlaceIds.isEmpty()) {
+            return emptyMap()
+        }
+        
+        // PlaceLike 조회 (한 번의 쿼리로 모든 좋아요 조회)
+        val placeLikes = placeLikeRepository.findByMeetingPlaceIds(meetingPlaceIds)
+        
+        // MeetingPlace ID -> Place DB ID 매핑
+        val meetingPlaceIdToPlaceDbId = meetingPlaces.associate { it.id!! to it.placeId }
+        
+        // Place DB ID별 좋아요 정보 그룹화
+        val likesByPlaceDbId = placeLikes
+            .groupBy { meetingPlaceIdToPlaceDbId[it.meetingPlaceId] }
+        
+        // Google Place ID별 좋아요 정보 생성
+        return googlePlaceIds.associateWith { googlePlaceId ->
+            val placeDbId = placeStringIdToDbId[googlePlaceId]
+            val likes = if (placeDbId != null) likesByPlaceDbId[placeDbId] ?: emptyList() else emptyList()
+            
+            PlaceLikeInfo(
+                likeCount = likes.size,
+                isLiked = userId != null && likes.any { it.userId == userId }
+            )
         }
     }
 

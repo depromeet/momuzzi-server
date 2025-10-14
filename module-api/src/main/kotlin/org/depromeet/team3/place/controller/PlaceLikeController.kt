@@ -21,10 +21,11 @@ class PlaceLikeController(
 
     @Operation(
         summary = "맛집 좋아요 토글",
-        description = "맛집에 좋아요를 추가하거나 취소합니다. 이미 좋아요가 있으면 취소, 없으면 추가합니다."
+        description = "맛집에 좋아요를 추가하거나 취소합니다."
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "좋아요 토글 성공"),
+        ApiResponse(responseCode = "404", description = "MeetingPlace를 찾을 수 없음"),
         ApiResponse(responseCode = "400", description = "잘못된 요청")
     )
     @PostMapping
@@ -35,11 +36,12 @@ class PlaceLikeController(
         @PathVariable placeId: Long,
         @UserId userId: Long
     ): DpmApiResponse<PlaceLikeResponse> {
-        val isLiked = searchPlaceLikeService.toggle(meetingId, userId, placeId)
+        val result = searchPlaceLikeService.toggle(meetingId, userId, placeId)
         
         val response = PlaceLikeResponse(
-            isLiked = isLiked,
-            message = if (isLiked) "좋아요를 추가했습니다." else "좋아요를 취소했습니다."
+            isLiked = result.isLiked,
+            likeCount = result.likeCount,
+            message = if (result.isLiked) "좋아요를 추가했습니다." else "좋아요를 취소했습니다."
         )
         return DpmApiResponse.ok(response)
     }

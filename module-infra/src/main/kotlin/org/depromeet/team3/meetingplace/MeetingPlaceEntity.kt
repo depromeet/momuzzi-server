@@ -27,10 +27,7 @@ class MeetingPlaceEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "place_id", nullable = false)
     val place: PlaceEntity,
-    
+
     @Column(name = "like_count", nullable = false)
-    var likeCount: Int = 0,
-    
-    @Column(name = "liked_user_ids", columnDefinition = "JSON")
-    var likedUserIds: String = "[]"     // JSON array: [1, 2, 3]
+    val likeCount: Int = 0
 ) : BaseTimeEntity()

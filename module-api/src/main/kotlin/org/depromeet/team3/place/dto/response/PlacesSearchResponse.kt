@@ -4,7 +4,7 @@ data class PlacesSearchResponse(
     val items: List<PlaceItem>
 ) {
     data class PlaceItem(
-        val placeId: String,
+        val placeId: Long,
         val name: String,
         val address: String,
         val rating: Double?,

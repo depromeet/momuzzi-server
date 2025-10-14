@@ -2,15 +2,14 @@ package org.depromeet.team3.placelike
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.depromeet.team3.placelike.PlaceLike
-import org.depromeet.team3.placelike.PlaceLikeRepository
+import org.depromeet.team3.mapper.PlaceLikeMapper
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 @Component
 class PlaceLikeQuery(
     private val placeLikeJpaRepository: PlaceLikeJpaRepository,
-    private val placeLikeMapper: org.depromeet.team3.mapper.PlaceLikeMapper
+    private val placeLikeMapper: PlaceLikeMapper
 ) : PlaceLikeRepository {
 
     @Transactional
@@ -33,8 +32,11 @@ class PlaceLikeQuery(
     override suspend fun deleteByMeetingPlaceIdAndUserId(
         meetingPlaceId: Long,
         userId: Long
-    ) = withContext(Dispatchers.IO) {
-        placeLikeJpaRepository.deleteByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
+    ): Unit = withContext(Dispatchers.IO) {
+        // 먼저 엔티티를 조회한 후 삭제 (더 안전한 방식)
+        placeLikeJpaRepository.findByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
+            ?.let { placeLikeJpaRepository.delete(it) }
+        Unit
     }
 
     @Transactional(readOnly = true)
@@ -46,7 +48,11 @@ class PlaceLikeQuery(
     @Transactional(readOnly = true)
     override suspend fun findByMeetingPlaceIds(meetingPlaceIds: List<Long>): List<PlaceLike> =
         withContext(Dispatchers.IO) {
-            placeLikeJpaRepository.findByMeetingPlaceIdIn(meetingPlaceIds)
-                .map { placeLikeMapper.toDomain(it) }
+            if (meetingPlaceIds.isEmpty()) {
+                emptyList()
+            } else {
+                placeLikeJpaRepository.findByMeetingPlaceIdIn(meetingPlaceIds)
+                    .map { placeLikeMapper.toDomain(it) }
+            }
         }
 }
