@@ -57,10 +57,10 @@ class PlaceDetailsProcessor(
                     
 
                     val addressDescriptor = if (placeDetails.addressDescriptor != null) {
-                        // DB 캐시 값도 역 정보인지 검증
+                        // DB 캐시 값도 역 정보인지 엄격하게 검증
                         val cachedDesc = placeDetails.addressDescriptor.landmarks?.firstOrNull()?.displayName?.text
-                        if (cachedDesc != null && cachedDesc.contains("역")) {
-                            PlaceAddressResolver.AddressDescriptorResult(description = cachedDesc)
+                        if (placeAddressResolver.isValidAddressDescriptor(cachedDesc)) {
+                            PlaceAddressResolver.AddressDescriptorResult(description = cachedDesc!!)
                         } else {
                             // 역 정보가 아니면 다시 계산
                             placeAddressResolver.resolveAddressDescriptor(placeDetails)

@@ -173,11 +173,30 @@ class PlaceAddressResolver(
     }
     
     /**
+     * 캐시된 addressDescriptor가 유효한 역 정보인지 검증
+     * 예: "신논현역 도보 약 1분" -> true, "역삼동" -> false, "갤러리자인제노" -> false
+     */
+    fun isValidAddressDescriptor(description: String?): Boolean {
+        if (description.isNullOrBlank()) return false
+        
+        // "역" 문자가 포함되어 있는지 확인
+        if (!description.contains("역")) return false
+        
+        // 역 이름 추출 (첫 번째 "역"까지)
+        val stationPattern = Regex("([가-힣]+역)")
+        val match = stationPattern.find(description) ?: return false
+        val stationName = match.groupValues[1]
+        
+        // isValidStationName으로 엄격하게 검증
+        return isValidStationName(stationName)
+    }
+    
+    /**
      * 유효한 역 이름인지 검증
      */
     private fun isValidStationName(name: String): Boolean {
         // "역"으로 끝나지 않으면 false
-         if (!name.endsWith("역")) return false
+        if (!name.endsWith("역")) return false
 
         // 너무 짧으면 false (예: "역")
         if (name.length <= 1) return false

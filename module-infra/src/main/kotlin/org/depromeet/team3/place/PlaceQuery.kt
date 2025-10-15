@@ -63,9 +63,9 @@ class PlaceQuery(
             .toMap()
             .toMutableMap()
         
-        // 1-1. photos 또는 addressDescriptor가 없는 기존 데이터는 API로 다시 조회해서 업데이트
+        // 1-1. photos 또는 addressDescriptor가 없거나 유효하지 않은 기존 데이터는 API로 다시 조회해서 업데이트
         val placesNeedingUpdate = cachedPlaces.values.filter { entity: PlaceEntity -> 
-            entity.photos.isNullOrBlank() || entity.addressDescriptor.isNullOrBlank()
+            entity.photos.isNullOrBlank() || !placeAddressResolver.isValidAddressDescriptor(entity.addressDescriptor)
         }
         if (placesNeedingUpdate.isNotEmpty()) {
 
