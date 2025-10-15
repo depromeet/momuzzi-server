@@ -13,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional
 @Repository
 class PlaceQuery(
     private val googlePlacesClient: GooglePlacesClient,
-    private val placeJpaRepository: PlaceJpaRepository
+    private val placeJpaRepository: PlaceJpaRepository,
+    private val placeAddressResolver: org.depromeet.team3.place.util.PlaceAddressResolver
 ) {
     /**
      * 텍스트 검색
@@ -62,30 +63,30 @@ class PlaceQuery(
             .toMap()
             .toMutableMap()
         
-        // 1-1. photos가 없는 기존 데이터는 API로 다시 조회해서 업데이트
-        val placesNeedingPhotos = cachedPlaces.values.filter { entity: PlaceEntity -> entity.photos.isNullOrBlank() }
-        if (placesNeedingPhotos.isNotEmpty()) {
-            println("Photos가 없는 기존 데이터 발견: ${placesNeedingPhotos.size}개, placeIds=${placesNeedingPhotos.map { it.googlePlaceId }}")
-            
-            // photos가 없는 장소들을 API로 다시 조회
-            val photoUpdateResults = placesNeedingPhotos.map { entity: PlaceEntity ->
+        // 1-1. photos 또는 addressDescriptor가 없거나 유효하지 않은 기존 데이터는 API로 다시 조회해서 업데이트
+        val placesNeedingUpdate = cachedPlaces.values.filter { entity: PlaceEntity -> 
+            entity.photos.isNullOrBlank() || !placeAddressResolver.isValidAddressDescriptor(entity.addressDescriptor)
+        }
+        if (placesNeedingUpdate.isNotEmpty()) {
+
+            // 업데이트가 필요한 장소들을 API로 다시 조회
+            val updateResults = placesNeedingUpdate.map { entity: PlaceEntity ->
                 entity.googlePlaceId?.let { placeId: String ->
                     try {
                         val response = googlePlacesClient.getPlaceDetails(placeId)
                         Triple(response, openNowMap[placeId], linkMap[placeId])
                     } catch (e: Exception) {
-                        println("Photos 업데이트 실패: placeId=$placeId, error=${e.message}")
                         null
                     }
                 }
             }.filterNotNull()
             
-            // photos 정보 업데이트
-            if (photoUpdateResults.isNotEmpty()) {
-                updatePhotosInDb(photoUpdateResults, openNowMap, linkMap)
+            // photos 및 addressDescriptor 정보 업데이트
+            if (updateResults.isNotEmpty()) {
+                updatePhotosInDb(updateResults, openNowMap, linkMap)
                 
                 // 업데이트 후 다시 조회해서 캐시 갱신
-                val updatedPlaceIds = photoUpdateResults.map { it.first.id }
+                val updatedPlaceIds = updateResults.map { it.first.id }
                 val updatedPlaces: Map<String, PlaceEntity> = placeJpaRepository.findByGooglePlaceIdIn(updatedPlaceIds)
                     .filter { !it.isDeleted }
                     .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
@@ -95,7 +96,6 @@ class PlaceQuery(
                 updatedPlaces.forEach { (id, entity) ->
                     cachedPlaces[id] = entity
                 }
-                println("캐시 갱신 완료: ${updatedPlaces.size}개")
             }
         }
 
@@ -135,13 +135,16 @@ class PlaceQuery(
      * DB에 저장 (API 응답 기반)
      * googlePlaceId가 이미 존재하면 저장하지 않음 (unique 제약조건)
      */
-    private fun savePlaceToDb(response: PlaceDetailsResponse, openNow: Boolean?, link: String?): PlaceEntity? {
+    private suspend fun savePlaceToDb(response: PlaceDetailsResponse, openNow: Boolean?, link: String?): PlaceEntity? {
         try {
             // 이미 존재하는지 체크 (unique 제약조건 위반 방지)
             val existing = placeJpaRepository.findByGooglePlaceId(response.id)
             if (existing != null) {
                 return existing
             }
+            
+            // PlaceAddressResolver로 addressDescriptor 계산
+            val addressDescriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
             
             val entity = PlaceEntity(
                 googlePlaceId = response.id,
@@ -156,9 +159,7 @@ class PlaceQuery(
                 topReviewText = response.reviews?.firstOrNull()?.text?.text,
                 priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
                 priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
-                addressDescriptor = response.addressDescriptor?.landmarks?.firstOrNull()?.let {
-                    "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
-                },
+                addressDescriptor = addressDescriptorResult?.description,
                 photos = response.photos?.take(5)?.joinToString(",") { it.name }
             )
             return placeJpaRepository.save(entity)
@@ -172,7 +173,7 @@ class PlaceQuery(
      * 여러 Place를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 반환
      * 이미 존재하는 googlePlaceId는 저장하지 않음
      */
-    private fun savePlacesToDbBatch(results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>): List<PlaceEntity> {
+    private suspend fun savePlacesToDbBatch(results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>): List<PlaceEntity> {
         try {
             // 1. 이미 존재하는 placeId 확인
             val placeIds = results.map { it.first.id }
@@ -188,7 +189,10 @@ class PlaceQuery(
                 return existingPlaces.values.toList()
             }
 
+            // 3. 각 response에 대해 addressDescriptor 계산
             val entities = newResults.map { (response, openNow, link) ->
+                val addressDescriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
+                
                 PlaceEntity(
                     googlePlaceId = response.id,
                     name = response.displayName?.text ?: "",
@@ -202,9 +206,7 @@ class PlaceQuery(
                     topReviewText = response.reviews?.firstOrNull()?.text?.text,
                     priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
                     priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
-                    addressDescriptor = response.addressDescriptor?.landmarks?.firstOrNull()?.let {
-                        "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
-                    },
+                    addressDescriptor = addressDescriptorResult?.description,
                     photos = response.photos?.take(5)?.joinToString(",") { it.name }
                 )
             }
@@ -301,7 +303,7 @@ class PlaceQuery(
      * 기존 Place 데이터의 photos 정보 업데이트
      */
     @Transactional
-    fun updatePhotosInDb(
+    suspend fun updatePhotosInDb(
         results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>,
         openNowMap: Map<String, Boolean?>,
         linkMap: Map<String, String?>
@@ -314,6 +316,9 @@ class PlaceQuery(
             val updatedEntities = results.mapNotNull { (response, _, _) ->
                 val existingEntity = existingPlaces[response.id]
                 if (existingEntity != null) {
+                    // PlaceAddressResolver로 addressDescriptor 계산
+                    val addressDescriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
+                    
                     // photos 정보만 업데이트 (새로운 엔티티 생성)
                     val photosStr = response.photos?.take(5)?.joinToString(",") { it.name }
                     val updatedEntity = PlaceEntity(
@@ -330,13 +335,10 @@ class PlaceQuery(
                         topReviewText = response.reviews?.firstOrNull()?.text?.text ?: existingEntity.topReviewText,
                         priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existingEntity.priceRangeStart,
                         priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existingEntity.priceRangeEnd,
-                        addressDescriptor = response.addressDescriptor?.landmarks?.firstOrNull()?.let {
-                            "${it.displayName?.text ?: ""} 도보 약 ${(it.straightLineDistanceMeters ?: 0.0).toInt()}m"
-                        } ?: existingEntity.addressDescriptor,
+                        addressDescriptor = addressDescriptorResult?.description ?: existingEntity.addressDescriptor,
                         photos = photosStr,
                         isDeleted = existingEntity.isDeleted
                     )
-                    println("데이터 업데이트: placeId=${response.id}, photos=${photosStr?.let { "있음" } ?: "없음"}, openNow=${openNowMap[response.id]}, addressDescriptor=${response.addressDescriptor?.landmarks?.isNotEmpty() == true}")
                     updatedEntity
                 } else {
                     null
@@ -345,10 +347,8 @@ class PlaceQuery(
             
             if (updatedEntities.isNotEmpty()) {
                 placeJpaRepository.saveAll(updatedEntities)
-                println("Photos 업데이트 완료: ${updatedEntities.size}개")
             }
         } catch (e: Exception) {
-            println("Photos 업데이트 실패: ${e.message}")
             throw e
         }
     }

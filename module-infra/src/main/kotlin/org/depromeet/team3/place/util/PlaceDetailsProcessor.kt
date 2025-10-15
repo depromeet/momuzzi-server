@@ -40,10 +40,8 @@ class PlaceDetailsProcessor(
             
             // 2. 배치로 Details 조회 (DB 캐싱 + 병렬 API 호출 + 배치 저장)
             val placeIds = places.map { it.id }
-            logger.debug("Place Details 배치 조회 시작: placeIds=$placeIds")
             val detailsMap = placeQuery.getPlaceDetailsBatch(placeIds, openNowMap, linkMap)
-            logger.debug("Place Details 배치 조회 완료: detailsMap 크기=${detailsMap.size}")
-            
+
             // 3. 각 place를 PlaceDetailResult로 변환
             places.mapNotNull { place ->
                 val placeDetails = detailsMap[place.id]
@@ -56,7 +54,21 @@ class PlaceDetailsProcessor(
                     val topReview = extractTopReview(placeDetails)
                     val photos = extractPhotos(placeDetails)
                     val priceRange = extractPriceRange(placeDetails)
-                    val addressDescriptor = placeAddressResolver.resolveAddressDescriptor(placeDetails)
+                    
+
+                    val addressDescriptor = if (placeDetails.addressDescriptor != null) {
+                        // DB 캐시 값도 역 정보인지 엄격하게 검증
+                        val cachedDesc = placeDetails.addressDescriptor.landmarks?.firstOrNull()?.displayName?.text
+                        if (placeAddressResolver.isValidAddressDescriptor(cachedDesc)) {
+                            PlaceAddressResolver.AddressDescriptorResult(description = cachedDesc!!)
+                        } else {
+                            // 역 정보가 아니면 다시 계산
+                            placeAddressResolver.resolveAddressDescriptor(placeDetails)
+                        }
+                    } else {
+                        placeAddressResolver.resolveAddressDescriptor(placeDetails)
+                    }
+                    
                     val koreanName = koreanNames[place.id] ?: place.displayName.text
                     val openNowValue = placeDetails.currentOpeningHours?.openNow ?: place.currentOpeningHours?.openNow
                     
@@ -137,27 +149,21 @@ class PlaceDetailsProcessor(
             }
             
             if (placeDetails.photos.isEmpty()) {
-                logger.debug("placeDetails.photos가 비어있습니다. placeId: ${placeDetails.id}")
                 return null
             }
             
-            logger.debug("사진 추출 시작. placeId: ${placeDetails.id}, photos 개수: ${placeDetails.photos.size}")
-            
+
             val photoUrls = placeDetails.photos.take(5).mapNotNull { photo ->
                 try {
                     val photoUrl = PlaceFormatter.generatePhotoUrl(photo.name, googlePlacesApiProperties.apiKey)
-                    logger.debug("사진 URL 생성 성공: ${photo.name} -> $photoUrl")
                     photoUrl
                 } catch (e: Exception) {
-                    logger.warn("사진 URL 생성 실패: photoName=${photo.name}, error=${e.message}")
                     null
                 }
             }
             
-            logger.debug("사진 URL 추출 완료. placeId: ${placeDetails.id}, 생성된 URL 개수: ${photoUrls.size}")
             photoUrls
         } catch (e: Exception) {
-            logger.warn("사진 추출 실패: placeId=${placeDetails?.id}, error=${e.message}")
             null
         }
     }
