@@ -301,7 +301,7 @@ class PlaceQuery(
      * 기존 Place 데이터의 photos 정보 업데이트
      */
     @Transactional
-    private fun updatePhotosInDb(
+    fun updatePhotosInDb(
         results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>,
         openNowMap: Map<String, Boolean?>,
         linkMap: Map<String, String?>
@@ -349,6 +349,7 @@ class PlaceQuery(
             }
         } catch (e: Exception) {
             println("Photos 업데이트 실패: ${e.message}")
+            throw e
         }
     }
     
