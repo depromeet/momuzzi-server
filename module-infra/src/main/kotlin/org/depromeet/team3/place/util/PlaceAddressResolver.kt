@@ -41,7 +41,7 @@ class PlaceAddressResolver(
                 } else {
                     logger.debug("역 정보 없음, Nearby Search API 호출")
                     // 2. 역 정보가 없으면 Nearby Search API 호출 (fallback)
-                    searchNearbyStation(placeDetails.location)
+                    searchNearbyStation(placeDetails?.location)
                 }
             } ?: run {
                 logger.debug("addressDescriptor가 null입니다, 주소에서 역 정보 추출 시도")

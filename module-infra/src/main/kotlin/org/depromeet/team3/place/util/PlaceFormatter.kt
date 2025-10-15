@@ -17,7 +17,7 @@ object PlaceFormatter {
      * Photo name 형식: places/{place_id}/photos/{photo_reference}
      */
     fun generatePhotoUrl(photoName: String, apiKey: String): String {
-        return "https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}"
+        return "https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=1000&maxWidthPx=1000&key=${apiKey}"
     }
     
     /**
