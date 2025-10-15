@@ -2,17 +2,21 @@ package org.depromeet.team3.place.util
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.depromeet.team3.place.PlaceQuery
+import org.depromeet.team3.place.client.GooglePlacesClient
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * 주소 및 역 정보 처리 담당
  */
 @Component
 class PlaceAddressResolver(
-    private val placeQuery: PlaceQuery
+    private val googlePlacesClient: GooglePlacesClient
 ) {
     private val logger = LoggerFactory.getLogger(PlaceAddressResolver::class.java)
 
@@ -25,37 +29,33 @@ class PlaceAddressResolver(
         placeDetails: PlaceDetailsResponse?
     ): AddressDescriptorResult? {
         return try {
-            logger.debug("addressDescriptor 처리 시작: placeId=${placeDetails?.id}")
-            placeDetails?.addressDescriptor?.let { descriptor ->
-                logger.debug("addressDescriptor 발견: landmarks=${descriptor.landmarks?.size ?: 0}개")
-                // 1. addressDescriptor에서 역 정보 먼저 찾기
+            val placeName = placeDetails?.displayName?.text ?: "unknown"
+
+            // 1. addressDescriptor에서 역 정보 먼저 찾기
+            val fromDescriptor = placeDetails?.addressDescriptor?.let { descriptor ->
                 val stationLandmark = findStationLandmark(descriptor)
-                
                 if (stationLandmark != null) {
-                    logger.debug("역 정보 발견: ${stationLandmark.displayName?.text}, 거리: ${stationLandmark.straightLineDistanceMeters}m")
-                    // 역 정보가 있으면 바로 사용
                     createAddressDescriptor(
                         name = stationLandmark.displayName?.text,
                         distance = stationLandmark.straightLineDistanceMeters?.toInt()
                     )
                 } else {
-                    logger.debug("역 정보 없음, Nearby Search API 호출")
-                    // 2. 역 정보가 없으면 Nearby Search API 호출 (fallback)
-                    searchNearbyStation(placeDetails?.location)
-                }
-            } ?: run {
-                logger.debug("addressDescriptor가 null입니다, 주소에서 역 정보 추출 시도")
-                // 3. addressDescriptor가 없으면 주소에서 역 정보 추출 시도
-                extractStationFromAddress(placeDetails?.formattedAddress) ?: run {
-                    // 4. 역 정보도 없으면 기본 주소 정보 제공
-                    logger.debug("역 정보도 없음, 기본 주소 정보 제공")
-                    placeDetails?.formattedAddress?.let { address ->
-                        AddressDescriptorResult(
-                            description = address.split(",").firstOrNull()?.trim() ?: address
-                        )
-                    }
+                    null
                 }
             }
+            
+            // 2. addressDescriptor에 역 정보가 없으면 Nearby Search API 호출
+            if (fromDescriptor != null) {
+                return fromDescriptor
+            }
+            
+            val fromNearbySearch = searchNearbyStation(placeDetails?.location)
+            if (fromNearbySearch != null) {
+                return fromNearbySearch
+            }
+            
+            // 3. Nearby Search에도 없으면 주소에서 역 정보 추출 시도
+            extractStationFromAddress(placeDetails?.formattedAddress)
         } catch (e: Exception) {
             logger.warn("addressDescriptor 처리 실패", e)
             null
@@ -64,6 +64,7 @@ class PlaceAddressResolver(
     
     /**
      * AddressDescriptor에서 역 정보 찾기
+     * 역으로 끝나는 이름만 허용 (일반 건물 제외)
      */
     private fun findStationLandmark(
         descriptor: PlaceDetailsResponse.AddressDescriptor
@@ -71,11 +72,10 @@ class PlaceAddressResolver(
         return try {
             descriptor.landmarks
                 ?.filter { landmark ->
-                    val types = landmark.types ?: emptyList()
-                    types.contains("transit_station") ||
-                    types.contains("subway_station") ||
-                    types.contains("train_station") ||
-                    landmark.displayName?.text?.endsWith("역") == true
+                    val displayName = landmark.displayName?.text ?: return@filter false
+                    
+                    // isValidStationName으로 통합 검증
+                    isValidStationName(displayName)
                 }
                 ?.minByOrNull { it.straightLineDistanceMeters ?: Double.MAX_VALUE }
         } catch (e: Exception) {
@@ -86,89 +86,131 @@ class PlaceAddressResolver(
     
     /**
      * Nearby Search API를 통해 가까운 역 찾기
+     * 반경 2000m까지 검색 (도보 25분 거리)
      */
     private suspend fun searchNearbyStation(
         location: PlaceDetailsResponse.Location?
     ): AddressDescriptorResult? {
         return location?.let {
             withContext(Dispatchers.IO) {
-                val nearbyStation = placeQuery.searchNearbyStation(
-                    latitude = location.latitude,
-                    longitude = location.longitude
-                )
-                nearbyStation?.let { station ->
-                    createAddressDescriptor(
-                        name = station.name,
-                        distance = station.distance
+                try {
+                    val response = googlePlacesClient.searchNearby(location.latitude, location.longitude, radius = 2000.0)
+                    val station = response.places?.firstOrNull() ?: return@withContext null
+                    
+                    // 거리 계산 (Haversine formula)
+                    val distance = calculateDistance(
+                        lat1 = location.latitude,
+                        lon1 = location.longitude,
+                        lat2 = station.location.latitude,
+                        lon2 = station.location.longitude
                     )
+                    
+                    createAddressDescriptor(
+                        name = station.displayName.text,
+                        distance = distance.toInt()
+                    )
+                } catch (e: Exception) {
+                    logger.warn("주변 역 검색 실패: ${e.message}")
+                    null
                 }
             }
         }
     }
     
     /**
+     * 두 지점 간의 거리 계산 (Haversine formula, 결과는 미터 단위)
+     */
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val earthRadius = 6371000.0 // 지구 반지름 (미터)
+        
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+        
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        
+        return earthRadius * c
+    }
+    
+    /**
      * 주소에서 역 정보 추출
+     * "역" 뒤에 다른 글자가 붙으면 매장명으로 간주하고 제외 (예: 경복궁역점)
      */
     private fun extractStationFromAddress(address: String?): AddressDescriptorResult? {
         return try {
             if (address.isNullOrBlank()) return null
             
-            logger.debug("주소에서 역 정보 추출 시도: $address")
-            
-            // 주소에서 역 정보 패턴 찾기 (더 간단하고 확실한 패턴)
+            // 주소에서 역 정보 패턴 찾기
+            // "역" 뒤에 공백, 숫자, "번", "출구", "m", "도보", "분"만 허용 (역점, 역삼 등 제외)
             val stationPatterns = listOf(
-                Regex("([가-힣]+역)"),
-                Regex("([가-힣]+역\\s*[0-9]*번?출구?)"),
-                Regex("([가-힣]+역\\s*[0-9]*번?출구?\\s*[0-9]*m)"),
-                Regex("([가-힣]+역\\s*[0-9]*m)"),
-                Regex("([가-힣]+역\\s*도보\\s*[0-9]*분?)")
+                Regex("([가-힣]+역)(?=\\s|[0-9]|번|출구|도보|$)"),  // 역 뒤에 특정 문자만 허용
+                Regex("([가-힣]+역)\\s*[0-9]*번?출구"),
+                Regex("([가-힣]+역)\\s*도보")
             )
-            
+
             for (pattern in stationPatterns) {
                 val match = pattern.find(address)
                 if (match != null) {
                     val stationName = match.groupValues[1].trim()
-                    logger.debug("주소에서 역 정보 발견: $stationName")
-                    return AddressDescriptorResult(
-                        description = stationName
-                    )
+
+                    // "역점", "역전", "역삼" 등 매장명/지명 제외
+                    if (isValidStationName(stationName)) {
+                        return AddressDescriptorResult(
+                            description = stationName
+                        )
+                    }
                 }
             }
             
-            // 역 정보를 찾지 못했으면 기본 주소 정보라도 제공
-            logger.debug("역 정보를 찾을 수 없음, 기본 주소 정보 제공")
-            val basicAddress = address.split(",").firstOrNull()?.trim()
-            if (!basicAddress.isNullOrBlank()) {
-                return AddressDescriptorResult(
-                    description = basicAddress
-                )
-            }
-            
+            // 역 정보를 찾지 못하면 null 반환
             null
         } catch (e: Exception) {
-            logger.warn("주소에서 역 정보 추출 실패: ${e.message}")
             null
         }
     }
     
     /**
+     * 유효한 역 이름인지 검증
+     */
+    private fun isValidStationName(name: String): Boolean {
+        // "역"으로 끝나지 않으면 false
+         if (!name.endsWith("역")) return false
+
+        // 너무 짧으면 false (예: "역")
+        if (name.length <= 1) return false
+        
+        // 일반적인 매장명/건물명 패턴 제외
+        val invalidPatterns = listOf(
+            "점", "동", "관", "타운", "마트",
+            "빌딩", "센터", "건물"
+        )
+        if (invalidPatterns.any { name.contains(it) }) return false
+        
+        return true
+    }
+    
+    /**
      * AddressDescriptor 생성
+     * 역 이름이 맞는지 한 번 더 검증
      */
     private fun createAddressDescriptor(
         name: String?,
         distance: Int?
     ): AddressDescriptorResult? {
-        return try {
-            if (distance == null || name == null) return null
-            
-            val walkingMinutes = maxOf(1, distance / 67)
-            AddressDescriptorResult(
-                description = "${name} 도보 약 ${walkingMinutes}분"
-            )
-        } catch (e: Exception) {
-            logger.warn("AddressDescriptor 생성 실패: ${e.message}")
-            null
+        if (distance == null || name == null) return null
+        
+        // 유효한 역 이름인지 검증
+        if (!isValidStationName(name)) {
+            return null
         }
+
+        val walkingMinutes = maxOf(1, distance / 67)
+        return AddressDescriptorResult(
+            description = "${name} 도보 약 ${walkingMinutes}분"
+        )
     }
     
     /**
