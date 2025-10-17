@@ -1,0 +1,191 @@
+package org.depromeet.team3.station
+
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.boot.ApplicationArguments
+import org.springframework.boot.ApplicationRunner
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+
+@Component
+class StationInitializer(
+    private val stationJpaRepository: StationJpaRepository
+) : ApplicationRunner {
+    private val logger = KotlinLogging.logger { }
+
+    @Transactional
+    override fun run(args: ApplicationArguments?) {
+        val stations = listOf(
+            StationData("도봉산", 127.0448, 37.689), StationData("도봉", 127.0441, 37.6806),
+            StationData("방학", 127.0416, 37.6661), StationData("창동", 127.0483, 37.6529),
+            StationData("녹천", 127.052, 37.6441), StationData("월계", 127.0593, 37.6322),
+            StationData("석계", 127.0652, 37.6148), StationData("신이문", 127.0766, 37.6),
+            StationData("외대앞", 127.0792, 37.596), StationData("회기", 127.0576, 37.59),
+            StationData("청량리", 127.0478, 37.5802), StationData("제기동", 127.0347, 37.5781),
+            StationData("신설동", 127.0252, 37.5753), StationData("동묘앞", 127.0165, 37.5729),
+            StationData("동대문", 127.0112, 37.5714), StationData("종로5가", 127.0019, 37.5709),
+            StationData("종로3가", 126.9922, 37.5704), StationData("종각", 126.983, 37.5702),
+            StationData("시청", 126.9771, 37.5658), StationData("서울역", 126.9748, 37.5547),
+            StationData("남영", 126.9714, 37.541), StationData("용산", 126.9649, 37.5299),
+            StationData("노량진", 126.9424, 37.514), StationData("대방", 126.9264, 37.5134),
+            StationData("신길", 126.9171, 37.5173), StationData("영등포", 126.9073, 37.5156),
+            StationData("신도림", 126.8913, 37.5088), StationData("구로", 126.8824, 37.5024),
+            StationData("가산디지털단지", 126.8824, 37.481), StationData("금천구청", 126.8951, 37.4604),
+            StationData("을지로입구", 126.9825, 37.5661), StationData("을지로3가", 126.9926, 37.5662),
+            StationData("을지로4가", 127.0019, 37.5663), StationData("동대문역사문화공원", 127.0109, 37.5656),
+            StationData("신당", 127.019, 37.5658), StationData("상왕십리", 127.0294, 37.5645),
+            StationData("왕십리", 127.0381, 37.5613), StationData("한양대", 127.0456, 37.5555),
+            StationData("뚝섬", 127.0471, 37.5471), StationData("성수", 127.0559, 37.5446),
+            StationData("건대입구", 127.0702, 37.5404), StationData("구의", 127.0861, 37.5371),
+            StationData("강변", 127.0945, 37.5352), StationData("잠실나루", 127.1037, 37.5207),
+            StationData("잠실", 127.1002, 37.5133), StationData("잠실새내", 127.0859, 37.5116),
+            StationData("종합운동장", 127.0739, 37.5111), StationData("삼성", 127.0632, 37.5088),
+            StationData("선릉", 127.0483, 37.5045), StationData("역삼", 127.0365, 37.5006),
+            StationData("강남", 127.0276, 37.4979), StationData("교대", 127.0142, 37.4934),
+            StationData("서초", 127.008, 37.4918), StationData("방배", 126.9975, 37.4814),
+            StationData("사당", 126.9816, 37.4765), StationData("낙성대", 126.9637, 37.4769),
+            StationData("서울대입구", 126.9527, 37.4799), StationData("봉천", 126.9419, 37.4824),
+            StationData("신림", 126.9295, 37.4849), StationData("신대방", 126.9131, 37.4876),
+            StationData("구로디지털단지", 126.9015, 37.4853), StationData("대림", 126.8953, 37.4928),
+            StationData("문래", 126.8947, 37.518), StationData("영등포구청", 126.8967, 37.525),
+            StationData("당산", 126.9027, 37.534), StationData("합정", 126.9141, 37.5495),
+            StationData("홍대입구", 126.9238, 37.5575), StationData("신촌", 126.9354, 37.5551),
+            StationData("이대", 126.9455, 37.5567), StationData("아현", 126.9555, 37.5573),
+            StationData("충정로", 126.9642, 37.5597), StationData("용답", 127.0494, 37.5623),
+            StationData("신답", 127.0456, 37.5694), StationData("용두", 127.0402, 37.5741),
+            StationData("도림천", 126.8837, 37.5143), StationData("양천구청", 126.865, 37.5123),
+            StationData("신정네거리", 126.8529, 37.5201), StationData("까치산", 126.8465, 37.5318),
+            StationData("구파발", 126.9195, 37.6369), StationData("연신내", 126.9213, 37.6191),
+            StationData("불광", 126.9298, 37.6103), StationData("녹번", 126.9355, 37.6009),
+            StationData("홍제", 126.9442, 37.5891), StationData("무악재", 126.9504, 37.5824),
+            StationData("독립문", 126.958, 37.5746), StationData("경복궁", 126.9735, 37.5757),
+            StationData("안국", 126.9855, 37.5765), StationData("충무로", 126.9942, 37.5613),
+            StationData("동대입구", 127.0051, 37.5591), StationData("약수", 127.0101, 37.5553),
+            StationData("금호", 127.0189, 37.5481), StationData("옥수", 127.0186, 37.5401),
+            StationData("압구정", 127.0285, 37.5275), StationData("신사", 127.0203, 37.5165),
+            StationData("잠원", 127.0113, 37.513), StationData("고속터미널", 127.0051, 37.5052),
+            StationData("남부터미널", 127.0163, 37.4851), StationData("양재", 127.0345, 37.4839),
+            StationData("매봉", 127.0465, 37.4868), StationData("도곡", 127.0553, 37.4909),
+            StationData("대치", 127.0628, 37.4946), StationData("학여울", 127.07, 37.4965),
+            StationData("대청", 127.0784, 37.4939), StationData("일원", 127.0839, 37.4836),
+            StationData("수서", 127.1017, 37.4875), StationData("가락시장", 127.1182, 37.4925),
+            StationData("경찰병원", 127.1245, 37.4956), StationData("오금", 127.127, 37.502),
+            StationData("당고개", 127.0789, 37.6702), StationData("상계", 127.0733, 37.661),
+            StationData("노원", 127.0617, 37.6562), StationData("쌍문", 127.0346, 37.6486),
+            StationData("수유", 127.0252, 37.6387), StationData("미아", 127.0259, 37.6268),
+            StationData("미아사거리", 127.0301, 37.6133), StationData("길음", 127.0251, 37.6033),
+            StationData("성신여대입구", 127.0166, 37.5929), StationData("한성대입구", 127.0052, 37.5883),
+            StationData("혜화", 127.0022, 37.5823), StationData("명동", 126.9863, 37.5609),
+            StationData("회현", 126.9782, 37.5587), StationData("숙대입구", 126.973, 37.5447),
+            StationData("삼각지", 126.9731, 37.535), StationData("신용산", 126.9672, 37.5292),
+            StationData("이촌", 126.9749, 37.5223), StationData("동작", 126.9806, 37.5097),
+            StationData("총신대입구(이수)", 126.9817, 37.4862), StationData("남태령", 126.9841, 37.465),
+            StationData("방화", 126.8122, 37.5774), StationData("개화산", 126.815, 37.571),
+            StationData("김포공항", 126.8018, 37.5623), StationData("송정", 126.812, 37.5605),
+            StationData("마곡", 126.8256, 37.5602), StationData("발산", 126.836, 37.5581),
+            StationData("우장산", 126.8427, 37.5516), StationData("화곡", 126.8421, 37.5413),
+            StationData("신정", 126.855, 37.524), StationData("목동", 126.8654, 37.5262),
+            StationData("오목교", 126.875, 37.5242), StationData("양평", 126.8864, 37.5218),
+            StationData("영등포시장", 126.9056, 37.5221), StationData("여의도", 126.924, 37.5215),
+            StationData("여의나루", 126.9329, 37.5267), StationData("마포", 126.9458, 37.5332),
+            StationData("공덕", 126.9517, 37.5441), StationData("애오개", 126.9567, 37.5489),
+            StationData("서대문", 126.9663, 37.5658), StationData("광화문", 126.9765, 37.5711),
+            StationData("청구", 127.015, 37.5615), StationData("강남역", 127.027926, 37.497952),
+            StationData("신금호", 127.0191, 37.555), StationData("행당", 127.029, 37.556),
+            StationData("마장", 127.0441, 37.5667), StationData("답십리", 127.0543, 37.5683),
+            StationData("장한평", 127.065, 37.5681), StationData("군자", 127.0784, 37.5576),
+            StationData("아차산", 127.0898, 37.5518), StationData("광나루", 127.1009, 37.5448),
+            StationData("천호", 127.1235, 37.5383), StationData("강동", 127.1325, 37.5361),
+            StationData("길동", 127.1408, 37.5381), StationData("굽은다리", 127.147, 37.545),
+            StationData("명일", 127.1449, 37.5516), StationData("고덕", 127.1557, 37.5555),
+            StationData("상일동", 127.1683, 37.5562), StationData("둔촌동", 127.1384, 37.5284),
+            StationData("올림픽공원", 127.1308, 37.5161), StationData("방이", 127.1215, 37.5108),
+            StationData("개롱", 127.134, 37.498), StationData("거여", 127.1424, 37.492),
+            StationData("마천", 127.1495, 37.4975), StationData("응암", 126.915, 37.5991),
+            StationData("역촌", 126.9103, 37.6056), StationData("독바위", 126.9238, 37.615),
+            StationData("구산", 126.9101, 37.612), StationData("새절", 126.913, 37.5925),
+            StationData("증산", 126.9084, 37.5855), StationData("디지털미디어시티", 126.9015, 37.5768),
+            StationData("월드컵경기장", 126.8992, 37.5706), StationData("마포구청", 126.9022, 37.5636),
+            StationData("망원", 126.9103, 37.5559), StationData("상수", 126.9221, 37.5469),
+            StationData("광흥창", 126.9322, 37.5448), StationData("대흥", 126.9427, 37.545),
+            StationData("효창공원앞", 126.9616, 37.5392), StationData("녹사평", 126.9882, 37.5342),
+            StationData("이태원", 126.9946, 37.5345), StationData("한강진", 127.0016, 37.5401),
+            StationData("버티고개", 127.0067, 37.5484), StationData("창신", 127.021, 37.579),
+            StationData("보문", 127.0189, 37.5853), StationData("안암", 127.0285, 37.586),
+            StationData("고려대", 127.035, 37.5906), StationData("월곡", 127.0425, 37.601),
+            StationData("상월곡", 127.0494, 37.6066), StationData("돌곶이", 127.0567, 37.6105),
+            StationData("태릉입구", 127.0754, 37.6186), StationData("화랑대", 127.0827, 37.6202),
+            StationData("봉화산", 127.0911, 37.6164), StationData("신내", 127.1039, 37.6133),
+            StationData("장암", 127.0857, 37.7028), StationData("수락산", 127.0543, 37.6775),
+            StationData("마들", 127.0594, 37.6657), StationData("중계", 127.0702, 37.6475),
+            StationData("하계", 127.0699, 37.6366), StationData("공릉", 127.0736, 37.6262),
+            StationData("먹골", 127.0805, 37.6119), StationData("중화", 127.0886, 37.6042),
+            StationData("상봉", 127.0945, 37.5966), StationData("면목", 127.0932, 37.5888),
+            StationData("사가정", 127.0914, 37.5818), StationData("용마산", 127.0884, 37.5735),
+            StationData("중곡", 127.0844, 37.5658), StationData("어린이대공원", 127.0746, 37.5491),
+            StationData("뚝섬유원지", 127.0667, 37.5298), StationData("청담", 127.053, 37.5195),
+            StationData("강남구청", 127.0411, 37.5173), StationData("학동", 127.0315, 37.514),
+            StationData("논현", 127.0215, 37.5111), StationData("반포", 127.011, 37.509),
+            StationData("내방", 126.9944, 37.4878), StationData("이수", 126.9817, 37.4862),
+            StationData("남성", 126.9701, 37.4849), StationData("숭실대입구", 126.957, 37.496),
+            StationData("상도", 126.942, 37.501), StationData("장승배기", 126.9405, 37.505),
+            StationData("신대방삼거리", 126.9284, 37.4998), StationData("보라매", 126.9189, 37.4996),
+            StationData("신풍", 126.909, 37.498), StationData("남구로", 126.8885, 37.4859),
+            StationData("온수", 126.8239, 37.492), StationData("암사", 127.1275, 37.5501),
+            StationData("강동구청", 127.1204, 37.5303), StationData("몽촌토성", 127.1118, 37.5172),
+            StationData("석촌", 127.1081, 37.5045), StationData("송파", 127.1136, 37.502),
+            StationData("문정", 127.1249, 37.4856), StationData("장지", 127.1278, 37.478),
+            StationData("복정", 127.129, 37.4704), StationData("개화", 126.8093, 37.5786),
+            StationData("공항시장", 126.8142, 37.5645), StationData("신방화", 126.8188, 37.5666),
+            StationData("마곡나루", 126.828, 37.5622), StationData("양천향교", 126.8413, 37.5678),
+            StationData("가양", 126.8532, 37.561), StationData("증미", 126.8624, 37.5593),
+            StationData("등촌", 126.8687, 37.552), StationData("염창", 126.8778, 37.5469),
+            StationData("신목동", 126.8878, 37.5422), StationData("선유도", 126.896, 37.5401),
+            StationData("국회의사당", 126.9184, 37.5309), StationData("샛강", 126.9284, 37.5173),
+            StationData("노들", 126.9501, 37.513), StationData("흑석", 126.9634, 37.5088),
+            StationData("구반포", 126.9882, 37.5015), StationData("신반포", 126.994, 37.5036),
+            StationData("사평", 127.0151, 37.505), StationData("신논현", 127.025, 37.5047),
+            StationData("언주", 127.033, 37.507), StationData("선정릉", 127.0435, 37.5106),
+            StationData("삼성중앙", 127.053, 37.5126), StationData("봉은사", 127.0614, 37.5146),
+            StationData("삼전", 127.0857, 37.506), StationData("석촌고분", 127.0945, 37.5028),
+            StationData("송파나루", 127.1121, 37.5101), StationData("한성백제", 127.116, 37.515),
+            StationData("둔촌오륜", 127.1378, 37.5204), StationData("중앙보훈병원", 127.147, 37.5312),
+            StationData("수색", 126.897, 37.581), StationData("가좌", 126.915, 37.568),
+            StationData("서강대", 126.9381, 37.552), StationData("서빙고", 126.9882, 37.519),
+            StationData("한남", 127.009, 37.525), StationData("응봉", 127.0305, 37.547),
+            StationData("중랑", 127.079, 37.595), StationData("망우", 127.0984, 37.601),
+            StationData("양원", 127.1085, 37.606), StationData("서울숲", 127.044, 37.543),
+            StationData("압구정로데오", 127.04, 37.527), StationData("한티", 127.053, 37.495),
+            StationData("구룡", 127.059, 37.486), StationData("개포동", 127.066, 37.483),
+            StationData("대모산입구", 127.073, 37.491), StationData("양재시민의숲", 127.038, 37.47),
+            StationData("청계산입구", 127.053, 37.454), StationData("북한산우이", 127.013, 37.664),
+            StationData("솔밭공원", 127.015, 37.656), StationData("4.19민주묘지", 127.013, 37.649),
+            StationData("가오리", 127.016, 37.641), StationData("화계", 127.019, 37.635),
+            StationData("삼양", 127.02, 37.628), StationData("삼양사거리", 127.018, 37.623),
+            StationData("솔샘", 127.018, 37.618), StationData("북한산보국문", 127.012, 37.61),
+            StationData("정릉", 127.011, 37.602), StationData("서울지방병무청", 126.936, 37.506),
+            StationData("보라매공원", 126.923, 37.493), StationData("보라매병원", 126.93, 37.488),
+            StationData("당곡", 126.936, 37.483), StationData("서원", 126.936, 37.478),
+            StationData("서울대벤처타운", 126.944, 37.475), StationData("관악산", 126.953, 37.467),
+        )
+
+        val existingNames = stationJpaRepository.findAll().map { it.name }.toSet()
+        val newStations = stations.filterNot { it.name in existingNames }
+
+        if (newStations.isNotEmpty()) {
+            stationJpaRepository.saveAll(
+                newStations.map {
+                    StationEntity(name = it.name, locX = it.locX, locY = it.locY)
+                }
+            )
+            logger.info { "역 데이터 ${newStations.size}개 추가 완료" }
+        } else {
+            logger.info { "추가할 역 데이터가 없습니다." }
+        }
+    }
+
+    private data class StationData(
+        val name: String,
+        val locX: Double,
+        val locY: Double
+    )
+}
