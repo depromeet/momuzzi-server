@@ -11,7 +11,7 @@ class StationInitializer(
 ) : ApplicationRunner {
 
     @Transactional
-    override fun run(args: ApplicationArguments?) {
+    override fun run(args: ApplicationArguments) {
         val stations = listOf(
             StationData("도봉산", 127.0448, 37.689), StationData("도봉", 127.0441, 37.6806),
             StationData("방학", 127.0416, 37.6661), StationData("창동", 127.0483, 37.6529),
@@ -166,7 +166,7 @@ class StationInitializer(
             StationData("서울대벤처타운", 126.944, 37.475), StationData("관악산", 126.953, 37.467),
         )
 
-        val existingNames = stationJpaRepository.findAll().map { it.name }.toSet()
+        val existingNames = stationJpaRepository.findAllNames().toSet()
         val newStations = stations.filterNot { it.name in existingNames }
 
         if (newStations.isNotEmpty()) {
