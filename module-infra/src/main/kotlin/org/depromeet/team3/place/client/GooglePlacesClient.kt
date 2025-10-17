@@ -27,14 +27,33 @@ class GooglePlacesClient(
     /**
      * 텍스트 검색
      */
-    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse = withContext(Dispatchers.IO) {
+    suspend fun textSearch(
+        query: String, 
+        maxResults: Int = 10,
+        latitude: Double? = null,
+        longitude: Double? = null,
+        radius: Double = 3000.0
+    ): PlacesTextSearchResponse = withContext(Dispatchers.IO) {
         try {
+            val locationBias = if (latitude != null && longitude != null) {
+                PlacesTextSearchRequest.LocationBias(
+                    circle = PlacesTextSearchRequest.LocationBias.Circle(
+                        center = PlacesTextSearchRequest.LocationBias.Circle.Center(
+                            latitude = latitude,
+                            longitude = longitude
+                        ),
+                        radius = radius
+                    )
+                )
+            } else null
+            
             val request = PlacesTextSearchRequest(
                 textQuery = query,
                 languageCode = "ko",
-                maxResultCount = maxResults
+                maxResultCount = maxResults,
+                locationBias = locationBias
             )
-            
+
             val response = googlePlacesRestClient.post()
                 .uri("/v1/places:searchText")
                 .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
