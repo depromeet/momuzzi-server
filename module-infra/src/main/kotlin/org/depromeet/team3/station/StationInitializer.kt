@@ -1,6 +1,5 @@
 package org.depromeet.team3.station
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.stereotype.Component
@@ -10,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional
 class StationInitializer(
     private val stationJpaRepository: StationJpaRepository
 ) : ApplicationRunner {
-    private val logger = KotlinLogging.logger { }
 
     @Transactional
     override fun run(args: ApplicationArguments?) {
@@ -177,9 +175,6 @@ class StationInitializer(
                     StationEntity(name = it.name, locX = it.locX, locY = it.locY)
                 }
             )
-            logger.info { "역 데이터 ${newStations.size}개 추가 완료" }
-        } else {
-            logger.info { "추가할 역 데이터가 없습니다." }
         }
     }
 
