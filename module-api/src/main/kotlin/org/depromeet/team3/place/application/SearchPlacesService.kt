@@ -24,7 +24,8 @@ class SearchPlacesService(
     private val placeQuery: PlaceQuery,
     private val placeDetailsProcessor: PlaceDetailsProcessor,
     private val meetingPlaceRepository: MeetingPlaceRepository,
-    private val placeLikeRepository: PlaceLikeRepository
+    private val placeLikeRepository: PlaceLikeRepository,
+    private val meetingQuery: org.depromeet.team3.meeting.MeetingQuery
 ) {
     private val logger = LoggerFactory.getLogger(SearchPlacesService::class.java)
     
@@ -38,34 +39,39 @@ class SearchPlacesService(
     suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse = coroutineScope {
         val queryKey = request.query.trim().lowercase()
         
-        // 1. Google Places API 호출
-        val response = fetchPlacesFromGoogle(queryKey)
+        // 1. meetingId가 있으면 Meeting의 Station 좌표 가져오기
+        val stationCoordinates = if (request.meetingId != null) {
+            meetingQuery.getStationCoordinates(request.meetingId)
+        } else null
         
-        // 2. Google Places API 결과를 그대로 사용
+        // 2. Google Places API 호출 (Station 좌표 포함)
+        val response = fetchPlacesFromGoogle(queryKey, stationCoordinates)
+        
+        // 3. Google Places API 결과를 그대로 사용
         val allPlaces = response.places ?: return@coroutineScope PlacesSearchResponse(emptyList())
         
         if (allPlaces.isEmpty()) {
             return@coroutineScope PlacesSearchResponse(emptyList())
         }
         
-        // 3. 10개를 확실히 보장하기 위해 처리
+        // 4. 10개를 확실히 보장하기 위해 처리
         val placesToProcess = if (allPlaces.size >= 10) {
             allPlaces.take(10)
         } else {
             allPlaces
         }
         
-        // 4. PlaceDetails 조회 및 DB 저장 (배치)
+        // 5. PlaceDetails 조회 및 DB 저장 (배치)
         val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(placesToProcess)
         
         if (allPlaceDetails.isEmpty()) {
             return@coroutineScope PlacesSearchResponse(emptyList())
         }
         
-        // 5. 필터링 없이 Google 결과 그대로 사용
+        // 6. 필터링 없이 Google 결과 그대로 사용
         val relevantPlaceDetails = allPlaceDetails
         
-        // 6. meetingId가 있으면 MeetingPlace 생성 또는 조회
+        // 7. meetingId가 있으면 MeetingPlace 생성 또는 조회
         val meetingPlaces = if (request.meetingId != null) {
             val placeDbIds = getPlaceDbIds(relevantPlaceDetails.map { it.placeId })
             createOrGetMeetingPlaces(request.meetingId, placeDbIds)
@@ -73,18 +79,18 @@ class SearchPlacesService(
             emptyList()
         }
         
-        // 7. Google Place ID -> DB Place ID 매핑
+        // 8. Google Place ID -> DB Place ID 매핑
         val googlePlaceIds = relevantPlaceDetails.map { it.placeId }
         val placeIdMap = getPlaceStringIdToDbIdMap(googlePlaceIds)
         
-        // 8. 좋아요 정보 매핑 (PlaceLike 테이블 기반)
+        // 9. 좋아요 정보 매핑 (PlaceLike 테이블 기반)
         val likesMap = if (meetingPlaces.isNotEmpty()) {
             buildLikesMap(googlePlaceIds, meetingPlaces, request.userId)
         } else {
             emptyMap()
         }
         
-        // 9. infra 레이어의 결과를 API 응답 DTO로 변환
+        // 10. infra 레이어의 결과를 API 응답 DTO로 변환
         val items = relevantPlaceDetails.mapNotNull { detail ->
             try {
                 // DB Place ID가 없으면 스킵 (이론적으로는 발생하지 않아야 함)
@@ -131,7 +137,7 @@ class SearchPlacesService(
             }
         }
         
-        // 10. meetingId가 있으면 좋아요 많은 순으로 정렬, 없으면 구글 기본 순서 유지
+        // 11. meetingId가 있으면 좋아요 많은 순으로 정렬, 없으면 구글 기본 순서 유지
         val sortedItems = if (request.meetingId != null) {
             items.sortedByDescending { it.likeCount }
         } else {
@@ -239,7 +245,10 @@ class SearchPlacesService(
     /**
      * Google Places API 호출
      */
-    private suspend fun fetchPlacesFromGoogle(query: String): PlacesTextSearchResponse {
+    private suspend fun fetchPlacesFromGoogle(
+        query: String,
+        stationCoordinates: org.depromeet.team3.meeting.MeetingQuery.StationCoordinates? = null
+    ): PlacesTextSearchResponse {
         if (query.isBlank()) {
             throw PlaceSearchException(
                 org.depromeet.team3.common.exception.ErrorCode.PLACE_INVALID_QUERY,
@@ -249,7 +258,12 @@ class SearchPlacesService(
         
         return try {
             withContext(Dispatchers.IO) {
-                placeQuery.textSearch(query, totalFetchSize)
+                placeQuery.textSearch(
+                    query = query,
+                    maxResults = totalFetchSize,
+                    latitude = stationCoordinates?.latitude,
+                    longitude = stationCoordinates?.longitude
+                )
             }
         } catch (e: PlaceSearchException) {
             throw e
@@ -261,7 +275,6 @@ class SearchPlacesService(
             )
         }
     }
-    
     private data class PlaceLikeInfo(
         val likeCount: Int,
         val isLiked: Boolean

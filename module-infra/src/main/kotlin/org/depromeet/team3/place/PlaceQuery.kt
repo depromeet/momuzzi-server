@@ -19,8 +19,14 @@ class PlaceQuery(
     /**
      * 텍스트 검색
      */
-    suspend fun textSearch(query: String, maxResults: Int = 10): PlacesTextSearchResponse {
-        return googlePlacesClient.textSearch(query, maxResults)
+    suspend fun textSearch(
+        query: String, 
+        maxResults: Int = 10,
+        latitude: Double? = null,
+        longitude: Double? = null,
+        radius: Double = 3000.0
+    ): PlacesTextSearchResponse {
+        return googlePlacesClient.textSearch(query, maxResults, latitude, longitude, radius)
     }
 
     /**

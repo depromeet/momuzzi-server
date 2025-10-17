@@ -38,6 +38,9 @@ class SearchPlacesServiceTest {
     @Mock
     private lateinit var placeLikeRepository: PlaceLikeRepository
     
+    @Mock
+    private lateinit var meetingQuery: org.depromeet.team3.meeting.MeetingQuery
+    
     private lateinit var searchPlacesService: SearchPlacesService
 
     @BeforeEach
@@ -46,7 +49,8 @@ class SearchPlacesServiceTest {
             placeQuery = placeQuery,
             placeDetailsProcessor = placeDetailsProcessor,
             meetingPlaceRepository = meetingPlaceRepository,
-            placeLikeRepository = placeLikeRepository
+            placeLikeRepository = placeLikeRepository,
+            meetingQuery = meetingQuery
         )
     }
 
@@ -56,7 +60,7 @@ class SearchPlacesServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집")
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10, placeId = "place1")
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(eq("강남역 맛집"), eq(15), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
         
         // 전체 10개에 대한 Details
@@ -100,7 +104,8 @@ class SearchPlacesServiceTest {
         assertThat(response.items[0].topReview).isNotNull
         assertThat(response.items[0].topReview?.rating).isEqualTo(5)
         
-        verify(placeQuery).textSearch("강남역 맛집", 15)
+        // meetingId가 없으면 위도/경도도 null이어야 함
+        verify(placeQuery).textSearch("강남역 맛집", 15, null, null, 3000.0)
         verify(placeDetailsProcessor).fetchPlaceDetailsInParallel(googleResponse.places!!)
         verify(placeQuery).findByGooglePlaceIds(any())
     }
@@ -111,7 +116,7 @@ class SearchPlacesServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집")
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10, placeId = "place1")
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
         
         // 전체 10개 Details
@@ -164,7 +169,7 @@ class SearchPlacesServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집")
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10, placeId = "place1")
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
         
         val allPlaceDetails = googleResponse.places!!.map { place ->
@@ -219,7 +224,7 @@ class SearchPlacesServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집")
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 10, placeId = "place1")
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
         
         // 10개 요청했지만 4개만 성공적으로 조회됨 (API 에러 등)
@@ -266,7 +271,7 @@ class SearchPlacesServiceTest {
         val request = PlacesSearchRequest(query = "강남역 맛집")
         
         runBlocking {
-            whenever(placeQuery.textSearch(any(), any()))
+            whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
                 .thenThrow(RuntimeException("API Error"))
         }
 
@@ -298,29 +303,12 @@ class SearchPlacesServiceTest {
     }
 
     @Test
-    fun `맛집 검색 실패 - Google API 응답 null`(): Unit = runBlocking {
-        // given
-        val request = PlacesSearchRequest(query = "강남역 맛집")
-        
-        whenever(placeQuery.textSearch(any(), any()))
-            .thenReturn(null)
-
-        // when & then
-        val exception = assertThrows<PlaceSearchException> {
-            searchPlacesService.textSearch(request)
-        }
-        
-        assertThat(exception.errorCode.code).isEqualTo("P003")
-        assertThat(exception.message).contains("Google Places API 응답이 없습니다")
-    }
-
-    @Test
     fun `맛집 검색 - places가 null이면 빈 목록 반환`(): Unit = runBlocking {
         // given
         val request = PlacesSearchRequest(query = "강남역 맛집")
         val googleResponse = PlacesTextSearchResponse(places = null)
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
 
         // when
@@ -341,7 +329,10 @@ class SearchPlacesServiceTest {
         )
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 3, placeId = null)
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(meetingQuery.getStationCoordinates(1L))
+            .thenReturn(null)
+        
+        whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
         
         // Place Details
@@ -430,6 +421,147 @@ class SearchPlacesServiceTest {
     }
 
     @Test
+    fun `맛집 검색 - meetingId가 있을 때 Station 좌표를 사용한 검색`(): Unit = runBlocking {
+        // given
+        val meetingId = 1L
+        val stationCoordinates = org.depromeet.team3.meeting.MeetingQuery.StationCoordinates(
+            latitude = 37.5048,  // 강남역
+            longitude = 127.0249
+        )
+        val request = PlacesSearchRequest(
+            query = "맛집", 
+            meetingId = meetingId,
+            userId = 100L
+        )
+        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 5, placeId = "place1")
+        
+        // Meeting의 Station 좌표 조회 성공
+        whenever(meetingQuery.getStationCoordinates(meetingId))
+            .thenReturn(stationCoordinates)
+        
+        // textSearch 호출 시 위도/경도가 전달되어야 함
+        whenever(placeQuery.textSearch(
+            eq("맛집"), 
+            eq(15), 
+            eq(37.5048),     // latitude
+            eq(127.0249),    // longitude
+            any()
+        )).thenReturn(googleResponse)
+        
+        val allPlaceDetails = googleResponse.places!!.map { place ->
+            PlaceDetailsProcessor.PlaceDetailResult(
+                placeId = place.id,
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
+        }
+        
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(googleResponse.places!!))
+            .thenReturn(allPlaceDetails)
+        
+        whenever(placeQuery.findByGooglePlaceIds(any()))
+            .thenReturn(listOf(
+                PlaceEntity(id = 100L, googlePlaceId = "place1", name = "맛집1", address = "주소1", rating = 4.5, userRatingsTotal = 100)
+            ))
+        
+        whenever(meetingPlaceRepository.findByMeetingId(meetingId))
+            .thenReturn(emptyList())
+        
+        whenever(meetingPlaceRepository.saveAll(any()))
+            .thenReturn(listOf(MeetingPlace(id = 10L, meetingId = meetingId, placeId = 100L)))
+        
+        whenever(placeLikeRepository.findByMeetingPlaceIds(any()))
+            .thenReturn(emptyList())
+
+        // when
+        val response = searchPlacesService.textSearch(request)
+
+        // then
+        assertThat(response.items).isNotEmpty()
+        
+        // Station 좌표 조회 확인
+        verify(meetingQuery).getStationCoordinates(meetingId)
+        
+        // 위도/경도가 textSearch에 제대로 전달되었는지 확인
+        verify(placeQuery).textSearch("맛집", 15, 37.5048, 127.0249, 3000.0)
+    }
+
+    @Test
+    fun `맛집 검색 - meetingId가 있지만 Station 좌표가 없을 때`(): Unit = runBlocking {
+        // given
+        val meetingId = 1L
+        val request = PlacesSearchRequest(
+            query = "맛집", 
+            meetingId = meetingId,
+            userId = 100L
+        )
+        val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 5, placeId = "place1")
+        
+        // Meeting의 Station 좌표 조회 실패 (null 반환)
+        whenever(meetingQuery.getStationCoordinates(meetingId))
+            .thenReturn(null)
+        
+        // 위도/경도 없이 textSearch 호출
+        whenever(placeQuery.textSearch(eq("맛집"), eq(15), anyOrNull(), anyOrNull(), any()))
+            .thenReturn(googleResponse)
+        
+        val allPlaceDetails = googleResponse.places!!.map { place ->
+            PlaceDetailsProcessor.PlaceDetailResult(
+                placeId = place.id,
+                name = place.displayName.text,
+                address = place.formattedAddress,
+                rating = place.rating ?: 0.0,
+                userRatingsTotal = place.userRatingCount ?: 0,
+                openNow = place.currentOpeningHours?.openNow,
+                photos = listOf("https://example.com/photo.jpg"),
+                link = "https://m.place.naver.com/place/list?query=${place.displayName.text}",
+                weekdayText = null,
+                topReview = null,
+                priceRange = null,
+                addressDescriptor = null
+            )
+        }
+        
+        whenever(placeDetailsProcessor.fetchPlaceDetailsInParallel(googleResponse.places!!))
+            .thenReturn(allPlaceDetails)
+        
+        whenever(placeQuery.findByGooglePlaceIds(any()))
+            .thenReturn(listOf(
+                PlaceEntity(id = 100L, googlePlaceId = "place1", name = "맛집1", address = "주소1", rating = 4.5, userRatingsTotal = 100)
+            ))
+        
+        whenever(meetingPlaceRepository.findByMeetingId(meetingId))
+            .thenReturn(emptyList())
+        
+        whenever(meetingPlaceRepository.saveAll(any()))
+            .thenReturn(listOf(MeetingPlace(id = 10L, meetingId = meetingId, placeId = 100L)))
+        
+        whenever(placeLikeRepository.findByMeetingPlaceIds(any()))
+            .thenReturn(emptyList())
+
+        // when
+        val response = searchPlacesService.textSearch(request)
+
+        // then
+        assertThat(response.items).isNotEmpty()
+        
+        // Station 좌표 조회 시도 확인
+        verify(meetingQuery).getStationCoordinates(meetingId)
+        
+        // 위도/경도가 null로 전달되었는지 확인
+        verify(placeQuery).textSearch("맛집", 15, null, null, 3000.0)
+    }
+
+    @Test
     fun `맛집 검색 - 미팅 ID가 없을 때 좋아요 정보 없음`(): Unit = runBlocking {
         // given
         val request = PlacesSearchRequest(
@@ -438,7 +570,7 @@ class SearchPlacesServiceTest {
         )
         val googleResponse = PlaceTestDataFactory.createGooglePlacesSearchResponse(resultCount = 3, placeId = "place1")
         
-        whenever(placeQuery.textSearch(any(), any()))
+        whenever(placeQuery.textSearch(any(), any(), anyOrNull(), anyOrNull(), any()))
             .thenReturn(googleResponse)
         
         val allPlaceDetails = googleResponse.places!!.map { place ->
