@@ -4,13 +4,15 @@ import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
 
 @Entity
-@Table(name = "tb_stations")
+@Table(
+    name = "tb_stations",
+)
 class StationEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
     
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     val name: String,
     
     @Column(name = "loc_x", nullable = false)
