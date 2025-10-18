@@ -1,4 +1,5 @@
 services:
+  # Private Docker Registry
   registry:
     image: registry:2
     container_name: registry
@@ -65,15 +66,87 @@ services:
     user: root
     networks:
       - depromeet_network
-
     mem_limit: 3g        # Jenkins 컨테이너 메모리 제한
     mem_reservation: 1g  # 예약 메모리
     cpus: 2.0
+
+  # Signoz Monitoring Server
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: signoz-clickhouse
+    restart: unless-stopped
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse/
+    environment:
+      - CLICKHOUSE_DB=signoz_traces
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - depromeet_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  query-service:
+    image: signoz/query-service:0.40.0
+    container_name: signoz-query-service
+    restart: unless-stopped
+    command:
+      - "-config=/root/config/prometheus.yml"
+    volumes:
+      - ./monitoring/signoz/prometheus.yml:/root/config/prometheus.yml
+    environment:
+      - ClickHouseUrl=tcp://clickhouse:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=true
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+    networks:
+      - depromeet_network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  signoz-otel-collector:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: signoz-otel-collector
+    restart: unless-stopped
+    command:
+      - "--config=/etc/otel-collector-config.yaml"
+    volumes:
+      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    networks:
+      - depromeet_network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  signoz-frontend:
+    image: signoz/frontend:0.40.0
+    container_name: signoz-frontend
+    restart: unless-stopped
+    ports:
+      - "3301:3301"
+    networks:
+      - depromeet_network
+    depends_on:
+      - query-service
 
 volumes:
   registry_data:
     driver: local
   jenkins_home:
+    driver: local
+  clickhouse-data:
     driver: local
 
 networks:
