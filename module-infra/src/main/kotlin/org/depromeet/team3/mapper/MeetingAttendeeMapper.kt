@@ -22,7 +22,8 @@ class MeetingAttendeeMapper(
             userId = entity.user.id!!,
             attendeeNickname = entity.attendeeNickname,
             createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt
+            updatedAt = entity.updatedAt,
+            muzziColor = entity.muzziColor
         )
     }
     
@@ -47,7 +48,8 @@ class MeetingAttendeeMapper(
             id = domain.id,
             meeting = meetingEntity,
             attendeeNickname = domain.attendeeNickname,
-            user = userEntity
+            user = userEntity,
+            muzziColor = domain.muzziColor
         )
     }
 }

@@ -22,6 +22,10 @@ class MeetingAttendeeEntity(
     @Column(name = "attendee_nickname", nullable = false)
     val attendeeNickname: String?,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "muzzi_color", nullable = false)
+    val muzziColor: MuzziColor,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     val user: UserEntity
