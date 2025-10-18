@@ -39,7 +39,6 @@ exporters:
 
   clickhousemetricswrite:
     endpoint: tcp://clickhouse:9000/?database=signoz_metrics
-    docker_multi_node_cluster: true
     timeout: 10s
     retry_on_failure:
       enabled: true
