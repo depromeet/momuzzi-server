@@ -71,7 +71,7 @@ services:
     cpus: 2.0
 
   # Signoz Monitoring Server
-  clickhouse:
+  signoz-clickhouse:
     image: clickhouse/clickhouse-server:23.11-alpine
     container_name: signoz-clickhouse
     restart: unless-stopped
@@ -89,7 +89,7 @@ services:
       timeout: 5s
       retries: 3
 
-  query-service:
+  signoz-query-service:
     image: signoz/query-service:0.40.0
     container_name: signoz-query-service
     restart: unless-stopped
@@ -98,6 +98,7 @@ services:
     volumes:
       - signoz-data:/var/lib/signoz
       - ./monitoring/signoz/dashboards:/root/config/dashboards
+      - ./monitoring/signoz/tmp:/tmp
     environment:
       - ClickHouseUrl=tcp://clickhouse:9000
       - STORAGE=clickhouse
