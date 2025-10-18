@@ -6,6 +6,7 @@ import org.depromeet.team3.meeting.exception.InvalidInviteTokenException
 import org.depromeet.team3.meeting.exception.MeetingException
 import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
+import org.depromeet.team3.meetingattendee.MuzziColor
 import org.depromeet.team3.meetingattendee.exception.MeetingAttendeeException
 import org.depromeet.team3.util.DataEncoder
 import org.springframework.stereotype.Service
@@ -30,6 +31,7 @@ class JoinMeetingService(
             meetingId,
             userId,
             null,
+            MuzziColor.DEFAULT,
             null, null
         )
 

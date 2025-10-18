@@ -20,11 +20,11 @@ class MeetingAttendeeEntity(
     val meeting: MeetingEntity,
 
     @Column(name = "attendee_nickname", nullable = false)
-    val attendeeNickname: String?,
+    var attendeeNickname: String,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "muzzi_color", nullable = false)
-    val muzziColor: MuzziColor,
+    var muzziColor: MuzziColor,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
