@@ -96,8 +96,8 @@ services:
     command:
       - "-config=/root/config/prometheus.yml"
     volumes:
-      - ./monitoring/signoz/prometheus.yml:/root/config/prometheus.yml
       - signoz-data:/var/lib/signoz
+      - ./monitoring/signoz/dashboards:/root/config/dashboards
     environment:
       - ClickHouseUrl=tcp://clickhouse:9000
       - STORAGE=clickhouse
