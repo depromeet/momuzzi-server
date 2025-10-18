@@ -1,6 +1,6 @@
 FROM openjdk:21-slim
 
-ARG JAR_FILE=build/libs/*.jar
+ARG JAR_FILE=module-api/build/libs/*.jar
 
 RUN apt-get update && apt-get install -y curl wget && rm -rf /var/lib/apt/lists/*
 
