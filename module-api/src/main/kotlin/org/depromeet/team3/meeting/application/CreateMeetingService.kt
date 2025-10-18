@@ -6,6 +6,7 @@ import org.depromeet.team3.meeting.dto.request.CreateMeetingRequest
 import org.depromeet.team3.meeting.dto.response.CreateMeetingResponse
 import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
+import org.depromeet.team3.meetingattendee.MuzziColor
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -36,6 +37,7 @@ class CreateMeetingService(
             save.id!!,
             userId,
             request.attendeeNickname,
+            MuzziColor.DEFAULT,
             null, null
         )
 
