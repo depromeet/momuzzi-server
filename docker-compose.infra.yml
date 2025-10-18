@@ -115,7 +115,7 @@ services:
         condition: service_healthy
 
   signoz-otel-collector:
-    image: signoz/signoz-otel-collector:0.88.7
+    image: signoz/signoz-otel-collector:0.79.0
     container_name: signoz-otel-collector
     restart: unless-stopped
     command:
