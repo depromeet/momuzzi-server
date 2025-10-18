@@ -22,9 +22,22 @@ processors:
         action: upsert
 
 exporters:
-  clickhouse:
-    endpoint: tcp://clickhouse:9000
-    database: signoz_traces
+  clickhousetraces:
+    datasource: tcp://clickhouse:9000/?database=signoz_traces
+    docker_multi_node_cluster: false
+    low_cardinal_exception_grouping: false
+
+  clickhouselogsexporter:
+    dsn: tcp://clickhouse:9000/?database=signoz_logs
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  clickhousemetricswrite:
+    endpoint: tcp://clickhouse:9000/?database=signoz_metrics
     timeout: 10s
     retry_on_failure:
       enabled: true
@@ -40,14 +53,14 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch, resource]
-      exporters: [clickhouse]
+      exporters: [clickhousetraces, logging]
     
     metrics:
       receivers: [otlp]
       processors: [batch, resource]
-      exporters: [clickhouse]
+      exporters: [clickhousemetricswrite, logging]
     
     logs:
       receivers: [otlp]
       processors: [batch, resource]
-      exporters: [clickhouse]
+      exporters: [clickhouselogsexporter, logging]
