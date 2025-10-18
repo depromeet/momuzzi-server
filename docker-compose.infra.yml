@@ -121,6 +121,7 @@ services:
       - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+      - ClickHouseUrl=tcp://clickhouse:9000
     ports:
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver

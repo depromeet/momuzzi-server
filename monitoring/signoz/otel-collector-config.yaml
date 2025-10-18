@@ -23,7 +23,7 @@ processors:
 
 exporters:
   clickhousetraces:
-    datasource: tcp://clickhouse:9000/
+    datasource: tcp://clickhouse:9000/?database=signoz_traces
     low_cardinal_exception_grouping: false
 
   clickhouselogsexporter:
