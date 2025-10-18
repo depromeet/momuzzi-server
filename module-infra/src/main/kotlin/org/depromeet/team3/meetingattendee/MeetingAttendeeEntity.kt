@@ -20,7 +20,7 @@ class MeetingAttendeeEntity(
     val meeting: MeetingEntity,
 
     @Column(name = "attendee_nickname", nullable = false)
-    val attendeeNickname: String,
+    val attendeeNickname: String?,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

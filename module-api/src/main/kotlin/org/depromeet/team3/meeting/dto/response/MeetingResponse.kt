@@ -20,8 +20,8 @@ data class MeetingResponse(
     @Schema(description = "모임 종료 여부", example = "false")
     val isClosed: Boolean,
     
-    @Schema(description = "역 ID", example = "1")
-    val stationId: Long,
+    @Schema(description = "역 이름", example = "강남")
+    val stationName: String,
     
     @Schema(description = "모임 종료 시간", example = "2024-12-31T18:00:00")
     val endAt: LocalDateTime,

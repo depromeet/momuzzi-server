@@ -12,7 +12,11 @@ class StationQuery(
     override fun findAll(): List<Station> {
         return stationJpaRepository.findAll().map { stationMapper.toDomain(it) }
     }
-    
+
+    override fun findAllById(ids: List<Long>): List<Station> {
+        return stationJpaRepository.findAllById(ids).map { stationMapper.toDomain(it) }
+    }
+
     override fun findById(id: Long): Station? {
         return stationJpaRepository.findById(id).orElse(null)?.let { stationMapper.toDomain(it) }
     }

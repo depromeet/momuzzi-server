@@ -2,10 +2,12 @@ package org.depromeet.team3.meeting.application
 
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meeting.MeetingRepository
+import org.depromeet.team3.meeting.exception.InvalidInviteTokenException
 import org.depromeet.team3.meeting.exception.MeetingException
 import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.exception.MeetingAttendeeException
+import org.depromeet.team3.util.DataEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,16 +20,16 @@ class JoinMeetingService(
     @Transactional
     operator fun invoke(
         userId: Long,
-        meetingId: Long,
-        attendeeNickname: String
+        token: String,
     ): Unit {
+        val meetingId = parseTokenId(token)
         validateMeeting(meetingId, userId)
 
         val meetingAttendee = MeetingAttendee(
             null,
             meetingId,
             userId,
-            attendeeNickname,
+            null,
             null, null
         )
 
@@ -69,5 +71,14 @@ class JoinMeetingService(
                 )
             )
         }
+    }
+
+    private fun parseTokenId(token: String): Long {
+        val parts = DataEncoder.decodeWithSeparator(token, ":")
+            ?.takeIf { it.size == 2 }
+            ?: throw InvalidInviteTokenException(ErrorCode.INVALID_TOKEN_FORMAT)
+
+        return parts[0].toLongOrNull()
+            ?: throw InvalidInviteTokenException(ErrorCode.INVALID_MEETING_ID_IN_TOKEN)
     }
 }

@@ -7,7 +7,7 @@ data class MeetingAttendee(
     val id: Long? = null,
     val meetingId: Long,
     val userId: Long,
-    val attendeeNickname: String,
+    val attendeeNickname: String?,
     override val createdAt: LocalDateTime? = null,
     override val updatedAt: LocalDateTime? = null,
 ) : BaseTimeDomain(createdAt, updatedAt)
