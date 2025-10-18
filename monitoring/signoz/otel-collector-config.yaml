@@ -24,12 +24,10 @@ processors:
 exporters:
   clickhousetraces:
     datasource: tcp://clickhouse:9000/
-    docker_multi_node_cluster: true
     low_cardinal_exception_grouping: false
 
   clickhouselogsexporter:
     dsn: tcp://clickhouse:9000/?database=signoz_logs
-    docker_multi_node_cluster: true
     timeout: 10s
     retry_on_failure:
       enabled: true

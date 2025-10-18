@@ -77,7 +77,6 @@ services:
     restart: unless-stopped
     volumes:
       - clickhouse-data:/var/lib/clickhouse/
-      - ./monitoring/signoz/clickhouse-cluster-config.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
     environment:
       - CLICKHOUSE_DB=signoz_traces
     ulimits:
