@@ -8,6 +8,7 @@ data class MeetingAttendee(
     val meetingId: Long,
     val userId: Long,
     val attendeeNickname: String,
+    val muzziColor: MuzziColor,
     override val createdAt: LocalDateTime? = null,
     override val updatedAt: LocalDateTime? = null,
 ) : BaseTimeDomain(createdAt, updatedAt)
