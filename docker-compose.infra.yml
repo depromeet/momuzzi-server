@@ -104,7 +104,8 @@ services:
       - GODEBUG=netdns=go
       - TELEMETRY_ENABLED=true
       - DEPLOYMENT_TYPE=docker-standalone-amd
-      - SIGNOZ_JWT_SECRET=momuzzi-signoz-jwt-secret-key-2025    # 임시 값
+      - SIGNOZ_JWT_SECRET=momuzzi-signoz-jwt-secret-key-2025
+      - SIGNOZ_LOCAL_DB_PATH=/var/lib/signoz/signoz.db
     networks:
       - depromeet_network
     depends_on:
@@ -112,7 +113,7 @@ services:
         condition: service_healthy
 
   signoz-otel-collector:
-    image: signoz/signoz-otel-collector:0.88.8
+    image: signoz/signoz-otel-collector:0.88.7
     container_name: signoz-otel-collector
     restart: unless-stopped
     command:
