@@ -26,6 +26,7 @@ exporters:
     datasource: tcp://clickhouse:9000/?database=signoz_traces
     docker_multi_node_cluster: false
     low_cardinal_exception_grouping: false
+    cluster: ""
 
   clickhouselogsexporter:
     dsn: tcp://clickhouse:9000/?database=signoz_logs

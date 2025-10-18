@@ -106,6 +106,7 @@ services:
       - GODEBUG=netdns=go
       - TELEMETRY_ENABLED=true
       - DEPLOYMENT_TYPE=docker-standalone-amd
+      - SIGNOZ_JWT_SECRET=momuzzi-signoz-jwt-secret-key-2025    # 임시 값
     networks:
       - depromeet_network
     depends_on:
