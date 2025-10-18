@@ -16,18 +16,19 @@ spring:
     hibernate:
       ddl-auto: update
 
-# WAS 헬스 체크 관련
+# WAS 헬스 체크 및 모니터링 관련
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
-  health:
-    defaults:
-      enabled: true
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
 
 # JWT 설정
 jwt:

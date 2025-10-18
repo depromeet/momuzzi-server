@@ -1,0 +1,53 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 10000
+    timeout: 10s
+  
+  # 리소스 속성 추가
+  resource:
+    attributes:
+      - key: service.name
+        value: team3-api
+        action: upsert
+      - key: deployment.environment
+        value: production
+        action: upsert
+
+exporters:
+  clickhouse:
+    endpoint: tcp://clickhouse:9000
+    database: signoz_traces
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [clickhouse]
+    
+    metrics:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [clickhouse]
+    
+    logs:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [clickhouse]
