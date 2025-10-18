@@ -5,6 +5,7 @@ import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.exception.MeetingException
 import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
+import org.depromeet.team3.meetingattendee.MuzziColor
 import org.depromeet.team3.meetingattendee.exception.MeetingAttendeeException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,6 +29,7 @@ class JoinMeetingService(
             meetingId,
             userId,
             attendeeNickname,
+            MuzziColor.DEFAULT,
             null, null
         )
 
