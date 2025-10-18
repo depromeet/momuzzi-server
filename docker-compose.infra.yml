@@ -100,7 +100,7 @@ services:
       - ./monitoring/signoz/dashboards:/root/config/dashboards
       - ./monitoring/signoz/tmp:/tmp
     environment:
-      - ClickHouseUrl=tcp://clickhouse:9000
+      - ClickHouseUrl=tcp://signoz-clickhouse:9000
       - STORAGE=clickhouse
       - GODEBUG=netdns=go
       - TELEMETRY_ENABLED=true
@@ -110,7 +110,7 @@ services:
     networks:
       - depromeet_network
     depends_on:
-      clickhouse:
+      signoz-clickhouse:
         condition: service_healthy
 
   signoz-otel-collector:
@@ -123,14 +123,14 @@ services:
       - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
-      - ClickHouseUrl=tcp://clickhouse:9000
+      - ClickHouseUrl=tcp://signoz-clickhouse:9000
     ports:
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver
     networks:
       - depromeet_network
     depends_on:
-      clickhouse:
+      signoz-clickhouse:
         condition: service_healthy
 
   signoz-frontend:
@@ -142,7 +142,7 @@ services:
     networks:
       - depromeet_network
     depends_on:
-      - query-service
+      - signoz-query-service
 
 volumes:
   registry_data:

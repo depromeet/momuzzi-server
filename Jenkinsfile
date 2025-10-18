@@ -258,15 +258,31 @@ if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
     docker tag \${REGISTRY_URL}/\${IMAGE_NAME}:latest backend:latest
 fi
 
-# 애플리케이션 서비스만 시작
-docker-compose -f docker-compose.prod.yml up -d
+# Backend 먼저 시작
+docker-compose -f docker-compose.prod.yml up -d backend
+
+# Backend가 healthy 상태가 될 때까지 대기 (최대 2분)
+echo "Waiting for backend to be healthy..."
+for i in {1..24}; do
+    if docker inspect --format='{{.State.Health.Status}}' backend 2>/dev/null | grep -q "healthy"; then
+        echo "Backend is healthy"
+        break
+    fi
+    echo "Waiting... (\$i/24)"
+    sleep 5
+done
+
+# Nginx 시작
+docker-compose -f docker-compose.prod.yml up -d nginx
 
 # 사용하지 않는 이미지 정리
 docker image prune -af --filter "until=24h"
 
 # 배포 상태 확인
-sleep 30
+sleep 10
 docker ps
+echo "Checking service health..."
+docker inspect --format='{{.Name}}: {{.State.Health.Status}}' backend nginx || true
 EOF
                                 """
                             }
