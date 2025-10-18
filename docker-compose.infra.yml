@@ -77,8 +77,6 @@ services:
     restart: unless-stopped
     volumes:
       - clickhouse-data:/var/lib/clickhouse/
-    environment:
-      - CLICKHOUSE_DB=signoz_traces
     ulimits:
       nofile:
         soft: 262144
@@ -114,7 +112,7 @@ services:
         condition: service_healthy
 
   signoz-otel-collector:
-    image: signoz/signoz-otel-collector:0.88.11
+    image: signoz/signoz-otel-collector:0.88.8
     container_name: signoz-otel-collector
     restart: unless-stopped
     command:
