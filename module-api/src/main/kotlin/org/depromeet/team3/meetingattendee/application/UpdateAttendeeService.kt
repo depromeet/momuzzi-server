@@ -29,9 +29,29 @@ class UpdateAttendeeService(
                     "userId" to userId
                 )
             )
+        validateNicknameDuplication(meetingId, attendeeNickname)
+
         attendee.attendeeNickname = attendeeNickname
         attendee.muzziColor = MuzziColor.getOrDefault(color)
 
         meetingAttendeeRepository.save(attendee)
+    }
+
+    private fun validateNicknameDuplication(
+        meetingId: Long,
+        attendeeNickname: String
+    ) {
+        val normalizedNickname = attendeeNickname.replace("\\s".toRegex(), "")
+
+        val existingAttendee = meetingAttendeeRepository.existsByMeetingIdAndNormalizedNickname(meetingId, normalizedNickname)
+        if (existingAttendee) {
+            throw MeetingAttendeeException(
+                errorCode = ErrorCode.DUPLICATE_NICKNAME,
+                detail = mapOf(
+                    "meetingId" to meetingId,
+                    "nickname" to attendeeNickname
+                )
+            )
+        }
     }
 }
