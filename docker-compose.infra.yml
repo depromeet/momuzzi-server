@@ -121,7 +121,7 @@ services:
     command:
       - "--config=/etc/otel/config.yaml"
     volumes:
-      - ./module-infra/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
+      - ./module-infra/monitoring/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
     environment:
       - DOCKER_MULTI_NODE_CLUSTER=false
       - SKIP_DEFAULT_CONFIG_GENERATION=true
