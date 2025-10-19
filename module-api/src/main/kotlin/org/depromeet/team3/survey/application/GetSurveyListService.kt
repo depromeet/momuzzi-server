@@ -63,7 +63,7 @@ class GetSurveyListService(
             
             SurveyItemResponse(
                 participantId = survey.participantId,
-                nickname = participant.attendeeNickname,
+                nickname = participant.attendeeNickname!!,
                 preferredCuisineList = preferredCuisineList,
                 avoidIngredientList = avoidIngredientList,
                 avoidMenuList = avoidMenuList
