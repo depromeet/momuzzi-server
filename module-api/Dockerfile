@@ -10,17 +10,6 @@ RUN wget -O /opentelemetry-javaagent.jar https://github.com/open-telemetry/opent
 
 COPY ${JAR_FILE} app.jar
 
-# Fat JAR 언팩 후 OpenTelemetry Logback Appender를 BOOT-INF/lib에 추가
-RUN mkdir /tmp/app && \
-    cd /tmp/app && \
-    jar -xf /app.jar && \
-    wget -O BOOT-INF/lib/opentelemetry-logback-appender-1.0-2.11.0-alpha.jar https://repo1.maven.org/maven2/io/opentelemetry/instrumentation/opentelemetry-logback-appender-1.0/2.11.0-alpha/opentelemetry-logback-appender-1.0-2.11.0-alpha.jar && \
-    wget -O BOOT-INF/lib/opentelemetry-api-1.43.0.jar https://repo1.maven.org/maven2/io/opentelemetry/opentelemetry-api/1.43.0/opentelemetry-api-1.43.0.jar && \
-    wget -O BOOT-INF/lib/opentelemetry-context-1.43.0.jar https://repo1.maven.org/maven2/io/opentelemetry/opentelemetry-context/1.43.0/opentelemetry-context-1.43.0.jar && \
-    jar -cfm /app-new.jar META-INF/MANIFEST.MF . && \
-    mv /app-new.jar /app.jar && \
-    rm -rf /tmp/app
-
 RUN ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && echo "Asia/Seoul" > /etc/timezone
 
 ENV SPRING_PROFILES_ACTIVE=prod
