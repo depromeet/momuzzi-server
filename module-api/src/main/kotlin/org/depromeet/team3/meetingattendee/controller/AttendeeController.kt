@@ -24,7 +24,6 @@ class AttendeeController(
     )
     @PutMapping()
     fun updateAttendee(
-        @Parameter(description = "사용자 ID", required = true)
         @UserId userId: Long,
 
         @Parameter(description = "모임 ID", required = true)
