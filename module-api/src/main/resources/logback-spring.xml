@@ -12,10 +12,6 @@
 
     <!-- OpenTelemetry Appender -->
     <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
-        <captureExperimentalAttributes>true</captureExperimentalAttributes>
-        <captureKeyValuePairAttributes>true</captureKeyValuePairAttributes>
-        <captureMarkerAttribute>true</captureMarkerAttribute>
-        <captureCodeAttributes>true</captureCodeAttributes>
     </appender>
 
     <!-- Root Logger -->
@@ -25,16 +21,10 @@
     </root>
 
     <!-- Application Logger -->
-    <logger name="org.depromeet.team3" level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="OTEL"/>
-    </logger>
+    <logger name="org.depromeet.team3" level="INFO"/>
 
-    <!-- Hibernate SQL Logger (optional) -->
-    <logger name="org.hibernate.SQL" level="DEBUG">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="OTEL"/>
-    </logger>
+    <!-- Hibernate SQL Logger -->
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
 
     <!-- Reduce noise from some libraries -->
     <logger name="org.springframework" level="WARN"/>
