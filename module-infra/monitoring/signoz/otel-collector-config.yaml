@@ -22,9 +22,9 @@ processors:
         action: upsert
 
 exporters:
-#  clickhousetraces:
-#    datasource: tcp://signoz-clickhouse:9000/signoz_traces
-#    low_cardinal_exception_grouping: false
+  clickhousetraces:
+    datasource: tcp://signoz-clickhouse:9000/signoz_traces
+    low_cardinal_exception_grouping: false
 
   clickhouselogsexporter:
     dsn: tcp://signoz-clickhouse:9000/?database=signoz_logs

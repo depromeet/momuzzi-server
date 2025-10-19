@@ -21,6 +21,8 @@ ENV OTEL_LOGS_EXPORTER=otlp
 ENV OTEL_METRICS_EXPORTER=otlp
 ENV OTEL_RESOURCE_ATTRIBUTES="deployment.environment=production,service.version=1.0.0"
 ENV OTEL_EXPERIMENTAL_EXPORTER_OTLP_RETRY_ENABLED=true
+ENV OTEL_INSTRUMENTATION_LOGBACK_APPENDER_ENABLED=true
+ENV OTEL_INSTRUMENTATION_LOG4J_APPENDER_ENABLED=true
 
 
 ENTRYPOINT ["java", "-javaagent:/opentelemetry-javaagent.jar", "-Duser.timezone=Asia/Seoul", "-Dspring.profiles.active=${SPRING_PROFILES_ACTIVE}", "-jar", "app.jar"]
