@@ -20,7 +20,7 @@ class MeetingAttendeeEntity(
     val meeting: MeetingEntity,
 
     @Column(name = "attendee_nickname", nullable = false)
-    var attendeeNickname: String,
+    var attendeeNickname: String?,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "muzzi_color", nullable = false)
