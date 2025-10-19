@@ -91,7 +91,7 @@ services:
       retries: 3
 
   signoz-query-service:
-    image: signoz/query-service:0.40.0
+    image: signoz/query-service:0.88.7
     container_name: signoz-query-service
     restart: unless-stopped
     command:
