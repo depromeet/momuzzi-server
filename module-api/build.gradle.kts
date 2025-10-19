@@ -24,10 +24,6 @@ dependencies {
     // Caffeine Cache
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
-    // OpenTelemetry Logback instrumentation
-    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.11.0-alpha")
-    implementation("io.opentelemetry:opentelemetry-api:1.43.0")
-    implementation("io.opentelemetry:opentelemetry-sdk:1.43.0")
 
     testImplementation("org.mockito:mockito-core:5.1.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.1.1")

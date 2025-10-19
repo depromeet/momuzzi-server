@@ -26,7 +26,7 @@
     <!-- Hibernate SQL Logger -->
     <logger name="org.hibernate.SQL" level="DEBUG"/>
 
-    <!-- Reduce noise from some libraries -->
+    <!-- Reduce noise -->
     <logger name="org.springframework" level="WARN"/>
     <logger name="org.hibernate" level="WARN"/>
     <logger name="com.zaxxer.hikari" level="WARN"/>
