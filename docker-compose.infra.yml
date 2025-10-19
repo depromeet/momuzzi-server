@@ -119,9 +119,9 @@ services:
     container_name: signoz-otel-collector
     restart: unless-stopped
     command:
-      - "--config=/etc/otel-collector-config.yaml"
+      - "--config=/etc/otel/config.yaml"
     volumes:
-      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
 #      - ./monitoring/signoz/clickhouse-config.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
