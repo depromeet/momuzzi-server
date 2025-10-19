@@ -147,6 +147,21 @@ services:
     depends_on:
       - signoz-query-service
 
+  # Fluent Bit - Docker logs를 수집해서 SignOZ로 전송
+  fluent-bit:
+    image: fluent/fluent-bit:2.2
+    container_name: fluent-bit
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./module-infra/monitoring/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./module-infra/monitoring/parsers.conf:/fluent-bit/etc/parsers.conf
+    networks:
+      - depromeet_network
+    depends_on:
+      - signoz-otel-collector
+
 volumes:
   registry_data:
     driver: local
