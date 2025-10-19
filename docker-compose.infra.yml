@@ -91,7 +91,7 @@ services:
       retries: 3
 
   signoz-query-service:
-    image: signoz/query-service:0.88.7
+    image: signoz/query-service:0.40.0
     container_name: signoz-query-service
     restart: unless-stopped
     command:
@@ -108,7 +108,6 @@ services:
       - DEPLOYMENT_TYPE=docker-standalone-amd
       - SIGNOZ_JWT_SECRET=momuzzi-signoz-jwt-secret-key-2025
       - SIGNOZ_LOCAL_DB_PATH=/var/lib/signoz/signoz.db
-      - DISABLE_AUTH=true
     networks:
       - depromeet_network
     depends_on:
