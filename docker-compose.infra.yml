@@ -124,9 +124,10 @@ services:
       - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
 #      - ./monitoring/signoz/clickhouse-config.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
     environment:
+      - DOCKER_MULTI_NODE_CLUSTER=false
+      - SKIP_DEFAULT_CONFIG_GENERATION=true
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
       - ClickHouseUrl=tcp://signoz-clickhouse:9000
-      - DOCKER_MULTI_NODE_CLUSTER=false
     ports:
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver
