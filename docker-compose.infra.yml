@@ -121,8 +121,7 @@ services:
     command:
       - "--config=/etc/otel/config.yaml"
     volumes:
-      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
-#      - ./monitoring/signoz/clickhouse-config.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+      - ./module-infra/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
     environment:
       - DOCKER_MULTI_NODE_CLUSTER=false
       - SKIP_DEFAULT_CONFIG_GENERATION=true
