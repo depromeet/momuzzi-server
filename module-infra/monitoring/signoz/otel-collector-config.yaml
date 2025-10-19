@@ -22,21 +22,8 @@ processors:
         action: upsert
 
 exporters:
-  clickhousetraces:
-    datasource: tcp://signoz-clickhouse:9000/signoz_traces
-    low_cardinal_exception_grouping: false
-
   clickhouselogsexporter:
     dsn: tcp://signoz-clickhouse:9000/?database=signoz_logs
-    timeout: 10s
-    retry_on_failure:
-      enabled: true
-      initial_interval: 5s
-      max_interval: 30s
-      max_elapsed_time: 300s
-
-  clickhousemetricswrite:
-    endpoint: tcp://signoz-clickhouse:9000/?database=signoz_metrics
     timeout: 10s
     retry_on_failure:
       enabled: true
