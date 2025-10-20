@@ -1,7 +1,5 @@
 package org.depromeet.team3.surveycategory
 
-import org.depromeet.team3.common.enums.SurveyCategoryType
-
 interface SurveyCategoryRepository {
 
     fun save(surveyCategory: SurveyCategory): SurveyCategory
@@ -20,5 +18,5 @@ interface SurveyCategoryRepository {
     
     fun countChildrenByParentIdAndIsDeletedFalse(parentId: Long): Long
     
-    fun findByNameAndType(name: String, type: SurveyCategoryType): SurveyCategory?
+    fun findByName(name: String): SurveyCategory?
 }

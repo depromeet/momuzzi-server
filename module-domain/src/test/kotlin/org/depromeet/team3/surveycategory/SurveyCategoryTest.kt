@@ -1,6 +1,5 @@
 package org.depromeet.team3.surveycategory
 
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
@@ -13,14 +12,12 @@ class SurveyCategoryTest {
     fun `SurveyCategory 생성한다`() {
         // given
         val now = LocalDateTime.now()
-        val type = SurveyCategoryType.CUISINE
         val level = SurveyCategoryLevel.BRANCH
         val name = "한식"
         val sortOrder = 1
 
         // when
         val surveyCategory = SurveyCategory(
-            type = type,
             level = level,
             name = name,
             sortOrder = sortOrder,
@@ -29,7 +26,6 @@ class SurveyCategoryTest {
 
         // then
         assertNotNull(surveyCategory)
-        assertEquals(type, surveyCategory.type)
         assertEquals(level, surveyCategory.level)
         assertEquals(name, surveyCategory.name)
         assertEquals(sortOrder, surveyCategory.sortOrder)
@@ -43,7 +39,6 @@ class SurveyCategoryTest {
         // given
         val now = LocalDateTime.now()
         val parentId = 1L
-        val type = SurveyCategoryType.CUISINE
         val level = SurveyCategoryLevel.LEAF
         val name = "비빔밥"
         val sortOrder = 1
@@ -51,7 +46,6 @@ class SurveyCategoryTest {
         // when
         val surveyCategory = SurveyCategory(
             parentId = parentId,
-            type = type,
             level = level,
             name = name,
             sortOrder = sortOrder,
@@ -61,7 +55,6 @@ class SurveyCategoryTest {
         // then
         assertNotNull(surveyCategory)
         assertEquals(parentId, surveyCategory.parentId)
-        assertEquals(type, surveyCategory.type)
         assertEquals(level, surveyCategory.level)
         assertEquals(name, surveyCategory.name)
         assertEquals(sortOrder, surveyCategory.sortOrder)
@@ -75,7 +68,6 @@ class SurveyCategoryTest {
         val now = LocalDateTime.now()
         val surveyCategory1 = SurveyCategory(
             id = 1L,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1,
@@ -84,7 +76,6 @@ class SurveyCategoryTest {
 
         val surveyCategory2 = SurveyCategory(
             id = 1L,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1,
@@ -97,28 +88,26 @@ class SurveyCategoryTest {
     }
 
     @Test
-    fun `다른 타입의 SurveyCategory는 같지 않다`() {
+    fun `다른 이름의 SurveyCategory는 같지 않다`() {
         // given
         val now = LocalDateTime.now()
         val cuisineCategory = SurveyCategory(
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1,
             createdAt = now
         )
 
-        val avoidIngredientCategory = SurveyCategory(
-            type = SurveyCategoryType.AVOID_INGREDIENT,
+        val japaneseCategory = SurveyCategory(
             level = SurveyCategoryLevel.BRANCH,
-            name = "채식",
+            name = "일식",
             sortOrder = 1,
             createdAt = now
         )
 
         // when & then
-        assert(!cuisineCategory.equals(avoidIngredientCategory))
-        assert(cuisineCategory.hashCode() != avoidIngredientCategory.hashCode())
+        assert(!cuisineCategory.equals(japaneseCategory))
+        assert(cuisineCategory.hashCode() != japaneseCategory.hashCode())
     }
 
     @Test
@@ -128,7 +117,6 @@ class SurveyCategoryTest {
         val originalCategory = SurveyCategory(
             id = 1L,
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1,
@@ -147,7 +135,6 @@ class SurveyCategoryTest {
         // then
         assertEquals(originalCategory.id, updatedCategory.id)
         assertEquals(originalCategory.parentId, updatedCategory.parentId)
-        assertEquals(originalCategory.type, updatedCategory.type)
         assertEquals(originalCategory.level, updatedCategory.level)
         assertEquals("전통한식", updatedCategory.name)
         assertEquals(2, updatedCategory.sortOrder)
@@ -163,7 +150,6 @@ class SurveyCategoryTest {
         val activeCategory = SurveyCategory(
             id = 1L,
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1,
