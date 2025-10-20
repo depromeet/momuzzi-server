@@ -40,6 +40,13 @@ class MeetingAttendeeQuery(
         return meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)
     }
 
+    override fun existsByMeetingIdAndNormalizedNickname(
+        meetingId: Long,
+        nickname: String
+    ): Boolean {
+        return meetingAttendeeJpaRepository.existsByMeetingIdAndNickname(meetingId, nickname)
+    }
+
     override fun countByMeetingId(meetingId: Long): Int {
         return meetingAttendeeJpaRepository.countByMeetingId(meetingId)
     }

@@ -40,6 +40,7 @@ enum class ErrorCode(
     MEETING_ALREADY_CLOSED("C4097", "이미 종료된 모임입니다.", 409),
     MEETING_ALREADY_JOINED("C4098", "이미 참가한 모임입니다.", 409),
     MEETING_FULL("C4099", "모임 인원이 가득 찼습니다.", 409),
+    DUPLICATE_NICKNAME("C4100", "이미 사용 중인 닉네임입니다.", 409),
 
     // 5xx Server Errors
     INTERNAL_SERVER_ERROR("S001", "서버 내부 오류가 발생했습니다.", 500),

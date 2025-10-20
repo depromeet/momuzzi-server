@@ -1,5 +1,6 @@
 package org.depromeet.team3.meeting.dto.response
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDateTime
 
@@ -24,11 +25,14 @@ data class MeetingResponse(
     val stationName: String,
     
     @Schema(description = "모임 종료 시간", example = "2024-12-31T18:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     val endAt: LocalDateTime,
     
     @Schema(description = "모임 생성 시간", example = "2024-12-25T10:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     val createdAt: LocalDateTime,
     
     @Schema(description = "모임 수정 시간", example = "2024-12-25T15:30:00")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     val updatedAt: LocalDateTime?
 )

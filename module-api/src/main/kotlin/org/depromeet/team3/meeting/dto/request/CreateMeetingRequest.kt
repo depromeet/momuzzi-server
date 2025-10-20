@@ -8,9 +8,6 @@ data class CreateMeetingRequest(
     @Schema(description = "모임 이름", example = "점심 모무찌?")
     val name: String,
 
-    @Schema(description = "모임 생성자 닉네임", example = "나야 생성자")
-    val attendeeNickname: String,
-
     @Schema(description = "모임 참여 인원", example = "1")
     val attendeeCount: Int,
 
