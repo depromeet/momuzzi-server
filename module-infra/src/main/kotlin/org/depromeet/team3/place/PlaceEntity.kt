@@ -55,6 +55,9 @@ class PlaceEntity(
     @Column(name = "address_descriptor", length = 500)
     val addressDescriptor: String? = null,
     
+    @Column(name = "photos", columnDefinition = "TEXT")
+    val photos: String? = null,
+    
     @Column(name = "is_deleted", nullable = false)
     val isDeleted: Boolean = false,
     

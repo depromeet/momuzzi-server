@@ -110,7 +110,7 @@ class MeetingController(
         @UserId userId: Long,
         @RequestBody @Valid request: JoinMeetingRequest
     ) : DpmApiResponse<Unit> {
-        joinMeetingService.invoke(userId, request.meetingId, request.attendeeNickname)
+        joinMeetingService.invoke(userId, request.token)
 
         return DpmApiResponse.ok()
     }

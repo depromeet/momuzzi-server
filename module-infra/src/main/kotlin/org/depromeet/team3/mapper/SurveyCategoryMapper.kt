@@ -1,8 +1,10 @@
 package org.depromeet.team3.mapper
 
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryEntity
 import org.depromeet.team3.surveycategory.SurveyCategoryJpaRepository
+import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.springframework.stereotype.Component
 
 @Component
@@ -26,7 +28,12 @@ class SurveyCategoryMapper(
     override fun toEntity(domain: SurveyCategory): SurveyCategoryEntity {
         val parentEntity = domain.parentId?.let { 
             surveyCategoryJpaRepository.findById(it)
-                .orElseThrow { IllegalArgumentException("Parent SurveyCategory not found with id: ${domain.parentId}") }
+                .orElseThrow { 
+                    SurveyCategoryException(
+                        errorCode = ErrorCode.PARENT_CATEGORY_NOT_FOUND,
+                        detail = mapOf("parentCategoryId" to domain.parentId)
+                    )
+                }
         }
         
         return SurveyCategoryEntity(

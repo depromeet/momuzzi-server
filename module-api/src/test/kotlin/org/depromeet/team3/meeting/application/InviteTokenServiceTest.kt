@@ -2,6 +2,7 @@ package org.depromeet.team3.meeting.application
 
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.util.MeetingTestDataFactory
+import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -16,12 +17,16 @@ class InviteTokenServiceTest {
     @Mock
     private lateinit var meetingRepository: MeetingRepository
 
+
+    @Mock
+    lateinit var meetingAttendeeRepository: MeetingAttendeeRepository
+
     private lateinit var inviteTokenService: InviteTokenService
 
     @BeforeEach
     fun setUp() {
         MockitoAnnotations.openMocks(this)
-        inviteTokenService = InviteTokenService(meetingRepository)
+        inviteTokenService = InviteTokenService(meetingRepository, meetingAttendeeRepository)
     }
 
     @Test

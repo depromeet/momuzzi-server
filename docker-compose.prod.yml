@@ -14,6 +14,8 @@ services:
       - MYSQL_URL=jdbc:mysql://${PROD_DB_ENDPOINT}:3306/${PROD_DB_NAME}
     networks:
       - depromeet_network
+    external_links:
+      - signoz-otel-collector:signoz-otel-collector
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]

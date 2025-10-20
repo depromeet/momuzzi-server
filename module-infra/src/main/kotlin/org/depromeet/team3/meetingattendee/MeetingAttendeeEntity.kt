@@ -6,7 +6,10 @@ import org.depromeet.team3.common.BaseTimeEntity
 import org.depromeet.team3.meeting.MeetingEntity
 
 @Entity
-@Table(name = "tb_meeting_attendees")
+@Table(
+    name = "tb_meeting_attendees",
+    uniqueConstraints = [UniqueConstraint(name = "uk_meeting_attendee", columnNames = ["meeting_id", "user_id"])]
+)
 class MeetingAttendeeEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,7 +20,11 @@ class MeetingAttendeeEntity(
     val meeting: MeetingEntity,
 
     @Column(name = "attendee_nickname", nullable = false)
-    val attendeeNickname: String,
+    var attendeeNickname: String?,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "muzzi_color", nullable = false)
+    var muzziColor: MuzziColor,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

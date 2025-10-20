@@ -6,11 +6,12 @@ import org.depromeet.team3.place.model.PlacesTextSearchResponse
 object PlaceTestDataFactory {
     
     fun createGooglePlacesSearchResponse(
-        resultCount: Int = 5
+        resultCount: Int = 5,
+        placeId: String? = null
     ): PlacesTextSearchResponse {
         val places = (1..resultCount).map { index ->
             PlacesTextSearchResponse.Place(
-                id = "place_id_$index",
+                id = placeId ?: "place_id_$index",
                 displayName = PlacesTextSearchResponse.Place.DisplayName(
                     text = "맛집 $index",
                     languageCode = "ko"

@@ -7,6 +7,7 @@ import org.depromeet.team3.auth.command.RefreshTokenCommand
 import org.depromeet.team3.auth.dto.TokenResponse
 import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.auth.util.TestDataFactory
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.security.jwt.JwtTokenProvider
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -54,7 +55,7 @@ class RefreshTokenServiceTest {
             refreshTokenService.refresh(command)
         }
         
-        assertThat(exception.detail).containsEntry("reason", "Refresh Token이 유효하지 않습니다")
+        assertThat(exception.errorCode).isEqualTo(ErrorCode.REFRESH_TOKEN_INVALID)
     }
 
     @Test
@@ -72,7 +73,7 @@ class RefreshTokenServiceTest {
             refreshTokenService.refresh(command)
         }
         
-        assertThat(exception.detail).containsEntry("reason", "사용자 정보를 찾을 수 없습니다")
+        assertThat(exception.errorCode).isEqualTo(ErrorCode.TOKEN_USER_ID_INVALID)
     }
 
     @Test
@@ -93,7 +94,7 @@ class RefreshTokenServiceTest {
             refreshTokenService.refresh(command)
         }
         
-        assertThat(exception.detail).containsEntry("reason", "사용자를 찾을 수 없습니다")
+        assertThat(exception.errorCode).isEqualTo(ErrorCode.USER_NOT_FOUND_FOR_TOKEN)
     }
 
     @Test
@@ -120,7 +121,7 @@ class RefreshTokenServiceTest {
             refreshTokenService.refresh(command)
         }
         
-        assertThat(exception.detail).containsEntry("reason", "Refresh Token이 일치하지 않습니다")
+        assertThat(exception.errorCode).isEqualTo(ErrorCode.REFRESH_TOKEN_MISMATCH)
     }
 
     @Test

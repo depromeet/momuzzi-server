@@ -11,5 +11,26 @@ data class PlacesTextSearchRequest(
     @JsonProperty("languageCode")
     val languageCode: String = "ko",
     @JsonProperty("maxResultCount")
-    val maxResultCount: Int = 10
-)
+    val maxResultCount: Int = 10,
+    @JsonProperty("locationBias")
+    val locationBias: LocationBias? = null
+) {
+    data class LocationBias(
+        @JsonProperty("circle")
+        val circle: Circle
+    ) {
+        data class Circle(
+            @JsonProperty("center")
+            val center: Center,
+            @JsonProperty("radius")
+            val radius: Double
+        ) {
+            data class Center(
+                @JsonProperty("latitude")
+                val latitude: Double,
+                @JsonProperty("longitude")
+                val longitude: Double
+            )
+        }
+    }
+}

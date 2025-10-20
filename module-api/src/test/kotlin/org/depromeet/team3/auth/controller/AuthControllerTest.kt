@@ -113,10 +113,9 @@ class AuthControllerTest {
     fun `토큰 재발급 실패 - 401 에러 (Refresh Token 유효하지 않음)`() {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "invalid-refresh-token")
-        val errorDetail = mapOf("reason" to "Refresh Token이 유효하지 않습니다")
         
         whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
-            .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
+            .thenThrow(AuthException(ErrorCode.REFRESH_TOKEN_INVALID))
 
         // when & then
         mockMvc.perform(
@@ -125,16 +124,16 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(refreshTokenRequest))
         )
             .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("J008"))
     }
 
     @Test
-    fun `토큰 재발급 실패 - 401 에러 (사용자 정보 없음)`() {
+    fun `토큰 재발급 실패 - 401 에러 (토큰 사용자 ID 유효하지 않음)`() {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
-        val errorDetail = mapOf("reason" to "사용자 정보를 찾을 수 없습니다")
         
         whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
-            .thenThrow(AuthException(ErrorCode.KAKAO_AUTH_FAILED, errorDetail))
+            .thenThrow(AuthException(ErrorCode.TOKEN_USER_ID_INVALID))
 
         // when & then
         mockMvc.perform(
@@ -143,6 +142,43 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(refreshTokenRequest))
         )
             .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("J012"))
+    }
+
+    @Test
+    fun `토큰 재발급 실패 - 404 에러 (사용자 정보 없음)`() {
+        // given
+        val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
+        
+        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+            .thenThrow(AuthException(ErrorCode.USER_NOT_FOUND_FOR_TOKEN))
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/auth/reissue-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshTokenRequest))
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("J011"))
+    }
+
+    @Test
+    fun `토큰 재발급 실패 - 401 에러 (Refresh Token 불일치)`() {
+        // given
+        val refreshTokenRequest = RefreshTokenRequest(refreshToken = "different-refresh-token")
+        
+        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+            .thenThrow(AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH))
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/auth/reissue-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshTokenRequest))
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("J010"))
     }
 
     @Test

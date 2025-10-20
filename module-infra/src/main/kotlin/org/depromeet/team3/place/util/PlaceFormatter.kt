@@ -17,22 +17,26 @@ object PlaceFormatter {
      * Photo name 형식: places/{place_id}/photos/{photo_reference}
      */
     fun generatePhotoUrl(photoName: String, apiKey: String): String {
-        return "https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}"
+        return "https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=1000&maxWidthPx=1000&key=${apiKey}"
     }
     
     /**
-     * 장소 이름에서 한국어 부분만 추출
+     * 장소 이름에서 한국어 부분만 추출하고 특수문자 정리
      */
     fun extractKoreanName(fullName: String): String {
-        // 한글, 숫자, 공백, 일부 특수문자만 추출
-        val koreanPattern = Regex("[가-힣0-9\\s\\-()]+")
+        val koreanPattern = Regex("[가-힣0-9\\s\\-]+")
         val matches = koreanPattern.findAll(fullName)
         
-        return matches
+        val extracted = matches
             .map { it.value.trim() }
             .filter { it.isNotEmpty() }
             .firstOrNull()
             ?.trim()
-            ?: fullName // 한국어가 없으면 원본 반환
+            ?: fullName
+        
+        return extracted
+            .replace(Regex("[()\\[\\]{},.;:!?\"'`~@#$%^&*+=/<>|\\\\]+$"), "")
+            .replace(Regex("^[()\\[\\]{},.;:!?\"'`~@#$%^&*+=/<>|\\\\]+"), "")
+            .trim()
     }
 }

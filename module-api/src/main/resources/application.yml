@@ -16,23 +16,24 @@ spring:
     hibernate:
       ddl-auto: update
 
-# WAS 헬스 체크 관련
+# WAS 헬스 체크 및 모니터링 관련
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
-  health:
-    defaults:
-      enabled: true
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
-  access-token-validity: 3600000   # 1시간
+  access-token-validity: 43200000   # 12시간
   refresh-token-validity: 604800000   # 1주일
 
 # 앱 설정

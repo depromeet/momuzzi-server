@@ -1,5 +1,8 @@
 package org.depromeet.team3.mapper
 
+import org.depromeet.team3.auth.exception.UserException
+import org.depromeet.team3.common.exception.ErrorCode
+import org.depromeet.team3.meeting.exception.MeetingException
 import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeEntity
 import org.depromeet.team3.meeting.MeetingJpaRepository
@@ -19,22 +22,34 @@ class MeetingAttendeeMapper(
             userId = entity.user.id!!,
             attendeeNickname = entity.attendeeNickname,
             createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt
+            updatedAt = entity.updatedAt,
+            muzziColor = entity.muzziColor
         )
     }
     
     override fun toEntity(domain: MeetingAttendee): MeetingAttendeeEntity {
         val meetingEntity = meetingJpaRepository.findById(domain.meetingId)
-            .orElseThrow { IllegalArgumentException("Meeting not found with id: ${domain.meetingId}") }
+            .orElseThrow { 
+                MeetingException(
+                    errorCode = ErrorCode.MEETING_NOT_FOUND,
+                    detail = mapOf("meetingId" to domain.meetingId)
+                )
+            }
 
         val userEntity = userRepository.findById(domain.userId)
-            .orElseThrow { IllegalArgumentException("User not found with id: ${domain.userId}") }
+            .orElseThrow { 
+                UserException(
+                    errorCode = ErrorCode.USER_NOT_FOUND,
+                    detail = mapOf("userId" to domain.userId)
+                )
+            }
         
         return MeetingAttendeeEntity(
             id = domain.id,
             meeting = meetingEntity,
             attendeeNickname = domain.attendeeNickname,
-            user = userEntity
+            user = userEntity,
+            muzziColor = domain.muzziColor
         )
     }
 }

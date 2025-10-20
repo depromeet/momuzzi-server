@@ -45,20 +45,20 @@ data class PlaceDetailsResponse(
     
     data class Review(
         @JsonProperty("authorAttribution")
-        val authorAttribution: AuthorAttribution,
-        val rating: Double,
+        val authorAttribution: AuthorAttribution? = null,
+        val rating: Double = 0.0,
         @JsonProperty("relativePublishTimeDescription")
-        val relativePublishTimeDescription: String,
+        val relativePublishTimeDescription: String? = null,
         @JsonProperty("text")
-        val text: TextContent
+        val text: TextContent? = null
     ) {
         data class AuthorAttribution(
             @JsonProperty("displayName")
-            val displayName: String
+            val displayName: String? = null
         )
         
         data class TextContent(
-            val text: String,
+            val text: String = "",
             val languageCode: String? = null
         )
     }

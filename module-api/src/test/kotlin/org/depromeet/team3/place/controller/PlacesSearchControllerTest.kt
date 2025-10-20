@@ -34,6 +34,7 @@ class PlacesSearchControllerTest {
         val mockResponse = PlacesSearchResponse(
             items = listOf(
                 PlacesSearchResponse.PlaceItem(
+                    placeId = 1L,
                     name = "맛집 1",
                     address = "서울시 강남구",
                     rating = 4.5,
@@ -96,7 +97,9 @@ class PlacesSearchControllerTest {
         // given
         val query = "강남역 맛집"
 
-        coEvery { searchPlacesService.textSearch(any()) } throws PlaceSearchException("맛집 검색 중 오류가 발생했습니다")
+        coEvery { searchPlacesService.textSearch(any()) } throws PlaceSearchException(
+            org.depromeet.team3.common.exception.ErrorCode.PLACE_SEARCH_FAILED
+        )
 
         // when & then
         val mvcResult = mockMvc.perform(get("/api/v1/places").param("query", query))
@@ -104,7 +107,8 @@ class PlacesSearchControllerTest {
             .andReturn()
 
         mockMvc.perform(asyncDispatch(mvcResult))
-            .andExpect(status().is5xxServerError)
+            .andExpect(status().isInternalServerError)
+            .andExpect(jsonPath("$.error.code").value("P001"))
     }
 
     @Test
@@ -114,6 +118,7 @@ class PlacesSearchControllerTest {
         val mockResponse = PlacesSearchResponse(
             items = (1..5).map { index ->
                 PlacesSearchResponse.PlaceItem(
+                    placeId = index.toLong(),
                     name = "맛집 $index",
                     address = "서울시 강남구 $index",
                     rating = 4.0 + (index * 0.1),
@@ -158,6 +163,7 @@ class PlacesSearchControllerTest {
         val mockResponse = PlacesSearchResponse(
             items = listOf(
                 PlacesSearchResponse.PlaceItem(
+                    placeId = 1L,
                     name = "카페 & 맛집",
                     address = "서울시 강남구",
                     rating = 4.5,

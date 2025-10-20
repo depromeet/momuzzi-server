@@ -20,9 +20,11 @@ class KakaoOAuthClientTest {
         val accessCode = "test-access-code"
 
         // when & then
-        assertThrows<AuthException> {
+        val exception = assertThrows<AuthException> {
             kakaoOAuthClient.requestToken(accessCode, invalidRedirectUri)
         }
+        
+        assertThat(exception.errorCode.code).isEqualTo("O008")
     }
 
     @Test
@@ -32,9 +34,11 @@ class KakaoOAuthClientTest {
         val kakaoOAuthClient = KakaoOAuthClient(ObjectMapper(), kakaoProperties)
 
         // when & then
-        assertThrows<AuthException> {
+        val exception = assertThrows<AuthException> {
             kakaoOAuthClient.requestProfile(null)
         }
+        
+        assertThat(exception.errorCode.code).isEqualTo("O002")
     }
 
     @Test
@@ -46,9 +50,11 @@ class KakaoOAuthClientTest {
         val accessCode = "test-access-code"
 
         // when & then
-        assertThrows<AuthException> {
+        val exception = assertThrows<AuthException> {
             kakaoOAuthClient.requestToken(accessCode, invalidRedirectUriWithSpaces)
         }
+        
+        assertThat(exception.errorCode.code).isEqualTo("O008")
     }
 
     @Test
