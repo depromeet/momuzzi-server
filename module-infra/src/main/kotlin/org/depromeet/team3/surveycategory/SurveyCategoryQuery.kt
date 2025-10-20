@@ -1,13 +1,15 @@
 package org.depromeet.team3.surveycategory
 
-import org.depromeet.team3.common.enums.SurveyCategoryType
+import com.querydsl.jpa.impl.JPAQueryFactory
 import org.depromeet.team3.mapper.SurveyCategoryMapper
 import org.springframework.stereotype.Repository
+import org.depromeet.team3.surveycategory.QSurveyCategoryEntity
 
 @Repository
 class SurveyCategoryQuery (
     private val surveyCategoryMapper: SurveyCategoryMapper,
-    private val surveyCategoryJpaRepository: SurveyCategoryJpaRepository
+    private val surveyCategoryJpaRepository: SurveyCategoryJpaRepository,
+    private val queryFactory: JPAQueryFactory
 ) : SurveyCategoryRepository {
 
     override fun save(surveyCategory: SurveyCategory): SurveyCategory {
@@ -36,19 +38,63 @@ class SurveyCategoryQuery (
     }
     
     override fun existsByNameAndParentIdAndIsDeletedFalse(name: String, parentId: Long?, excludeId: Long?): Boolean {
-        return surveyCategoryJpaRepository.existsByNameAndParentIdAndIsDeletedFalse(name, parentId, excludeId)
+        val qSurveyCategory = QSurveyCategoryEntity.surveyCategoryEntity
+        
+        val query = queryFactory.selectFrom(qSurveyCategory)
+            .where(
+                qSurveyCategory.name.eq(name)
+                    .and(qSurveyCategory.isDeleted.eq(false))
+                    .and(
+                        if (parentId == null) {
+                            qSurveyCategory.parent.isNull
+                        } else {
+                            qSurveyCategory.parent.id.eq(parentId)
+                        }
+                    )
+                    .and(
+                        if (excludeId == null) {
+                            qSurveyCategory.id.isNotNull
+                        } else {
+                            qSurveyCategory.id.ne(excludeId)
+                        }
+                    )
+            )
+        
+        return query.fetchFirst() != null
     }
     
-    override fun existsBySortOrderAndParentIdAndIsDeletedFalse(sortOrder: Int, parentId: Long?, excludeId: Long?): Boolean {
-        return surveyCategoryJpaRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(sortOrder, parentId, excludeId)
+    override fun existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(sortOrder: Int, parentId: Long?, excludeId: Long?): Boolean {
+        val qSurveyCategory = QSurveyCategoryEntity.surveyCategoryEntity
+        
+        val query = queryFactory.selectFrom(qSurveyCategory)
+            .where(
+                qSurveyCategory.sortOrder.eq(sortOrder)
+                    .and(qSurveyCategory.isDeleted.eq(false))
+                    .and(
+                        if (parentId == null) {
+                            qSurveyCategory.parent.isNull
+                        } else {
+                            qSurveyCategory.parent.id.eq(parentId)
+                        }
+                    )
+                    .and(
+                        if (excludeId == null) {
+                            qSurveyCategory.id.isNotNull
+                        } else {
+                            qSurveyCategory.id.ne(excludeId)
+                        }
+                    )
+            )
+        
+        return query.fetchFirst() != null
     }
     
     override fun countChildrenByParentIdAndIsDeletedFalse(parentId: Long): Long {
         return surveyCategoryJpaRepository.countByParentIdAndIsDeletedFalse(parentId)
     }
 
-    override fun findByNameAndType(name: String, type: SurveyCategoryType): SurveyCategory? {
-        return surveyCategoryJpaRepository.findByNameAndTypeAndIsDeletedFalse(name, type)
+    override fun findByName(name: String): SurveyCategory? {
+        return surveyCategoryJpaRepository.findByNameAndIsDeletedFalse(name)
             ?.let { surveyCategoryMapper.toDomain(it) }
     }
 }

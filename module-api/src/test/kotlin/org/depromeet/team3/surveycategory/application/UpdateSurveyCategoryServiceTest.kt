@@ -2,10 +2,8 @@ package org.depromeet.team3.surveycategory.application
 
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.depromeet.team3.survey.util.SurveyTestDataFactory
@@ -40,7 +38,6 @@ class UpdateSurveyCategoryServiceTest {
         val categoryId = 1L
         val existingCategory = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1
@@ -48,7 +45,6 @@ class UpdateSurveyCategoryServiceTest {
 
         val updateRequest = UpdateSurveyCategoryRequest(
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
             sortOrder = 2
@@ -76,7 +72,6 @@ class UpdateSurveyCategoryServiceTest {
         val categoryId = 999L
         val updateRequest = UpdateSurveyCategoryRequest(
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
             sortOrder = 2
@@ -97,7 +92,6 @@ class UpdateSurveyCategoryServiceTest {
         val categoryId = 1L
         val existingCategory = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1
@@ -105,7 +99,6 @@ class UpdateSurveyCategoryServiceTest {
 
         val updateRequest = UpdateSurveyCategoryRequest(
             parentId = 2L,
-            type = SurveyCategoryType.AVOID_INGREDIENT,
             level = SurveyCategoryLevel.LEAF,
             name = "피해야할 재료",
             sortOrder = 5
@@ -113,7 +106,6 @@ class UpdateSurveyCategoryServiceTest {
 
         val parentCategory = SurveyTestDataFactory.createSurveyCategory(
             id = 2L,
-            type = SurveyCategoryType.AVOID_INGREDIENT,
             level = SurveyCategoryLevel.BRANCH,
             name = "부모 카테고리",
             sortOrder = 1
@@ -123,7 +115,7 @@ class UpdateSurveyCategoryServiceTest {
         `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(2L)).thenReturn(parentCategory)
         `when`(surveyCategoryRepository.countChildrenByParentIdAndIsDeletedFalse(categoryId)).thenReturn(0L)
         `when`(surveyCategoryRepository.existsByNameAndParentIdAndIsDeletedFalse("피해야할 재료", 2L, categoryId)).thenReturn(false)
-        `when`(surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(5, 2L, categoryId)).thenReturn(false)
+        `when`(surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(5, 2L, categoryId)).thenReturn(false)
 
         // when
         updateSurveyCategoryService(categoryId, updateRequest)
@@ -132,7 +124,6 @@ class UpdateSurveyCategoryServiceTest {
         verify(surveyCategoryRepository).save(
             existingCategory.copy(
                 parentId = 2L,
-                type = SurveyCategoryType.AVOID_INGREDIENT,
                 level = SurveyCategoryLevel.LEAF,
                 name = "피해야할 재료",
                 sortOrder = 5

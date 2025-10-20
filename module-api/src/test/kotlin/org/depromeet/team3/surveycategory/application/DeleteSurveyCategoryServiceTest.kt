@@ -2,10 +2,8 @@ package org.depromeet.team3.surveycategory.application
 
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.depromeet.team3.survey.util.SurveyTestDataFactory
 import org.junit.jupiter.api.BeforeEach
@@ -16,7 +14,6 @@ import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
-import java.time.LocalDateTime
 
 @ExtendWith(MockitoExtension::class)
 @DisplayName("설문 카테고리 삭제 서비스 테스트")
@@ -39,7 +36,6 @@ class DeleteSurveyCategoryServiceTest {
         val categoryId = 1L
         val categoryToDelete = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.LEAF,
             name = "김치찌개",
             sortOrder = 1
@@ -80,7 +76,6 @@ class DeleteSurveyCategoryServiceTest {
         val categoryId = 1L
         val categoryToDelete = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1
@@ -102,7 +97,6 @@ class DeleteSurveyCategoryServiceTest {
         val categoryId = 1L
         val alreadyDeletedCategory = SurveyTestDataFactory.createSurveyCategory(
             id = categoryId,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.LEAF,
             name = "김치찌개",
             sortOrder = 1,

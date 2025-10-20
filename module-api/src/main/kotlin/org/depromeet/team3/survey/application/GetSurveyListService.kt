@@ -1,7 +1,6 @@
 package org.depromeet.team3.survey.application
 
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.survey.SurveyRepository
@@ -41,21 +40,8 @@ class GetSurveyListService(
         val surveyItems = surveys.map { survey ->
             val results = surveyResultRepository.findBySurveyId(survey.id!!)
             
-            // 설문 결과에서 카테고리 정보 조회
-            val preferredCuisineList = mutableListOf<String>()
-            val avoidIngredientList = mutableListOf<String>()
-            val avoidMenuList = mutableListOf<String>()
-            
-            results.forEach { result ->
-                val category = surveyCategoryRepository.findById(result.surveyCategoryId)
-                if (category != null) {
-                    when (category.type) {
-                        SurveyCategoryType.CUISINE -> preferredCuisineList.add(category.name)
-                        SurveyCategoryType.AVOID_INGREDIENT -> avoidIngredientList.add(category.name)
-                        SurveyCategoryType.AVOID_MENU -> avoidMenuList.add(category.name)
-                    }
-                }
-            }
+            // 설문 결과에서 카테고리 목록 생성
+            val selectedCategoryList = results.map { it.surveyCategoryId }
             
             // 참가자 정보 조회
             val participant = meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, survey.participantId)
@@ -63,10 +49,8 @@ class GetSurveyListService(
             
             SurveyItemResponse(
                 participantId = survey.participantId,
-                nickname = participant.attendeeNickname!!,
-                preferredCuisineList = preferredCuisineList,
-                avoidIngredientList = avoidIngredientList,
-                avoidMenuList = avoidMenuList
+                nickname = participant.attendeeNickname ?: "알 수 없음",
+                selectedCategoryList = selectedCategoryList
             )
         }
         

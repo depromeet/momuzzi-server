@@ -2,9 +2,7 @@ package org.depromeet.team3.surveycategory.application
 
 import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryQuery
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
-import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryResponse
 import org.springframework.stereotype.Service
 
 @Service
@@ -12,26 +10,12 @@ class GetSurveyCategoryService(
     private val surveyCategoryQuery: SurveyCategoryQuery
 ) {
 
-    operator fun invoke(): SurveyCategoryResponse {
+    operator fun invoke(): List<SurveyCategoryItem> {
         // DB에서 모든 활성 카테고리 조회
         val allCategories = surveyCategoryQuery.findActive()
         
-        // 카테고리 타입별로 분류하여 계층 구조 생성
-        val preferredCuisineCategories = buildHierarchyFromDatabase(
-            allCategories.filter { it.type == SurveyCategoryType.CUISINE }
-        )
-        val avoidIngredientCategories = buildHierarchyFromDatabase(
-            allCategories.filter { it.type == SurveyCategoryType.AVOID_INGREDIENT }
-        )
-        val avoidMenuCategories = buildHierarchyFromDatabase(
-            allCategories.filter { it.type == SurveyCategoryType.AVOID_MENU }
-        )
-
-        return SurveyCategoryResponse(
-            preferredCuisineCategoryList = preferredCuisineCategories,
-            avoidIngredientCategoryList = avoidIngredientCategories,
-            avoidMenuCategoryList = avoidMenuCategories
-        )
+        // 계층 구조 생성
+        return buildHierarchyFromDatabase(allCategories)
     }
 
     private fun buildHierarchyFromDatabase(categories: List<SurveyCategory>): List<SurveyCategoryItem> {

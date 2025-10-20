@@ -4,6 +4,7 @@ plugins {
     kotlin("jvm") version "1.9.25" apply false
     kotlin("plugin.spring") version "1.9.25" apply false
     kotlin("plugin.jpa") version "1.9.25" apply false
+    kotlin("kapt") version "1.9.25" apply false
 }
 
 // 모든 프로젝트 공통 설정

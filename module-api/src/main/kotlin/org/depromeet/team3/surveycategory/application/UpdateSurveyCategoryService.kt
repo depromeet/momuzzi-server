@@ -20,28 +20,10 @@ class UpdateSurveyCategoryService(
         val existingCategory = surveyCategoryRepository.findByIdAndIsDeletedFalse(id)
             ?: throw SurveyCategoryException(ErrorCode.CATEGORY_NOT_FOUND, mapOf("id" to id))
 
-        // 2. 부모 카테고리 검증 (parentId가 제공된 경우)
-        val parentCategory = request.parentId?.let { parentId ->
-            val parent = surveyCategoryRepository.findByIdAndIsDeletedFalse(parentId)
-                ?: throw SurveyCategoryException(ErrorCode.PARENT_CATEGORY_NOT_FOUND, mapOf("parentId" to parentId))
-            
-            // 부모 카테고리가 BRANCH 레벨인지 확인
-            if (parent.level != SurveyCategoryLevel.BRANCH) {
-                throw SurveyCategoryException(ErrorCode.INVALID_REQUEST, mapOf("reason" to "부모 카테고리는 BRANCH 레벨이어야 합니다", "parentLevel" to parent.level))
-            }
-            
-            // 부모-자식 타입 호환성 검증
-            if (parent.type != request.type) {
-                throw SurveyCategoryException(ErrorCode.INVALID_REQUEST, mapOf("reason" to "부모 카테고리와 자식 카테고리의 타입이 일치하지 않습니다", "parentType" to parent.type, "childType" to request.type))
-            }
-            
-            parent
-        }
-
-        // 3. LEAF/BRANCH 규칙 검증
+        // 2. LEAF/BRANCH 규칙 검증
         validateLeafBranchRules(existingCategory, request)
 
-        // 4. 현재 카테고리가 BRANCH에서 LEAF로 변경되는 경우, 자식이 있는지 확인
+        // 3. 현재 카테고리가 BRANCH에서 LEAF로 변경되는 경우, 자식이 있는지 확인
         if (existingCategory.level == SurveyCategoryLevel.BRANCH &&
             request.level == SurveyCategoryLevel.LEAF) {
             val childCount = surveyCategoryRepository.countChildrenByParentIdAndIsDeletedFalse(id)
@@ -56,14 +38,13 @@ class UpdateSurveyCategoryService(
         }
 
         // 6. 형제 카테고리 내 순서 중복 검증
-        if (surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(request.sortOrder, request.parentId, id)) {
+        if (surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(request.sortOrder, request.parentId, id)) {
             throw SurveyCategoryException(ErrorCode.DUPLICATE_CATEGORY_ORDER, mapOf("sortOrder" to request.sortOrder, "parentId" to request.parentId))
         }
 
         // 7. 업데이트된 카테고리 생성
         val updatedCategory = existingCategory.copy(
             parentId = request.parentId,
-            type = request.type,
             level = request.level,
             name = request.name,
             sortOrder = request.sortOrder
