@@ -139,8 +139,8 @@ services:
       - ./module-infra/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
     environment:
       - GF_SERVER_ROOT_URL=https://monitoring.momuzzi.site
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PW:-admin}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PW}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_AUTH_ANONYMOUS_ENABLED=false
     networks:
