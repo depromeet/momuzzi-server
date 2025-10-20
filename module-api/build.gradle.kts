@@ -17,7 +17,10 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
-    
+
+    // Prometheus 매트릭
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
     // Jackson Kotlin 모듈
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 

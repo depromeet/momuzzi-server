@@ -70,106 +70,135 @@ services:
     mem_reservation: 1g  # 예약 메모리
     cpus: 2.0
 
-  # Signoz Monitoring Server
-  signoz-clickhouse:
-    image: clickhouse/clickhouse-server:23.11-alpine
-    container_name: signoz-clickhouse
+  # PLG Stack
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: loki
     restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - clickhouse-data:/var/lib/clickhouse/
-      - ./monitoring/signoz/clickhouse-config.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
+      - loki-data:/loki
+      - ./module-infra/monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
     networks:
       - depromeet_network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  signoz-query-service:
-    image: signoz/query-service:0.40.0
-    container_name: signoz-query-service
+  # Prometheus - Metrics collector
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
     restart: unless-stopped
-    command:
-      - "-config=/root/config/prometheus.yml"
-    volumes:
-      - signoz-data:/var/lib/signoz
-      - ./monitoring/signoz/dashboards:/root/config/dashboards
-      - ./monitoring/signoz/tmp:/tmp
-    environment:
-      - ClickHouseUrl=tcp://signoz-clickhouse:9000
-      - STORAGE=clickhouse
-      - GODEBUG=netdns=go
-      - TELEMETRY_ENABLED=true
-      - DEPLOYMENT_TYPE=docker-standalone-amd
-      - SIGNOZ_JWT_SECRET=momuzzi-signoz-jwt-secret-key-2025
-      - SIGNOZ_LOCAL_DB_PATH=/var/lib/signoz/signoz.db
-    networks:
-      - depromeet_network
-    depends_on:
-      signoz-clickhouse:
-        condition: service_healthy
-
-  signoz-otel-collector:
-    image: signoz/signoz-otel-collector:0.88.7
-    container_name: signoz-otel-collector
-    restart: unless-stopped
-    command:
-      - "--config=/etc/otel/config.yaml"
-    volumes:
-      - ./module-infra/monitoring/signoz/otel-collector-config.yaml:/etc/otel/config.yaml
-    environment:
-      - DOCKER_MULTI_NODE_CLUSTER=false
-      - SKIP_DEFAULT_CONFIG_GENERATION=true
-      - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
-      - ClickHouseUrl=tcp://signoz-clickhouse:9000
+    profiles: ["metrics"]
     ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
+      - "9090:9090"
+    volumes:
+      - ./module-infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
     networks:
       - depromeet_network
-    depends_on:
-      signoz-clickhouse:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
-  signoz-frontend:
-    image: signoz/frontend:0.40.0
-    container_name: signoz-frontend
-    restart: unless-stopped
-    ports:
-      - "3301:3301"
-    networks:
-      - depromeet_network
-    depends_on:
-      - signoz-query-service
-
-  # Fluent Bit - Docker logs를 수집해서 SignOZ로 전송
-  fluent-bit:
-    image: fluent/fluent-bit:2.2
-    container_name: fluent-bit
+  # Promtail - Log collector
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
     restart: unless-stopped
     volumes:
+      - ./module-infra/monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./module-infra/monitoring/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
-      - ./module-infra/monitoring/parsers.conf:/fluent-bit/etc/parsers.conf
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
     networks:
       - depromeet_network
     depends_on:
-      - signoz-otel-collector
+      loki:
+        condition: service_healthy
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./module-infra/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    environment:
+      - GF_SERVER_ROOT_URL=https://monitoring.momuzzi.site
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PW}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    networks:
+      - depromeet_network
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  # Node Exporter - 서버 메트릭
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node-exporter
+    restart: unless-stopped
+    profiles: ["metrics"]
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - depromeet_network
+
+  # cAdvisor - Docker 컨테이너 메트릭
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    restart: unless-stopped
+    profiles: ["metrics"]
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - depromeet_network
+
 
 volumes:
   registry_data:
     driver: local
   jenkins_home:
     driver: local
-  clickhouse-data:
+  loki-data:
     driver: local
-  signoz-data:
+  grafana-data:
+    driver: local
+  prometheus-data:
     driver: local
 
 networks:
