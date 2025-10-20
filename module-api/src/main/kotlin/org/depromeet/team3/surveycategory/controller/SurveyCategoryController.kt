@@ -10,7 +10,7 @@ import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
-import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryResponse
+import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
 import org.depromeet.team3.surveycategory.application.CreateSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.DeleteSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.GetSurveyCategoryService
@@ -42,7 +42,7 @@ class SurveyCategoryController(
         ApiResponse(responseCode = "200", description = "카테고리 목록 조회 성공")
     )
     @GetMapping
-    fun getSurveyCategoryList(): DpmApiResponse<SurveyCategoryResponse> {
+    fun getSurveyCategoryList(): DpmApiResponse<List<SurveyCategoryItem>> {
         val response = getSurveyCategoryService()
 
         return DpmApiResponse.ok(response)

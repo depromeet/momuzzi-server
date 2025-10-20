@@ -15,7 +15,6 @@ class CreateSurveyCategoryService(
     operator fun invoke(request: CreateSurveyCategoryRequest): Unit {
         val surveyCategory = SurveyCategory(
             parentId = request.parentId,
-            type = request.type,
             level = request.level,
             name = request.name,
             sortOrder = request.sortOrder,
