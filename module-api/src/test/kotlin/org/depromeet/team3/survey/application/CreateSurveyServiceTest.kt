@@ -1,7 +1,6 @@
 package org.depromeet.team3.survey.application
 
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.meetingattendee.MeetingAttendeeJpaRepository
 import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.survey.Survey
@@ -74,14 +73,10 @@ class CreateSurveyServiceTest {
         whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, participantId)).thenReturn(true)
         whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, participantId)).thenReturn(false)
         whenever(surveyRepository.save(any())).thenReturn(testScenario.survey)
-        whenever(surveyCategoryRepository.findByNameAndType("한식", SurveyCategoryType.CUISINE))
+        whenever(surveyCategoryRepository.findById(1L))
             .thenReturn(testScenario.cuisineCategory)
-        whenever(surveyCategoryRepository.findByNameAndType("일식", SurveyCategoryType.CUISINE))
+        whenever(surveyCategoryRepository.findById(3L))
             .thenReturn(testScenario.japaneseCuisineCategory)
-        whenever(surveyCategoryRepository.findByNameAndType("글루텐", SurveyCategoryType.AVOID_INGREDIENT))
-            .thenReturn(testScenario.ingredientCategory)
-        whenever(surveyCategoryRepository.findByNameAndType("내장", SurveyCategoryType.AVOID_MENU))
-            .thenReturn(null)
         whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
 
         // when

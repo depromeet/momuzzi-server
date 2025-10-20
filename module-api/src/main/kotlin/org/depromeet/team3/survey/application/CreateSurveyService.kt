@@ -1,7 +1,6 @@
 package org.depromeet.team3.survey.application
 
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.meeting.MeetingJpaRepository
 import org.depromeet.team3.meetingattendee.MeetingAttendeeJpaRepository
 import org.depromeet.team3.survey.SurveyRepository
@@ -53,50 +52,24 @@ class CreateSurveyService(
         )
         val savedSurvey = surveyRepository.save(survey)
         
-        // 설문 결과 생성 (선택된 카테고리들을 SurveyResult로 저장)
-        val surveyResults = mutableListOf<SurveyResult>()
+        // 설문 결과 생성 (선택된 카테고리 ID들을 SurveyResult로 저장)
+        val surveyResultList = mutableListOf<SurveyResult>()
         
-        // 선호 음식 카테고리들 찾아서 결과에 추가
-        request.preferredCuisineList.forEach { cuisineName ->
-            val category = surveyCategoryRepository.findByNameAndType(cuisineName, SurveyCategoryType.CUISINE)
+        // 선택한 카테고리 목록으로 결과 생성
+        request.selectedCategoryList.forEach { categoryId ->
+            val category = surveyCategoryRepository.findById(categoryId)
             if (category != null) {
-                surveyResults.add(
+                surveyResultList.add(
                     SurveyResult(
                         surveyId = savedSurvey.id ?: throw IllegalStateException("Survey ID is null"),
-                        surveyCategoryId = category.id ?: throw IllegalStateException("Category ID is null")
-                    )
-                )
-            }
-        }
-        
-        // 피해야 하는 재료 카테고리들 찾아서 결과에 추가
-        request.avoidIngredientList.forEach { ingredientName ->
-            val category = surveyCategoryRepository.findByNameAndType(ingredientName, SurveyCategoryType.AVOID_INGREDIENT)
-            if (category != null) {
-                surveyResults.add(
-                    SurveyResult(
-                        surveyId = savedSurvey.id ?: throw IllegalStateException("Survey ID is null"),
-                        surveyCategoryId = category.id ?: throw IllegalStateException("Category ID is null")
-                    )
-                )
-            }
-        }
-        
-        // 원하지 않는 메뉴 카테고리들 찾아서 결과에 추가
-        request.avoidMenuList.forEach { menuName ->
-            val category = surveyCategoryRepository.findByNameAndType(menuName, SurveyCategoryType.AVOID_MENU)
-            if (category != null) {
-                surveyResults.add(
-                    SurveyResult(
-                        surveyId = savedSurvey.id ?: throw IllegalStateException("Survey ID is null"),
-                        surveyCategoryId = category.id ?: throw IllegalStateException("Category ID is null")
+                        surveyCategoryId = categoryId
                     )
                 )
             }
         }
         
         // 설문 결과 저장
-        surveyResultRepository.saveAll(surveyResults)
+        surveyResultRepository.saveAll(surveyResultList)
         
         return SurveyCreateResponse()
     }

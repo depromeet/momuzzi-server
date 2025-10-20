@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.config.SecurityTestConfig
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.surveycategory.application.CreateSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.DeleteSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.GetSurveyCategoryService
@@ -13,7 +12,6 @@ import org.depromeet.team3.surveycategory.controller.SurveyCategoryController
 import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
-import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryResponse
 import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -63,17 +61,13 @@ class SurveyCategoryControllerTest {
     @DisplayName("설문 카테고리 목록을 성공적으로 조회한다")
     fun `설문 카테고리 목록을 성공적으로 조회한다`() {
         // given
-        val response = SurveyCategoryResponse(
-            preferredCuisineCategoryList = listOf(
-                SurveyCategoryItem(
-                    level = SurveyCategoryLevel.BRANCH,
-                    name = "한식",
-                    sortOrder = 1,
-                    children = emptyList()
-                )
-            ),
-            avoidIngredientCategoryList = emptyList(),
-            avoidMenuCategoryList = emptyList()
+        val response = listOf(
+            SurveyCategoryItem(
+                level = SurveyCategoryLevel.BRANCH,
+                name = "한식",
+                sortOrder = 1,
+                children = emptyList()
+            )
         )
 
         `when`(getSurveyCategoryService.invoke()).thenReturn(response)
@@ -82,9 +76,8 @@ class SurveyCategoryControllerTest {
         mockMvc.perform(get("/api/v1/survey-categories"))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.data").exists())
-            .andExpect(jsonPath("$.data.preferredCuisineCategoryList").isArray)
-            .andExpect(jsonPath("$.data.preferredCuisineCategoryList[0].name").value("한식"))
+            .andExpect(jsonPath("$.data").isArray)
+            .andExpect(jsonPath("$.data[0].name").value("한식"))
             .andExpect(jsonPath("$.error").doesNotExist())
     }
 
@@ -94,7 +87,6 @@ class SurveyCategoryControllerTest {
         // given
         val request = CreateSurveyCategoryRequest(
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "한식",
             sortOrder = 1
@@ -122,7 +114,6 @@ class SurveyCategoryControllerTest {
         val categoryId = 1L
         val request = UpdateSurveyCategoryRequest(
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
             sortOrder = 2
@@ -167,7 +158,6 @@ class SurveyCategoryControllerTest {
         val categoryId = 999L
         val request = UpdateSurveyCategoryRequest(
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "전통한식",
             sortOrder = 2
@@ -214,7 +204,6 @@ class SurveyCategoryControllerTest {
         // given
         val invalidRequest = CreateSurveyCategoryRequest(
             parentId = null,
-            type = SurveyCategoryType.CUISINE,
             level = SurveyCategoryLevel.BRANCH,
             name = "", // 빈 문자열 - 유효성 검사 실패
             sortOrder = 1

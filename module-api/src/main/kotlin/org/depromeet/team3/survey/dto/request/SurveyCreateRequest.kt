@@ -10,10 +10,6 @@ data class SurveyCreateRequest(
     @field:NotEmpty(message = "닉네임은 필수입니다")
     val nickname: String,
     
-    @field:NotEmpty(message = "선호 음식 목록은 필수입니다")
-    val preferredCuisineList: List<String>,
-    
-    val avoidIngredientList: List<String> = emptyList(),
-    
-    val avoidMenuList: List<String> = emptyList()
+    @field:NotEmpty(message = "선택한 음식 카테고리 목록은 필수입니다")
+    val selectedCategoryList: List<Long>
 )

@@ -7,9 +7,7 @@ data class SurveyCreateResponse(
 data class SurveyItemResponse(
     val participantId: Long,
     val nickname: String,
-    val preferredCuisineList: List<String>,
-    val avoidIngredientList: List<String>,
-    val avoidMenuList: List<String>
+    val selectedCategoryList: List<Long>
 )
 
 data class SurveyListResponse(

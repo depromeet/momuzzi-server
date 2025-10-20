@@ -1,6 +1,5 @@
 package org.depromeet.team3.survey.util
 
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.survey.Survey
 import org.depromeet.team3.survey.dto.request.SurveyCreateRequest
 import org.depromeet.team3.survey.dto.response.SurveyCreateResponse
@@ -22,16 +21,12 @@ object SurveyTestDataFactory {
     fun createSurveyCreateRequest(
         participantId: Long = 1L,
         nickname: String = "테스트참가자",
-        preferredCuisineList: List<String> = listOf("한식", "일식"),
-        avoidIngredientList: List<String> = listOf("글루텐"),
-        avoidMenuList: List<String> = listOf("내장")
+        selectedCategoryList: List<Long> = listOf(1L, 3L)
     ): SurveyCreateRequest {
         return SurveyCreateRequest(
             participantId = participantId,
             nickname = nickname,
-            preferredCuisineList = preferredCuisineList,
-            avoidIngredientList = avoidIngredientList,
-            avoidMenuList = avoidMenuList
+            selectedCategoryList = selectedCategoryList
         )
     }
 
@@ -42,9 +37,7 @@ object SurveyTestDataFactory {
         return SurveyCreateRequest(
             participantId = participantId,
             nickname = nickname,
-            preferredCuisineList = listOf("한식"),
-            avoidIngredientList = emptyList(),
-            avoidMenuList = emptyList()
+            selectedCategoryList = listOf(1L)
         )
     }
 
@@ -55,9 +48,7 @@ object SurveyTestDataFactory {
         return SurveyCreateRequest(
             participantId = participantId,
             nickname = nickname,
-            preferredCuisineList = emptyList(),
-            avoidIngredientList = emptyList(),
-            avoidMenuList = emptyList()
+            selectedCategoryList = emptyList()
         )
     }
 
@@ -66,7 +57,6 @@ object SurveyTestDataFactory {
     fun createSurveyCategory(
         id: Long = 1L,
         parentId: Long? = null,
-        type: SurveyCategoryType = SurveyCategoryType.CUISINE,
         level: SurveyCategoryLevel = SurveyCategoryLevel.LEAF,
         name: String = "한식",
         sortOrder: Int = 1,
@@ -77,7 +67,6 @@ object SurveyTestDataFactory {
         return SurveyCategory(
             id = id,
             parentId = parentId,
-            type = type,
             level = level,
             name = name,
             sortOrder = sortOrder,
@@ -125,16 +114,12 @@ object SurveyTestDataFactory {
     fun createSurveyItemResponse(
         participantId: Long = 1L,
         nickname: String = "참가자1",
-        preferredCuisineList: List<String> = listOf("한식", "일식"),
-        avoidIngredientList: List<String> = listOf("글루텐"),
-        avoidMenuList: List<String> = listOf("내장")
+        selectedCategoryList: List<Long> = listOf(1L, 3L)
     ): SurveyItemResponse {
         return SurveyItemResponse(
             participantId = participantId,
             nickname = nickname,
-            preferredCuisineList = preferredCuisineList,
-            avoidIngredientList = avoidIngredientList,
-            avoidMenuList = avoidMenuList
+            selectedCategoryList = selectedCategoryList
         )
     }
 
@@ -144,9 +129,7 @@ object SurveyTestDataFactory {
             createSurveyItemResponse(
                 participantId = 2L,
                 nickname = "참가자2",
-                preferredCuisineList = listOf("양식"),
-                avoidIngredientList = emptyList(),
-                avoidMenuList = listOf("치즈")
+                selectedCategoryList = listOf(2L)
             )
         )
     ): SurveyListResponse {
@@ -166,17 +149,14 @@ object SurveyTestDataFactory {
             survey = createSurvey(meetingId = meetingId, participantId = participantId),
             cuisineCategory = createSurveyCategory(
                 id = 1L,
-                type = SurveyCategoryType.CUISINE,
                 name = "한식"
             ),
             japaneseCuisineCategory = createSurveyCategory(
                 id = 3L,
-                type = SurveyCategoryType.CUISINE,
                 name = "일식"
             ),
             ingredientCategory = createSurveyCategory(
                 id = 2L,
-                type = SurveyCategoryType.AVOID_INGREDIENT,
                 name = "글루텐"
             ),
             response = createSurveyCreateResponse()
