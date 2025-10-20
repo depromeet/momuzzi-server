@@ -190,6 +190,17 @@ services:
     networks:
       - depromeet_network
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    restart: unless-stopped
+    command:
+      - '--nginx.scrape-uri=http://nginx:80/stub_status'
+    ports:
+      - "9113:9113"
+    networks:
+      - depromeet_network
+
 
 volumes:
   registry_data:
