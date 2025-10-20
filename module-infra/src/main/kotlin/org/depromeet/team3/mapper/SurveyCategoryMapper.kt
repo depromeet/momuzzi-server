@@ -14,7 +14,6 @@ class SurveyCategoryMapper(
         return SurveyCategory(
             id = entity.id,
             parentId = entity.parent?.id,
-            type = entity.type,
             level = entity.level,
             name = entity.name,
             sortOrder = entity.sortOrder,
@@ -33,7 +32,6 @@ class SurveyCategoryMapper(
         return SurveyCategoryEntity(
             id = domain.id,
             parent = parentEntity,
-            type = domain.type,
             level = domain.level,
             name = domain.name,
             sortOrder = domain.sortOrder,

@@ -1,9 +1,7 @@
 package org.depromeet.team3.surveycategory
 
-import org.depromeet.team3.common.enums.SurveyCategoryType
+import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Query
-import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -15,37 +13,19 @@ interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long
     
     fun findByIdAndIsDeletedFalse(id: Long): SurveyCategoryEntity?
     
-    @Query("""
-        SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END 
-        FROM SurveyCategoryEntity c 
-        LEFT JOIN c.parent p
-        WHERE c.name = :name 
-        AND (:parentId IS NULL AND p IS NULL OR p.id = :parentId)
-        AND c.isDeleted = false
-        AND (:excludeId IS NULL OR c.id != :excludeId)
-    """)
     fun existsByNameAndParentIdAndIsDeletedFalse(
-        @Param("name") name: String, 
-        @Param("parentId") parentId: Long?, 
-        @Param("excludeId") excludeId: Long?
+        name: String, 
+        parentId: Long?, 
+        excludeId: Long?
     ): Boolean
     
-    @Query("""
-        SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END 
-        FROM SurveyCategoryEntity c 
-        LEFT JOIN c.parent p
-        WHERE c.sortOrder = :sortOrder 
-        AND (:parentId IS NULL AND p IS NULL OR p.id = :parentId)
-        AND c.isDeleted = false
-        AND (:excludeId IS NULL OR c.id != :excludeId)
-    """)
     fun existsBySortOrderAndParentIdAndIsDeletedFalse(
-        @Param("sortOrder") sortOrder: Int, 
-        @Param("parentId") parentId: Long?, 
-        @Param("excludeId") excludeId: Long?
+        sortOrder: Int, 
+        parentId: Long?, 
+        excludeId: Long?
     ): Boolean
     
     fun countByParentIdAndIsDeletedFalse(parentId: Long): Long
     
-    fun findByNameAndTypeAndIsDeletedFalse(name: String, type: SurveyCategoryType): SurveyCategoryEntity?
+    fun findByNameAndIsDeletedFalse(name: String): SurveyCategoryEntity?
 }

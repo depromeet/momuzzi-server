@@ -2,9 +2,10 @@ package org.depromeet.team3.surveycategory
 
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
-import org.depromeet.team3.common.enums.SurveyCategoryType
+import com.querydsl.core.annotations.QueryEntity
 
 @Entity
+@QueryEntity
 @Table(
     name = "tb_survey_category_master",
     uniqueConstraints = [
@@ -27,10 +28,6 @@ class SurveyCategoryEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     val parent: SurveyCategoryEntity? = null,
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    val type: SurveyCategoryType,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "level", nullable = false)
