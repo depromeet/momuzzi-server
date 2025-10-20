@@ -14,7 +14,7 @@ interface SurveyCategoryRepository {
     
     fun existsByNameAndParentIdAndIsDeletedFalse(name: String, parentId: Long?, excludeId: Long? = null): Boolean
     
-    fun existsBySortOrderAndParentIdAndIsDeletedFalse(sortOrder: Int, parentId: Long?, excludeId: Long? = null): Boolean
+    fun existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(sortOrder: Int, parentId: Long?, excludeId: Long? = null): Boolean
     
     fun countChildrenByParentIdAndIsDeletedFalse(parentId: Long): Long
     

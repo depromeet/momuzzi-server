@@ -13,13 +13,7 @@ interface SurveyCategoryJpaRepository : JpaRepository<SurveyCategoryEntity, Long
     
     fun findByIdAndIsDeletedFalse(id: Long): SurveyCategoryEntity?
     
-    fun existsByNameAndParentIdAndIsDeletedFalse(
-        name: String, 
-        parentId: Long?, 
-        excludeId: Long?
-    ): Boolean
-    
-    fun existsBySortOrderAndParentIdAndIsDeletedFalse(
+    fun existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(
         sortOrder: Int, 
         parentId: Long?, 
         excludeId: Long?

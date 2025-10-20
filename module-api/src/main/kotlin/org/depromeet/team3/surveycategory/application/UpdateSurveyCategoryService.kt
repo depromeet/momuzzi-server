@@ -38,7 +38,7 @@ class UpdateSurveyCategoryService(
         }
 
         // 6. 형제 카테고리 내 순서 중복 검증
-        if (surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalse(request.sortOrder, request.parentId, id)) {
+        if (surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(request.sortOrder, request.parentId, id)) {
             throw SurveyCategoryException(ErrorCode.DUPLICATE_CATEGORY_ORDER, mapOf("sortOrder" to request.sortOrder, "parentId" to request.parentId))
         }
 

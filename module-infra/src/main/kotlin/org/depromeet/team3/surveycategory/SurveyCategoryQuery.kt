@@ -63,7 +63,7 @@ class SurveyCategoryQuery (
         return query.fetchFirst() != null
     }
     
-    override fun existsBySortOrderAndParentIdAndIsDeletedFalse(sortOrder: Int, parentId: Long?, excludeId: Long?): Boolean {
+    override fun existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(sortOrder: Int, parentId: Long?, excludeId: Long?): Boolean {
         val qSurveyCategory = QSurveyCategoryEntity.surveyCategoryEntity
         
         val query = queryFactory.selectFrom(qSurveyCategory)
