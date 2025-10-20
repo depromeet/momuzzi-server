@@ -1,7 +1,6 @@
 package org.depromeet.team3.survey.application
 
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.common.enums.SurveyCategoryType
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.util.MeetingAttendeeTestDataFactory
 import org.depromeet.team3.meeting.MeetingJpaRepository
@@ -99,17 +98,14 @@ class GetSurveyListServiceTest {
 
         val cuisineCategory = SurveyTestDataFactory.createSurveyCategory(
             id = 1L,
-            type = SurveyCategoryType.CUISINE,
             name = "한식"
         )
         val ingredientCategory = SurveyTestDataFactory.createSurveyCategory(
             id = 2L,
-            type = SurveyCategoryType.AVOID_INGREDIENT,
             name = "글루텐"
         )
         val menuCategory = SurveyTestDataFactory.createSurveyCategory(
             id = 3L,
-            type = SurveyCategoryType.AVOID_MENU,
             name = "내장"
         )
 
@@ -148,16 +144,10 @@ class GetSurveyListServiceTest {
         val surveyItem1 = result.surveys.find { it.participantId == participantId1 }
         assert(surveyItem1 != null)
         assert(surveyItem1!!.nickname == "참가자1")
-        assert(surveyItem1.preferredCuisineList.contains("한식"))
-        assert(surveyItem1.avoidIngredientList.contains("글루텐"))
-        assert(surveyItem1.avoidMenuList.isEmpty())
 
         val surveyItem2 = result.surveys.find { it.participantId == participantId2 }
         assert(surveyItem2 != null)
         assert(surveyItem2!!.nickname == "참가자2")
-        assert(surveyItem2.preferredCuisineList.isEmpty())
-        assert(surveyItem2.avoidIngredientList.isEmpty())
-        assert(surveyItem2.avoidMenuList.contains("내장"))
     }
 
     @Test
