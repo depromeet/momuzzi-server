@@ -8,6 +8,7 @@ import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.MuzziColor
 import org.depromeet.team3.meetingattendee.exception.MeetingAttendeeException
+import org.depromeet.team3.util.DataEncoder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -41,7 +42,7 @@ class JoinMeetingServiceTest {
         // Given
         val userId = 1L
         val meetingId = 100L
-        val attendeeNickname = "테스트닉네임"
+        val token = DataEncoder.encodeWithSeparator(":", meetingId.toString(), "validKey")
         
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
@@ -59,7 +60,7 @@ class JoinMeetingServiceTest {
         whenever(meetingAttendeeRepository.save(any())).thenAnswer { it.arguments[0] }
 
         // When
-        joinMeetingService.invoke(userId, meetingId, attendeeNickname)
+        joinMeetingService.invoke(userId, token)
 
         // Then
         val attendeeCaptor = argumentCaptor<MeetingAttendee>()
@@ -67,7 +68,6 @@ class JoinMeetingServiceTest {
         
         val savedAttendee = attendeeCaptor.firstValue
         assertEquals(MuzziColor.DEFAULT, savedAttendee.muzziColor)
-        assertEquals(attendeeNickname, savedAttendee.attendeeNickname)
         assertEquals(userId, savedAttendee.userId)
         assertEquals(meetingId, savedAttendee.meetingId)
     }
@@ -77,7 +77,7 @@ class JoinMeetingServiceTest {
         // Given
         val userId = 10L
         val meetingId = 200L
-        val attendeeNickname = "삼삼오오"
+        val token = DataEncoder.encodeWithSeparator(":", meetingId.toString(), "validKey")
         
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
@@ -95,7 +95,7 @@ class JoinMeetingServiceTest {
         whenever(meetingAttendeeRepository.save(any())).thenAnswer { it.arguments[0] }
 
         // When
-        joinMeetingService.invoke(userId, meetingId, attendeeNickname)
+        joinMeetingService.invoke(userId, token)
 
         // Then
         val attendeeCaptor = argumentCaptor<MeetingAttendee>()
@@ -103,7 +103,6 @@ class JoinMeetingServiceTest {
         
         val savedAttendee = attendeeCaptor.firstValue
         assertNotNull(savedAttendee)
-        assertEquals(attendeeNickname, savedAttendee.attendeeNickname)
         assertEquals(MuzziColor.DEFAULT, savedAttendee.muzziColor)
     }
 
@@ -112,13 +111,13 @@ class JoinMeetingServiceTest {
         // Given
         val userId = 1L
         val meetingId = 999L
-        val attendeeNickname = "테스트"
+        val token = DataEncoder.encodeWithSeparator(":", meetingId.toString(), "validKey")
 
         whenever(meetingRepository.findById(meetingId)).thenReturn(null)
 
         // When & Then
         val exception = assertThrows<MeetingException> {
-            joinMeetingService.invoke(userId, meetingId, attendeeNickname)
+            joinMeetingService.invoke(userId, token)
         }
         
         assertEquals(ErrorCode.MEETING_NOT_FOUND, exception.errorCode)
@@ -129,7 +128,7 @@ class JoinMeetingServiceTest {
         // Given
         val userId = 1L
         val meetingId = 100L
-        val attendeeNickname = "테스트"
+        val token = DataEncoder.encodeWithSeparator(":", meetingId.toString(), "validKey")
         
         val closedMeeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
@@ -145,7 +144,7 @@ class JoinMeetingServiceTest {
 
         // When & Then
         val exception = assertThrows<MeetingException> {
-            joinMeetingService.invoke(userId, meetingId, attendeeNickname)
+            joinMeetingService.invoke(userId, token)
         }
         
         assertEquals(ErrorCode.MEETING_ALREADY_CLOSED, exception.errorCode)
@@ -156,7 +155,7 @@ class JoinMeetingServiceTest {
         // Given
         val userId = 1L
         val meetingId = 100L
-        val attendeeNickname = "테스트"
+        val token = DataEncoder.encodeWithSeparator(":", meetingId.toString(), "validKey")
         
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
@@ -183,7 +182,7 @@ class JoinMeetingServiceTest {
 
         // When & Then
         val exception = assertThrows<MeetingAttendeeException> {
-            joinMeetingService.invoke(userId, meetingId, attendeeNickname)
+            joinMeetingService.invoke(userId, token)
         }
         
         assertEquals(ErrorCode.MEETING_ALREADY_JOINED, exception.errorCode)
@@ -194,7 +193,7 @@ class JoinMeetingServiceTest {
         // Given
         val userId = 1L
         val meetingId = 100L
-        val attendeeNickname = "테스트"
+        val token = DataEncoder.encodeWithSeparator(":", meetingId.toString(), "validKey")
         
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
@@ -212,10 +211,9 @@ class JoinMeetingServiceTest {
 
         // When & Then
         val exception = assertThrows<MeetingException> {
-            joinMeetingService.invoke(userId, meetingId, attendeeNickname)
+            joinMeetingService.invoke(userId, token)
         }
         
         assertEquals(ErrorCode.MEETING_FULL, exception.errorCode)
     }
 }
-
