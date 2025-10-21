@@ -96,19 +96,6 @@ class GetSurveyListServiceTest {
             categoryIds = listOf(3L)
         )
 
-        val cuisineCategory = SurveyTestDataFactory.createSurveyCategory(
-            id = 1L,
-            name = "한식"
-        )
-        val ingredientCategory = SurveyTestDataFactory.createSurveyCategory(
-            id = 2L,
-            name = "글루텐"
-        )
-        val menuCategory = SurveyTestDataFactory.createSurveyCategory(
-            id = 3L,
-            name = "내장"
-        )
-
         val participant1 = MeetingAttendeeTestDataFactory.createMeetingAttendee(
             id = 1L,
             meetingId = meetingId,
@@ -129,9 +116,6 @@ class GetSurveyListServiceTest {
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1, survey2))
         whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(surveyResults1)
         whenever(surveyResultRepository.findBySurveyId(2L)).thenReturn(surveyResults2)
-        whenever(surveyCategoryRepository.findById(1L)).thenReturn(cuisineCategory)
-        whenever(surveyCategoryRepository.findById(2L)).thenReturn(ingredientCategory)
-        whenever(surveyCategoryRepository.findById(3L)).thenReturn(menuCategory)
         whenever(meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, participantId1)).thenReturn(participant1)
         whenever(meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, participantId2)).thenReturn(participant2)
 

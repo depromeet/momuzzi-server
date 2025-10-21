@@ -104,15 +104,7 @@ class UpdateSurveyCategoryServiceTest {
             sortOrder = 5
         )
 
-        val parentCategory = SurveyTestDataFactory.createSurveyCategory(
-            id = 2L,
-            level = SurveyCategoryLevel.BRANCH,
-            name = "부모 카테고리",
-            sortOrder = 1
-        )
-
         `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(categoryId)).thenReturn(existingCategory)
-        `when`(surveyCategoryRepository.findByIdAndIsDeletedFalse(2L)).thenReturn(parentCategory)
         `when`(surveyCategoryRepository.countChildrenByParentIdAndIsDeletedFalse(categoryId)).thenReturn(0L)
         `when`(surveyCategoryRepository.existsByNameAndParentIdAndIsDeletedFalse("피해야할 재료", 2L, categoryId)).thenReturn(false)
         `when`(surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(5, 2L, categoryId)).thenReturn(false)
