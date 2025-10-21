@@ -17,32 +17,33 @@ class CreateMeetingService(
 ) {
 
     @Transactional
-    operator fun invoke(request: CreateMeetingRequest, userId: Long)
-    : CreateMeetingResponse {
+    operator fun invoke(request: CreateMeetingRequest, userId: Long): CreateMeetingResponse {
         val meeting = Meeting(
-            null,
-            request.name,
-            userId,
-            request.attendeeCount,
+            id = null,
+            name = request.name,
+            hostUserId = userId,
+            attendeeCount = request.attendeeCount,
             isClosed = false,
-            request.stationId,
-            request.endAt,
-            null, null
+            stationId = request.stationId,
+            endAt = request.endAt,
+            createdAt = null,
+            updatedAt = null
         )
 
-        val save = meetingRepository.save(meeting)
+        val savedMeeting = meetingRepository.save(meeting)
 
         val meetingAttendee = MeetingAttendee(
-            null,
-            save.id!!,
-            userId,
-            request.attendeeNickname,
-            MuzziColor.DEFAULT,
-            null, null
+            id = null,
+            meetingId = savedMeeting.id!!,
+            userId = userId,
+            attendeeNickname = null,
+            muzziColor = MuzziColor.DEFAULT,
+            createdAt = null,
+            updatedAt = null
         )
 
         meetingAttendeeRepository.save(meetingAttendee)
 
-        return CreateMeetingResponse(save.id!!)
+        return CreateMeetingResponse(savedMeeting.id!!)
     }
 }
