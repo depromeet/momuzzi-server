@@ -119,7 +119,6 @@ pipeline {
                                 }
                                 
                                 failedTests = """
-
 ### ${emoji} 실패한 테스트
 ${failedTestsInfo.join('\n')}
 """
