@@ -35,19 +35,6 @@ pipeline {
     }
 
     stages {
-        stage('CI Test (PR to dev)') {
-            when {
-                allOf {
-                    changeRequest()
-                    changeRequest target: 'dev'
-                }
-            }
-            steps {
-                echo "Running CI for PR → dev"
-                sh './gradlew test --no-daemon --stacktrace'
-            }
-        }
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -97,10 +84,108 @@ pipeline {
             }
             post {
                 always {
-                    // 테스트 결과 리포트 저장
-                    junit '**/build/test-results/test/*.xml'
-                    // 테스트 요약 출력
-                    sh 'grep -E "Test result|BUILD SUCCESSFUL|BUILD FAILED" -A 5 test-result.log || true'
+                    script {
+                        // 테스트 결과 리포트 저장
+                        def testResults = junit '**/build/test-results/test/*.xml'
+                        
+                        // 테스트 요약 출력
+                        sh 'grep -E "Test result|BUILD SUCCESSFUL|BUILD FAILED" -A 5 test-result.log || true'
+                        
+                        // PR에만 테스트 결과 코멘트 추가
+                        if (env.CHANGE_ID) {
+                            def totalCount = testResults.totalCount
+                            def passCount = testResults.passCount
+                            def failCount = testResults.failCount
+                            def skipCount = testResults.skipCount
+                            
+                            def status = failCount == 0 ? '✅ 성공' : '❌ 실패'
+                            def emoji = failCount == 0 ? '🎉' : '⚠️'
+                            def buildUrl = env.BUILD_URL
+                            
+                            // 실패한 테스트 목록 추출
+                            def failedTests = ""
+                            if (failCount > 0) {
+                                def failedTestsList = testResults.getFailedTests()
+                                def failedTestsInfo = []
+                                
+                                failedTestsList.take(10).each { test ->
+                                    def className = test.className.tokenize('.').last()
+                                    def testName = test.name
+                                    failedTestsInfo.add("- \`${className}.${testName}\`")
+                                }
+                                
+                                if (failedTestsList.size() > 10) {
+                                    failedTestsInfo.add("- ... 외 ${failedTestsList.size() - 10}개")
+                                }
+                                
+                                failedTests = """
+
+### ${emoji} 실패한 테스트
+${failedTestsInfo.join('\n')}
+"""
+                            }
+                            
+                            // GitHub 레포지토리 정보 추출
+                            def repoFullName = sh(
+                                script: '''
+                                    if [ -n "${CHANGE_URL}" ]; then
+                                        echo "${CHANGE_URL}" | sed -E 's|https://github.com/([^/]+/[^/]+)/pull/.*|\\1|'
+                                    else
+                                        echo "${GIT_URL}" | sed -E 's|.*github.com[:/]([^/]+/[^.]+)(\\.git)?|\\1|'
+                                    fi
+                                ''',
+                                returnStdout: true
+                            ).trim()
+                            
+                            // 코멘트 내용을 파일로 저장 (JSON 이스케이핑 문제 회피)
+                            def commentBody = """## 🧪 테스트 결과 ${status}
+
+**📊 통계**
+- 전체: ${totalCount}개
+- 성공: ${passCount}개 ✅
+- 실패: ${failCount}개 ${failCount > 0 ? '❌' : ''}
+- 스킵: ${skipCount}개 ⏭️
+${failedTests}
+
+**🔗 링크**
+- [상세 테스트 결과 보기](${buildUrl}testReport/)
+- [빌드 로그 보기](${buildUrl}console)
+
+---
+_Build #${env.BUILD_NUMBER} • ${new Date().format('yyyy-MM-dd HH:mm:ss KST')}_
+"""
+                            
+                            writeFile file: 'pr-comment.txt', text: commentBody
+                            
+                            // GitHub API를 통해 PR 코멘트 추가
+                            withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                sh """
+                                    # JSON payload 생성 (jq로 안전하게 인코딩)
+                                    COMMENT_BODY=\$(cat pr-comment.txt | jq -Rs .)
+                                    
+                                    # GitHub API 호출
+                                    RESPONSE=\$(curl -s -w "\\n%{http_code}" -X POST \\
+                                      -H "Authorization: token \${GITHUB_TOKEN}" \\
+                                      -H "Accept: application/vnd.github.v3+json" \\
+                                      https://api.github.com/repos/${repoFullName}/issues/${env.CHANGE_ID}/comments \\
+                                      -d "{\\"body\\":\${COMMENT_BODY}}")
+                                    
+                                    HTTP_CODE=\$(echo "\$RESPONSE" | tail -n1)
+                                    RESPONSE_BODY=\$(echo "\$RESPONSE" | head -n-1)
+                                    
+                                    if [ "\$HTTP_CODE" -eq 201 ]; then
+                                        echo "✅ PR 코멘트 추가 성공"
+                                    else
+                                        echo "⚠️ PR 코멘트 추가 실패 (HTTP \$HTTP_CODE)"
+                                        echo "Response: \$RESPONSE_BODY"
+                                    fi
+                                """
+                            }
+                            
+                            // 임시 파일 정리
+                            sh 'rm -f pr-comment.txt'
+                        }
+                    }
                 }
             }
         }
