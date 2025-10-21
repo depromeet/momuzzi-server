@@ -16,7 +16,6 @@ import org.depromeet.team3.meeting.application.JoinMeetingService
 import org.depromeet.team3.meeting.dto.request.CreateMeetingRequest
 import org.depromeet.team3.meeting.dto.request.JoinMeetingRequest
 import org.depromeet.team3.meeting.dto.response.CreateMeetingResponse
-import org.depromeet.team3.meeting.dto.response.InviteTokenResponse
 import org.depromeet.team3.meeting.dto.response.MeetingResponse
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
 import org.springframework.web.bind.annotation.*
@@ -77,23 +76,6 @@ class MeetingController(
         @RequestBody @Valid request: CreateMeetingRequest,
     ) : DpmApiResponse<CreateMeetingResponse> {
         val response = creteMeetingService(request, userId)
-
-        return DpmApiResponse.ok(response)
-    }
-
-    @Operation(
-        summary = "모임 초대 토큰 생성",
-        description = "특정 모임의 초대 토큰을 생성합니다."
-    )
-    @ApiResponses(
-        ApiResponse(responseCode = "200", description = "초대 토큰 생성 성공")
-    )
-    @PostMapping("/{meetingId}/invite-token")
-    fun createInviteLink(
-        @Parameter(description = "모임 ID", example = "1")
-        @PathVariable meetingId: Long
-    ): DpmApiResponse<InviteTokenResponse> {
-        val response = inviteTokenService.generateInviteToken(meetingId)
 
         return DpmApiResponse.ok(response)
     }

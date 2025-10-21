@@ -13,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class CreateMeetingService(
     private val meetingRepository: MeetingRepository,
-    private val meetingAttendeeRepository: MeetingAttendeeRepository
+    private val meetingAttendeeRepository: MeetingAttendeeRepository,
+    private val inviteTokenService: InviteTokenService
 ) {
 
     @Transactional
@@ -31,6 +32,7 @@ class CreateMeetingService(
         )
 
         val savedMeeting = meetingRepository.save(meeting)
+        val meetingId = savedMeeting.id!!
 
         val meetingAttendee = MeetingAttendee(
             id = null,
@@ -41,9 +43,10 @@ class CreateMeetingService(
             createdAt = null,
             updatedAt = null
         )
-
         meetingAttendeeRepository.save(meetingAttendee)
 
-        return CreateMeetingResponse(savedMeeting.id!!)
+        val inviteToken = inviteTokenService.generateInviteToken(meetingId)
+
+        return CreateMeetingResponse(meetingId, inviteToken)
     }
 }
