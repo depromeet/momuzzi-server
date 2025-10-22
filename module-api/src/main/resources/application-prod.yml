@@ -20,4 +20,7 @@ app:
   env: prod
 
 kakao:
-  redirect-uri: http://localhost:3000/auth/callback
+  redirect-uris:
+    - http://localhost:3000/auth/callback
+    - https://www.momuzzi.site/auth/callback
+    - https://api.momuzzi.site/auth/callback
