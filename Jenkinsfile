@@ -119,7 +119,7 @@ pipeline {
                                                     def test = failedTestsList[i]
                                                     def className = test.className?.tokenize('.')?.last() ?: 'Unknown'
                                                     def testName = test.name ?: 'Unknown'
-                                                    failedTestsInfo.add("- \`${className}.${testName}\`")
+                                                    failedTestsInfo.add("- `${className}.${testName}`")
                                                 }
                                                 
                                                 if (failedTestsList.size() > 10) {
