@@ -50,8 +50,8 @@ class InviteTokenServiceTest {
 
         // Then
         assertNotNull(result)
-        assertTrue(result.validateTokenUrl.contains("token="))
-        assertTrue(result.validateTokenUrl.contains("validate-invite"))
+        assertTrue(result.contains("token="))
+        assertTrue(result.contains("validate-invite"))
     }
 
     @Test
@@ -105,9 +105,10 @@ class InviteTokenServiceTest {
         )
 
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
+        whenever(meetingAttendeeRepository.countByMeetingId(meetingId)).thenReturn(3)
 
-        val tokenResponse = inviteTokenService.generateInviteToken(meetingId)
-        val token = tokenResponse.validateTokenUrl.substringAfter("token=")
+        val tokenUrl = inviteTokenService.generateInviteToken(meetingId)
+        val token = tokenUrl.substringAfter("token=")
 
         // When
         val result = inviteTokenService.validateInviteToken(token)
