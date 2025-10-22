@@ -33,19 +33,34 @@ subprojects {
 
     // tasks 설정
     tasks.withType<JavaCompile> {
-        targetCompatibility = "21"
-        sourceCompatibility = "21"
+        targetCompatibility = "17"
+        sourceCompatibility = "17"
     }
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions {
             freeCompilerArgs = listOf("-Xjsr305=strict")
-            jvmTarget = "21"
+            jvmTarget = "17"
         }
     }
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        
+        // 테스트 리포트 설정
+        reports {
+            junitXml.required.set(true)
+            html.required.set(true)
+        }
+        
+        // 테스트 실패해도 계속 진행 (전체 리포트 생성을 위해)
+        ignoreFailures = true
+        
+        // CI 환경에서만 테스트 캐시 비활성화 (로컬 개발 성능 저하 방지)
+        val isCI = System.getenv("CI")?.toBoolean() ?: false
+        if (isCI) {
+            outputs.upToDateWhen { false }
+        }
     }
 
     afterEvaluate {

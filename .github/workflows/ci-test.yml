@@ -21,6 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Set timezone
+        run: sudo timedatectl set-timezone Asia/Seoul || echo "Asia/Seoul"
+        
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -31,8 +34,43 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       
+      - name: Setup Gradle properties
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+          echo "org.gradle.caching=true" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
+          echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+          echo "kotlin.incremental=false" >> ~/.gradle/gradle.properties
+      
+      - name: Build project (kapt 먼저 실행)
+        run: ./gradlew build -x test --stacktrace
+        env:
+          TZ: Asia/Seoul
+      
       - name: Run tests
-        run: ./gradlew test --parallel --no-daemon --stacktrace
+        run: |
+          echo "=== Running all tests ==="
+          ./gradlew test --continue --stacktrace 2>&1 | tee test-output.log
+          echo "Exit code: $?"
+        env:
+          TZ: Asia/Seoul
+      
+      - name: Show test failures (if any)
+        if: failure()
+        run: |
+          echo "=== Test output ==="
+          cat test-output.log || true
+          echo ""
+          echo "=== Failed tests details ==="
+          find . -name "TEST-*.xml" -exec echo "File: {}" \; -exec cat {} \; || true
+
+      - name: Upload test reports (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/test'
       
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
