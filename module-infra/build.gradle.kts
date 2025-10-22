@@ -8,10 +8,6 @@ plugins {
 }
 
 // kapt 설정
-kotlin {
-    jvmToolchain(17)
-}
-
 kapt {
     correctErrorTypes = true
     useBuildCache = false  // CI에서 캐시 문제 방지
