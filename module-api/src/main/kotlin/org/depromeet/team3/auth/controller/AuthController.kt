@@ -1,6 +1,10 @@
 package org.depromeet.team3.auth.controller
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.media.ArraySchema
+import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -34,7 +38,25 @@ class AuthController(
     )
     @GetMapping("/kakao-login")
     fun kakaoLogin(
+        @Parameter(
+            description = "카카오 OAuth 인가코드",
+            required = true,
+        )
         @RequestParam("code") code: String,
+        
+        @Parameter(
+            description = "리다이렉트 URI",
+            required = true,
+            schema = Schema(
+                type = "string",
+                allowableValues = [
+                    "http://localhost:3000/auth/callback",
+                    "http://localhost:8080/auth/callback", 
+                    "https://www.momuzzi.site/auth/callback",
+                    "https://api.momuzzi.site/auth/callback"
+                ]
+            )
+        )
         @RequestParam(value = "redirect_uri", required = false) redirectUri: String?
     ): DpmApiResponse<LoginResponse> {
         val command = KakaoLoginCommand(authorizationCode = code, redirectUri = redirectUri)
