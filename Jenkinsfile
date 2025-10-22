@@ -103,7 +103,7 @@ pipeline {
                                 def emoji = failCount == 0 ? '🎉' : '⚠️'
                                 def buildUrl = env.BUILD_URL ?: ''
                                 
-                                // 실패한 테스트 목록 추출 (올바른 방법 사용)
+                                // 실패한 테스트 정보
                                 def failedTests = ""
                                 if (failCount > 0) {
                                     try {
@@ -138,6 +138,8 @@ pipeline {
                                     } catch (Exception e) {
                                         echo "⚠️ 실패한 테스트 목록 추출 실패: ${e.message}"
                                     }
+
+                                    failedTests = "\n\n### ${emoji} 실패 정보\n실패한 테스트의 상세 정보는 [테스트 결과 페이지](${buildUrl}testReport/)에서 확인하세요."
                                 }
                                 
                                 // GitHub 레포지토리 정보 추출 (null 체크 강화)
