@@ -35,19 +35,6 @@ pipeline {
     }
 
     stages {
-        stage('CI Test (PR to dev)') {
-            when {
-                allOf {
-                    changeRequest()
-                    changeRequest target: 'dev'
-                }
-            }
-            steps {
-                echo "Running CI for PR → dev"
-                sh './gradlew test --no-daemon --stacktrace'
-            }
-        }
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -97,10 +84,187 @@ pipeline {
             }
             post {
                 always {
-                    // 테스트 결과 리포트 저장
-                    junit '**/build/test-results/test/*.xml'
-                    // 테스트 요약 출력
-                    sh 'grep -E "Test result|BUILD SUCCESSFUL|BUILD FAILED" -A 5 test-result.log || true'
+                    script {
+                        try {
+                            // 테스트 결과 리포트 저장 (null 체크)
+                            def testResults = junit allowEmptyResults: true, testResults: '**/build/test-results/test/*.xml'
+                            
+                            // 테스트 요약 출력
+                            sh 'grep -E "Test result|BUILD SUCCESSFUL|BUILD FAILED" -A 5 test-result.log || true'
+                            
+                            // PR에만 테스트 결과 코멘트 추가
+                            if (env.CHANGE_ID && testResults) {
+                                def totalCount = testResults.totalCount ?: 0
+                                def passCount = testResults.passCount ?: 0
+                                def failCount = testResults.failCount ?: 0
+                                def skipCount = testResults.skipCount ?: 0
+                                
+                                def status = failCount == 0 ? '✅ 성공' : '❌ 실패'
+                                def emoji = failCount == 0 ? '🎉' : '⚠️'
+                                def buildUrl = env.BUILD_URL ?: ''
+                                
+                                // 실패한 테스트 목록 추출 (올바른 방법 사용)
+                                def failedTests = ""
+                                if (failCount > 0) {
+                                    try {
+                                        @NonCPS
+                                        def getFailedTestsInfo() {
+                                            def testResultAction = currentBuild.rawBuild.getAction(hudson.tasks.junit.TestResultAction.class)
+                                            if (testResultAction) {
+                                                def failedTestsList = testResultAction.getFailedTests()
+                                                def failedTestsInfo = []
+                                                
+                                                def maxTests = Math.min(failedTestsList.size(), 10)
+                                                for (int i = 0; i < maxTests; i++) {
+                                                    def test = failedTestsList[i]
+                                                    def className = test.className?.tokenize('.')?.last() ?: 'Unknown'
+                                                    def testName = test.name ?: 'Unknown'
+                                                    failedTestsInfo.add("- \`${className}.${testName}\`")
+                                                }
+                                                
+                                                if (failedTestsList.size() > 10) {
+                                                    failedTestsInfo.add("- ... 외 ${failedTestsList.size() - 10}개")
+                                                }
+                                                
+                                                return failedTestsInfo
+                                            }
+                                            return []
+                                        }
+                                        
+                                        def failedTestsInfo = getFailedTestsInfo()
+                                        if (failedTestsInfo) {
+                                            failedTests = "\n\n### ${emoji} 실패한 테스트\n" + failedTestsInfo.join('\n')
+                                        }
+                                    } catch (Exception e) {
+                                        echo "⚠️ 실패한 테스트 목록 추출 실패: ${e.message}"
+                                    }
+                                }
+                                
+                                // GitHub 레포지토리 정보 추출 (null 체크 강화)
+                                def repoFullName = ""
+                                try {
+                                    repoFullName = sh(
+                                        script: '''
+                                            if [ -n "${CHANGE_URL}" ]; then
+                                                echo "${CHANGE_URL}" | sed -E 's|https://github.com/([^/]+/[^/]+)/pull/.*|\\1|'
+                                            else
+                                                echo "${GIT_URL}" | sed -E 's|.*github.com[:/]([^/]+/[^.]+)(\\.git)?|\\1|'
+                                            fi
+                                        ''',
+                                        returnStdout: true
+                                    ).trim()
+                                    
+                                    if (!repoFullName || !repoFullName.contains('/')) {
+                                        echo "⚠️ 레포지토리 정보 추출 실패: '${repoFullName}'"
+                                        echo "   CHANGE_URL: ${env.CHANGE_URL}"
+                                        echo "   GIT_URL: ${env.GIT_URL}"
+                                        return
+                                    }
+                                } catch (Exception e) {
+                                    echo "⚠️ 레포지토리 정보 추출 중 오류: ${e.message}"
+                                    return
+                                }
+                                
+                                // 코멘트 내용 생성
+                                def commentBody = """## 🧪 테스트 결과 ${status}
+
+**📊 통계**
+- 전체: ${totalCount}개
+- 성공: ${passCount}개 ✅
+- 실패: ${failCount}개 ${failCount > 0 ? '❌' : ''}
+- 스킵: ${skipCount}개 ⏭️
+${failedTests}
+
+**🔗 링크**
+- [상세 테스트 결과 보기](${buildUrl}testReport/)
+- [빌드 로그 보기](${buildUrl}console)
+
+---
+_Build #${env.BUILD_NUMBER} • ${new Date().format('yyyy-MM-dd HH:mm:ss KST')}_
+"""
+                                
+                                writeFile file: 'pr-comment.txt', text: commentBody
+                                
+                                // GitHub API를 통해 PR 코멘트 추가 (재시도 로직 포함)
+                                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                    def apiSuccess = sh(
+                                        script: """
+                                            set +e
+                                            
+                                            # jq 설치 확인
+                                            if ! command -v jq &> /dev/null; then
+                                                echo "ERROR: jq is not installed"
+                                                exit 1
+                                            fi
+                                            
+                                            # JSON payload 생성 (jq로 안전하게 인코딩)
+                                            COMMENT_BODY=\$(cat pr-comment.txt | jq -Rs .)
+                                            if [ \$? -ne 0 ]; then
+                                                echo "ERROR: Failed to encode comment body"
+                                                exit 1
+                                            fi
+                                            
+                                            # GitHub Token 확인
+                                            if [ -z "\${GITHUB_TOKEN}" ]; then
+                                                echo "ERROR: GITHUB_TOKEN is empty"
+                                                exit 1
+                                            fi
+                                            
+                                            # GitHub API 호출 (최대 3번 재시도)
+                                            for i in 1 2 3; do
+                                                echo "Attempt \$i/3..."
+                                                RESPONSE=\$(curl -s -w "\\n%{http_code}" -X POST \\
+                                                  -H "Authorization: token \${GITHUB_TOKEN}" \\
+                                                  -H "Accept: application/vnd.github.v3+json" \\
+                                                  https://api.github.com/repos/${repoFullName}/issues/${env.CHANGE_ID}/comments \\
+                                                  -d "{\\"body\\":\${COMMENT_BODY}}")
+                                                
+                                                HTTP_CODE=\$(echo "\$RESPONSE" | tail -n1)
+                                                RESPONSE_BODY=\$(echo "\$RESPONSE" | head -n-1)
+                                                
+                                                if [ "\$HTTP_CODE" -eq 201 ]; then
+                                                    echo "✅ PR 코멘트 추가 성공"
+                                                    exit 0
+                                                else
+                                                    echo "⚠️ PR 코멘트 추가 실패 (HTTP \$HTTP_CODE)"
+                                                    echo "Response: \$RESPONSE_BODY"
+                                                    
+                                                    if [ \$i -lt 3 ]; then
+                                                        echo "Retrying in 2 seconds..."
+                                                        sleep 2
+                                                    fi
+                                                fi
+                                            done
+                                            
+                                            echo "❌ 모든 재시도 실패"
+                                            exit 1
+                                        """,
+                                        returnStatus: true
+                                    )
+                                    
+                                    if (apiSuccess != 0) {
+                                        echo "❌ GitHub API 호출 최종 실패"
+                                        echo "   레포: ${repoFullName}"
+                                        echo "   PR 번호: ${env.CHANGE_ID}"
+                                        echo "   CHANGE_URL: ${env.CHANGE_URL}"
+                                    }
+                                }
+                                
+                                // 임시 파일 정리
+                                sh 'rm -f pr-comment.txt || true'
+                            } else {
+                                if (!env.CHANGE_ID) {
+                                    echo "ℹ️ PR이 아니므로 코멘트를 추가하지 않습니다."
+                                }
+                                if (!testResults) {
+                                    echo "⚠️ 테스트 결과가 없습니다."
+                                }
+                            }
+                        } catch (Exception e) {
+                            echo "❌ PR 코멘트 처리 중 오류 발생: ${e.message}"
+                            e.printStackTrace()
+                        }
+                    }
                 }
             }
         }
