@@ -33,14 +33,14 @@ subprojects {
 
     // tasks 설정
     tasks.withType<JavaCompile> {
-        targetCompatibility = "21"
-        sourceCompatibility = "21"
+        targetCompatibility = "17"
+        sourceCompatibility = "17"
     }
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions {
             freeCompilerArgs = listOf("-Xjsr305=strict")
-            jvmTarget = "21"
+            jvmTarget = "17"
         }
     }
 

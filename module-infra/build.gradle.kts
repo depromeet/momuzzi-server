@@ -7,6 +7,20 @@ plugins {
     kotlin("kapt") version "1.9.25"
 }
 
+// kapt 설정
+kotlin {
+    jvmToolchain(17)
+}
+
+kapt {
+    correctErrorTypes = true
+    useBuildCache = false  // CI에서 캐시 문제 방지
+    showProcessorStats = false
+    javacOptions {
+        option("-Xmaxerrs", 500)
+    }
+}
+
 dependencies {
     implementation(project(":module-global-utils"))
     implementation(project(":module-domain"))
@@ -17,7 +31,8 @@ dependencies {
     implementation("com.linecorp.kotlin-jdsl:jpql-render:3.5.5")
     implementation("com.linecorp.kotlin-jdsl:hibernate-support:3.5.5")
     implementation("com.linecorp.kotlin-jdsl:spring-data-jpa-support:3.5.5")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
+    // Spring Boot 관리 버전 사용
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
 
