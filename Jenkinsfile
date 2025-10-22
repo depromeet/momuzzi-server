@@ -106,6 +106,39 @@ pipeline {
                                 // 실패한 테스트 정보
                                 def failedTests = ""
                                 if (failCount > 0) {
+                                    try {
+                                        @NonCPS
+                                        def getFailedTestsInfo() {
+                                            def testResultAction = currentBuild.rawBuild.getAction(hudson.tasks.junit.TestResultAction.class)
+                                            if (testResultAction) {
+                                                def failedTestsList = testResultAction.getFailedTests()
+                                                def failedTestsInfo = []
+                                                
+                                                def maxTests = Math.min(failedTestsList.size(), 10)
+                                                for (int i = 0; i < maxTests; i++) {
+                                                    def test = failedTestsList[i]
+                                                    def className = test.className?.tokenize('.')?.last() ?: 'Unknown'
+                                                    def testName = test.name ?: 'Unknown'
+                                                    failedTestsInfo.add("- `${className}.${testName}`")
+                                                }
+                                                
+                                                if (failedTestsList.size() > 10) {
+                                                    failedTestsInfo.add("- ... 외 ${failedTestsList.size() - 10}개")
+                                                }
+                                                
+                                                return failedTestsInfo
+                                            }
+                                            return []
+                                        }
+                                        
+                                        def failedTestsInfo = getFailedTestsInfo()
+                                        if (failedTestsInfo) {
+                                            failedTests = "\n\n### ${emoji} 실패한 테스트\n" + failedTestsInfo.join('\n')
+                                        }
+                                    } catch (Exception e) {
+                                        echo "⚠️ 실패한 테스트 목록 추출 실패: ${e.message}"
+                                    }
+
                                     failedTests = "\n\n### ${emoji} 실패 정보\n실패한 테스트의 상세 정보는 [테스트 결과 페이지](${buildUrl}testReport/)에서 확인하세요."
                                 }
                                 
