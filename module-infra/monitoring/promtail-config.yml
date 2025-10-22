@@ -59,6 +59,34 @@ scrape_configs:
       - output:
           source: output
       
+      # 불필요한 로그 필터링 (Drop)
+      - match:
+          selector: '{container="nginx"}'
+          stages:
+            # 301 리다이렉트 로그 제외
+            - drop:
+                expression: '.*" 301 .*'
+            
+            # /stub_status 메트릭 수집 로그 제외
+            - drop:
+                expression: '.*GET /stub_status.*'
+            
+            # Grafana 로그인 및 API 요청 제외
+            - drop:
+                expression: '.*monitoring\.momuzzi\.site.*(GET /login|GET /api/|POST /api/|GET /avatar/|GET /public/).*'
+            
+            # GitHub Webhook 로그 제외
+            - drop:
+                expression: '.*(jenkins\.momuzzi\.site.*github-webhook|/github-webhook/).*'
+            
+            # Let's Encrypt ACME challenge 로그 제외
+            - drop:
+                expression: '.*\.well-known/acme-challenge.*'
+            
+            # 헬스체크 로그 제외 (있는 경우)
+            - drop:
+                expression: '.*(GET /health|GET /actuator/health).*'
+      
       # 정적 라벨 추가
       - labels:
           environment: production
