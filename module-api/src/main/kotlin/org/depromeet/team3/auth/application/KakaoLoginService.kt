@@ -29,9 +29,10 @@ class KakaoLoginService(
     @Transactional
     fun login(command: KakaoLoginCommand): LoginResponse {
         val code = command.authorizationCode
+        val redirectUri = command.redirectUri ?: getDefaultRedirectUri()
         
         // 1. 카카오 OAuth 토큰 요청 및 프로필 조회
-        val oAuthToken = kakaoOAuthClient.requestToken(code, kakaoProperties.redirectUri)
+        val oAuthToken = kakaoOAuthClient.requestToken(code, redirectUri)
         val kakaoProfile = kakaoOAuthClient.requestProfile(oAuthToken)
 
         // 2. 카카오 프로필 정보 추출
@@ -123,6 +124,18 @@ class KakaoLoginService(
         userCommandRepository.save(updatedUser)
         
         return AuthTokens(accessToken, refreshToken)
+    }
+    
+    /**
+     * 환경에 따른 기본 redirect URI 선택
+     * 프로덕션에서는 redirect-uris 배열의 첫 번째를 기본값으로 사용
+     */
+    private fun getDefaultRedirectUri(): String {
+        return when {
+            kakaoProperties.redirectUris.isNotEmpty() -> kakaoProperties.redirectUris.first()
+            kakaoProperties.redirectUri.isNotEmpty() -> kakaoProperties.redirectUri
+            else -> "http://localhost:8080/auth/callback" // fallback
+        }
     }
     
     private data class AuthTokens(

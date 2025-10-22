@@ -34,9 +34,10 @@ class AuthController(
     )
     @GetMapping("/kakao-login")
     fun kakaoLogin(
-        @RequestParam("code") code: String
+        @RequestParam("code") code: String,
+        @RequestParam(value = "redirect_uri", required = false) redirectUri: String?
     ): DpmApiResponse<LoginResponse> {
-        val command = KakaoLoginCommand(authorizationCode = code)
+        val command = KakaoLoginCommand(authorizationCode = code, redirectUri = redirectUri)
         val result = kakaoLoginService.login(command)
         return DpmApiResponse.ok(result)
     }
