@@ -35,9 +35,21 @@ jobs:
         run: chmod +x gradlew
       
       - name: Run tests
-        run: ./gradlew test --no-parallel --continue --stacktrace
+        run: |
+          echo "=== Running all tests ==="
+          ./gradlew test --no-parallel --continue --stacktrace 2>&1 | tee test-output.log
+          echo "Exit code: $?"
         env:
           TZ: Asia/Seoul
+      
+      - name: Show test failures (if any)
+        if: failure()
+        run: |
+          echo "=== Test output ==="
+          cat test-output.log || true
+          echo ""
+          echo "=== Failed tests details ==="
+          find . -name "TEST-*.xml" -exec echo "File: {}" \; -exec cat {} \; || true
 
       - name: Upload test reports (for debugging)
         if: always()

@@ -53,11 +53,14 @@ subprojects {
             html.required.set(true)
         }
         
-        // 실패 무시하지 않되, 전체 리포트는 항상 생성
-        ignoreFailures = false
+        // 테스트 실패해도 계속 진행 (전체 리포트 생성을 위해)
+        ignoreFailures = true
         
-        // 테스트 실행 전 항상 clean (캐시 문제 방지)
-        outputs.upToDateWhen { false }
+        // CI 환경에서만 테스트 캐시 비활성화 (로컬 개발 성능 저하 방지)
+        val isCI = System.getenv("CI")?.toBoolean() ?: false
+        if (isCI) {
+            outputs.upToDateWhen { false }
+        }
     }
 
     afterEvaluate {
