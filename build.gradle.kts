@@ -46,6 +46,18 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        
+        // 테스트 리포트 설정
+        reports {
+            junitXml.required.set(true)
+            html.required.set(true)
+        }
+        
+        // 실패 무시하지 않되, 전체 리포트는 항상 생성
+        ignoreFailures = false
+        
+        // 테스트 실행 전 항상 clean (캐시 문제 방지)
+        outputs.upToDateWhen { false }
     }
 
     afterEvaluate {
