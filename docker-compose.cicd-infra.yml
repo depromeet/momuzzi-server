@@ -1,0 +1,98 @@
+services:
+  # Private Docker Registry
+  registry:
+    image: registry:2
+    container_name: registry
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_CATALOG_MAXENTRIES: 5000
+      # HTTP 설정 (업로드 안정성 향상)
+      REGISTRY_HTTP_SECRET: "a-very-long-random-string-for-http-secret"
+      REGISTRY_HTTP_TIMEOUT_READ: "300s"
+      REGISTRY_HTTP_TIMEOUT_WRITE: "300s"
+      REGISTRY_HTTP_TIMEOUT_IDLE: "900s"
+      # 스토리지 설정 (업로드 청크 크기 최적화)
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR: "inmemory"
+      # 로그 레벨
+      REGISTRY_LOG_LEVEL: "info"
+    volumes:
+      - registry_data:/var/lib/registry
+      - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
+    networks:
+      - cicd_network
+
+  registry-web:
+    image: hyper/docker-registry-web
+    container_name: registry-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REGISTRY_URL: http://registry:5000/v2
+      REGISTRY_NAME: Depromeet Team 3 Private Docker Registry
+      REGISTRY_READONLY: "false"
+      REGISTRY_BASIC_AUTH: "ZGVwcm9tZWV0OjEyMzQ="
+      REGISTRY_TRUST_ANY_SSL: "true"
+    depends_on:
+      - registry
+    networks:
+      - cicd_network
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    restart: unless-stopped
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - TZ=Asia/Seoul
+    user: root
+    networks:
+      - cicd_network
+    mem_limit: 3g        # Jenkins 컨테이너 메모리 제한
+    mem_reservation: 1g  # 예약 메모리
+    cpus: 2.0
+
+  nginx:
+    container_name: nginx-cicd
+    image: nginx:1.29.0
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./module-infra/nginx/nginx-cicd.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./module-infra/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - cicd_network
+    restart: always
+    depends_on:
+      - jenkins
+      - registry
+
+
+volumes:
+  registry_data:
+    driver: local
+  jenkins_home:
+    driver: local
+
+networks:
+  cicd_network:
+    driver: bridge
