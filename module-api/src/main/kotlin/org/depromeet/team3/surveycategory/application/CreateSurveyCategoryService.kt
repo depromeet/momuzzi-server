@@ -42,8 +42,12 @@ class CreateSurveyCategoryService(
 
         val savedCategory = surveyCategoryRepository.save(surveyCategory)
         
+        val categoryId = requireNotNull(savedCategory.id) { 
+            "Saved category id is null for category: ${savedCategory}" 
+        }
+        
         return CreateSurveyCategoryResponse(
-            id = savedCategory.id!!,
+            id = categoryId,
             parentId = savedCategory.parentId,
             level = savedCategory.level,
             name = savedCategory.name,

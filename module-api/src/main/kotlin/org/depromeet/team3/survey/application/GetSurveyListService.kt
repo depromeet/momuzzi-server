@@ -9,6 +9,7 @@ import org.depromeet.team3.surveycategory.SurveyCategoryRepository
 import org.depromeet.team3.survey.dto.response.SurveyItemResponse
 import org.depromeet.team3.survey.dto.response.SurveyListResponse
 import org.depromeet.team3.survey.exception.SurveyException
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -20,6 +21,7 @@ class GetSurveyListService(
     private val meetingJpaRepository: MeetingJpaRepository,
     private val meetingAttendeeRepository: MeetingAttendeeRepository
 ) {
+    private val logger = LoggerFactory.getLogger(GetSurveyListService::class.java)
     
     @Transactional(readOnly = true)
     fun invoke(meetingId: Long, userId: Long): SurveyListResponse {
@@ -35,11 +37,11 @@ class GetSurveyListService(
         
         // 모임의 모든 설문 조회
         val surveys = surveyRepository.findByMeetingId(meetingId)
-        println("DEBUG: Found ${surveys.size} surveys for meetingId=$meetingId")
+        logger.debug("Found {} surveys for meetingId={}", surveys.size, meetingId)
         
         // 전체 참가자 수 조회
         val totalParticipants = meetingAttendeeRepository.countByMeetingId(meetingId)
-        println("DEBUG: Total participants: $totalParticipants")
+        logger.debug("Total participants: {} for meetingId={}", totalParticipants, meetingId)
         
         // 설문 참여율 계산 (참여자 수 / 전체 참가자 수) * 100
         val participationRate = if (totalParticipants > 0) {
@@ -51,11 +53,11 @@ class GetSurveyListService(
         // 설문 완료 여부 (모든 참가자가 설문을 완료했는지)
         val isCompleted = surveys.size == totalParticipants
         
-        println("DEBUG: Participation rate: $participationRate, Is completed: $isCompleted")
+        logger.debug("Participation rate: {}, Is completed: {} for meetingId={}", participationRate, isCompleted, meetingId)
         
         // 각 설문의 결과 정보와 함께 응답 생성
         val surveyItems = surveys.map { survey ->
-            println("DEBUG: Processing survey id=${survey.id}, participantId=${survey.participantId}")
+            logger.debug("Processing survey id={}, participantId={} for meetingId={}", survey.id, survey.participantId, meetingId)
             
             val results = surveyResultRepository.findBySurveyId(survey.id!!)
             
@@ -64,7 +66,7 @@ class GetSurveyListService(
             
             // 참가자 정보 조회
             val participant = meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, survey.participantId)
-            println("DEBUG: Participant found: $participant for meetingId=$meetingId, participantId=${survey.participantId}")
+            logger.debug("Participant found: {} for meetingId={}, participantId={}", participant, meetingId, survey.participantId)
             
             if (participant == null) {
                 throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to survey.participantId))
