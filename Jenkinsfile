@@ -166,41 +166,32 @@ pipeline {
                     if (isMainBranch) {
                         // 인프라 서비스 확인 및 시작
                         sh '''
-                            echo "인프라 서비스 상태 확인 중..."
-                            
                             # CI/CD 서비스 처리
-                            echo "CI/CD 서비스 확인 중..."
                             CICD_HASH=$(find docker-compose.cicd-infra.yml module-infra/nginx/nginx-cicd.conf -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             CICD_CACHE_FILE="/var/jenkins_home/cicd-config-hash"
                             
                             if [ ! -f "$CICD_CACHE_FILE" ] || [ "$(cat $CICD_CACHE_FILE)" != "$CICD_HASH" ]; then
-                                echo "CI/CD 설정이 변경되었습니다. 컨테이너를 재생성합니다..."
-                                docker-compose -f docker-compose.cicd-infra.yml down
-                                docker-compose -f docker-compose.cicd-infra.yml up -d
+                                # 의존 관계를 고려한 순서로 재생성: registry → registry-web → nginx (jenkins 제외)
+                                docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate registry
+                                docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate registry-web
+                                docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate nginx
                                 echo "$CICD_HASH" > "$CICD_CACHE_FILE"
-                                echo "$(date): CI/CD 설정 변경됨, 컨테이너 재생성됨" >> /var/log/jenkins-deploy.log
+                                echo "$(date): CI/CD 설정 변경됨, 의존 관계 고려하여 재생성됨" >> /var/log/jenkins-deploy.log
                             else
-                                echo "CI/CD 설정이 변경되지 않았습니다. 필요시 시작합니다..."
                                 docker-compose -f docker-compose.cicd-infra.yml up -d
                             fi
                             
                             # 모니터링 서비스 처리
-                            echo "모니터링 서비스 확인 중..."
-                            MONITORING_HASH=$(find docker-compose.monitoring.yml module-infra/nginx/nginx.conf -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
+                            MONITORING_HASH=$(find docker-compose.monitoring.yml module-infra/nginx/nginx-app.conf -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             MONITORING_CACHE_FILE="/var/jenkins_home/monitoring-config-hash"
                             
                             if [ ! -f "$MONITORING_CACHE_FILE" ] || [ "$(cat $MONITORING_CACHE_FILE)" != "$MONITORING_HASH" ]; then
-                                echo "모니터링 설정이 변경되었습니다. 컨테이너를 재생성합니다..."
-                                docker-compose -f docker-compose.monitoring.yml down
-                                docker-compose -f docker-compose.monitoring.yml up -d
+                                docker-compose -f docker-compose.monitoring.yml up -d --remove-orphans
                                 echo "$MONITORING_HASH" > "$MONITORING_CACHE_FILE"
                                 echo "$(date): 모니터링 설정 변경됨, 컨테이너 재생성됨" >> /var/log/jenkins-deploy.log
                             else
-                                echo "모니터링 설정이 변경되지 않았습니다. 필요시 시작합니다..."
                                 docker-compose -f docker-compose.monitoring.yml up -d
                             fi
-                            
-                            echo "인프라 서비스 확인 완료!"
                         '''
                         
                         withCredentials([usernamePassword(

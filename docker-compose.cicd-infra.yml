@@ -27,7 +27,7 @@ services:
       - registry_data:/var/lib/registry
       - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
     networks:
-      - cicd_network
+      - depromeet_cicd_network
 
   registry-web:
     image: hyper/docker-registry-web
@@ -44,7 +44,7 @@ services:
     depends_on:
       - registry
     networks:
-      - cicd_network
+      - depromeet_cicd_network
 
   jenkins:
     image: jenkins/jenkins:lts
@@ -71,8 +71,8 @@ services:
     container_name: nginx-cicd
     image: nginx:1.29.0
     ports:
-      - "80:80"
-      - "443:443"
+      - "900:80"
+      - "4430:443"
     volumes:
       - ./module-infra/nginx/nginx-cicd.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
@@ -85,7 +85,6 @@ services:
     depends_on:
       - jenkins
       - registry
-
 
 volumes:
   registry_data:
