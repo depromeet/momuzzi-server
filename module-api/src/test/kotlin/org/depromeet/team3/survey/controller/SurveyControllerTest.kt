@@ -93,12 +93,15 @@ class SurveyControllerTest {
             .andExpect(jsonPath("$.data").exists())
             .andExpect(jsonPath("$.data.surveys").isArray)
             .andExpect(jsonPath("$.data.surveys[0].participantId").value(1))
-            .andExpect(jsonPath("$.data.surveys[0].nickname").value("참가자1"))
+            .andExpect(jsonPath("$.data.surveys[0].nickname").value("홍길동"))
             .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList").isArray)
             .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList[0]").value(1))
             .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList[1]").value(3))
+            .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList[2]").value(5))
             .andExpect(jsonPath("$.data.surveys[1].participantId").value(2))
-            .andExpect(jsonPath("$.data.surveys[1].nickname").value("참가자2"))
+            .andExpect(jsonPath("$.data.surveys[1].nickname").value("김철수"))
+            .andExpect(jsonPath("$.data.surveys[1].selectedCategoryList[0]").value(2))
+            .andExpect(jsonPath("$.data.surveys[1].selectedCategoryList[1]").value(4))
             .andExpect(jsonPath("$.error").doesNotExist())
     }
 

@@ -10,6 +10,7 @@ import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.response.CreateSurveyCategoryResponse
 import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
 import org.depromeet.team3.surveycategory.application.CreateSurveyCategoryService
 import org.depromeet.team3.surveycategory.application.DeleteSurveyCategoryService
@@ -58,10 +59,10 @@ class SurveyCategoryController(
     @PostMapping
     fun create(
         @RequestBody @Valid request: CreateSurveyCategoryRequest
-    ) : DpmApiResponse<Unit> {
-        createSurveyCategoryService(request)
+    ) : DpmApiResponse<CreateSurveyCategoryResponse> {
+        val response = createSurveyCategoryService(request)
 
-        return DpmApiResponse.ok()
+        return DpmApiResponse.ok(response)
     }
 
     @Operation(

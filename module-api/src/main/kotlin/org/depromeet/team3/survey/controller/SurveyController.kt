@@ -26,7 +26,7 @@ class SurveyController(
 
     @Operation(
         summary = "모임별 설문 생성",
-        description = "특정 모임에 대한 설문을 생성합니다."
+        description = "특정 모임에 대한 설문을 생성합니다. selectedCategoryList에 선택된 카테고리의 ID를 배열로 전송합니다."
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "설문 생성 성공"),
@@ -47,7 +47,7 @@ class SurveyController(
 
     @Operation(
         summary = "모임별 전체 설문 결과 조회",
-        description = "특정 모임의 모든 설문 결과를 조회합니다."
+        description = "특정 모임의 모든 설문 결과를 조회합니다. 각 설문 항목은 participantId, nickname, selectedCategoryList를 포함합니다."
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "설문 결과 조회 성공"),

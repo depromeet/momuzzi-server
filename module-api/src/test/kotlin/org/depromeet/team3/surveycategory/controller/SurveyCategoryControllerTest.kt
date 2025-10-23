@@ -11,6 +11,7 @@ import org.depromeet.team3.surveycategory.application.UpdateSurveyCategoryServic
 import org.depromeet.team3.surveycategory.controller.SurveyCategoryController
 import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
 import org.depromeet.team3.surveycategory.dto.request.UpdateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.response.CreateSurveyCategoryResponse
 import org.depromeet.team3.surveycategory.dto.response.SurveyCategoryItem
 import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.junit.jupiter.api.DisplayName
@@ -63,6 +64,7 @@ class SurveyCategoryControllerTest {
         // given
         val response = listOf(
             SurveyCategoryItem(
+                id = 1L,
                 level = SurveyCategoryLevel.BRANCH,
                 name = "한식",
                 sortOrder = 1,
@@ -77,7 +79,76 @@ class SurveyCategoryControllerTest {
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.data").isArray)
+            .andExpect(jsonPath("$.data[0].id").value(1))
+            .andExpect(jsonPath("$.data[0].level").value("BRANCH"))
             .andExpect(jsonPath("$.data[0].name").value("한식"))
+            .andExpect(jsonPath("$.data[0].sortOrder").value(1))
+            .andExpect(jsonPath("$.data[0].children").isArray)
+            .andExpect(jsonPath("$.error").doesNotExist())
+    }
+
+    @Test
+    @DisplayName("계층 구조가 있는 설문 카테고리 목록을 성공적으로 조회한다")
+    fun `계층 구조가 있는 설문 카테고리 목록을 성공적으로 조회한다`() {
+        // given
+        val response = listOf(
+            SurveyCategoryItem(
+                id = 1L,
+                level = SurveyCategoryLevel.BRANCH,
+                name = "한식",
+                sortOrder = 1,
+                children = listOf(
+                    SurveyCategoryItem(
+                        id = 2L,
+                        level = SurveyCategoryLevel.LEAF,
+                        name = "김치찌개",
+                        sortOrder = 1,
+                        children = emptyList()
+                    ),
+                    SurveyCategoryItem(
+                        id = 3L,
+                        level = SurveyCategoryLevel.LEAF,
+                        name = "불고기",
+                        sortOrder = 2,
+                        children = emptyList()
+                    )
+                )
+            ),
+            SurveyCategoryItem(
+                id = 4L,
+                level = SurveyCategoryLevel.BRANCH,
+                name = "중식",
+                sortOrder = 2,
+                children = listOf(
+                    SurveyCategoryItem(
+                        id = 5L,
+                        level = SurveyCategoryLevel.LEAF,
+                        name = "짜장면",
+                        sortOrder = 1,
+                        children = emptyList()
+                    )
+                )
+            )
+        )
+
+        `when`(getSurveyCategoryService.invoke()).thenReturn(response)
+
+        // when & then
+        mockMvc.perform(get("/api/v1/survey-categories"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.data").isArray)
+            .andExpect(jsonPath("$.data[0].id").value(1))
+            .andExpect(jsonPath("$.data[0].name").value("한식"))
+            .andExpect(jsonPath("$.data[0].children").isArray)
+            .andExpect(jsonPath("$.data[0].children[0].id").value(2))
+            .andExpect(jsonPath("$.data[0].children[0].name").value("김치찌개"))
+            .andExpect(jsonPath("$.data[0].children[1].id").value(3))
+            .andExpect(jsonPath("$.data[0].children[1].name").value("불고기"))
+            .andExpect(jsonPath("$.data[1].id").value(4))
+            .andExpect(jsonPath("$.data[1].name").value("중식"))
+            .andExpect(jsonPath("$.data[1].children[0].id").value(5))
+            .andExpect(jsonPath("$.data[1].children[0].name").value("짜장면"))
             .andExpect(jsonPath("$.error").doesNotExist())
     }
 
@@ -91,9 +162,17 @@ class SurveyCategoryControllerTest {
             name = "한식",
             sortOrder = 1
         )
+        
+        val response = CreateSurveyCategoryResponse(
+            id = 1L,
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "한식",
+            sortOrder = 1
+        )
 
-        // Mock 설정 - 실제 서비스 호출을 방지
-        doNothing().`when`(createSurveyCategoryService).invoke(any())
+        // Mock 설정 - 생성된 카테고리 응답 반환
+        `when`(createSurveyCategoryService.invoke(any())).thenReturn(response)
 
         // when & then
         mockMvc.perform(
@@ -104,6 +183,11 @@ class SurveyCategoryControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data").exists())
+            .andExpect(jsonPath("$.data.id").value(1))
+            .andExpect(jsonPath("$.data.parentId").isEmpty)
+            .andExpect(jsonPath("$.data.level").value("BRANCH"))
+            .andExpect(jsonPath("$.data.name").value("한식"))
+            .andExpect(jsonPath("$.data.sortOrder").value(1))
             .andExpect(jsonPath("$.error").doesNotExist())
     }
 
@@ -196,6 +280,67 @@ class SurveyCategoryControllerTest {
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.error").exists())
             .andExpect(jsonPath("$.error.code").value("C4092"))
+    }
+
+    @Test
+    @DisplayName("중복된 sortOrder로 카테고리 생성 시 409 에러가 발생한다")
+    fun `중복된 sortOrder로 카테고리 생성 시 409 에러가 발생한다`() {
+        // given
+        val request = CreateSurveyCategoryRequest(
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "한식",
+            sortOrder = 1
+        )
+
+        // Mock 설정 - 중복된 sortOrder 예외 발생 시뮬레이션
+        doThrow(SurveyCategoryException(ErrorCode.DUPLICATE_CATEGORY_ORDER, mapOf("sortOrder" to 1, "parentId" to null)))
+            .`when`(createSurveyCategoryService).invoke(any())
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/survey-categories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf())
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(jsonPath("$.error").exists())
+            .andExpect(jsonPath("$.error.code").value("C4095"))
+            .andExpect(jsonPath("$.error.detail.sortOrder").value(1))
+            .andExpect(jsonPath("$.error.detail.parentId").isEmpty)
+    }
+
+    @Test
+    @DisplayName("중복된 sortOrder로 카테고리 수정 시 409 에러가 발생한다")
+    fun `중복된 sortOrder로 카테고리 수정 시 409 에러가 발생한다`() {
+        // given
+        val categoryId = 1L
+        val request = UpdateSurveyCategoryRequest(
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "전통한식",
+            sortOrder = 2
+        )
+
+        // Mock 설정 - 중복된 sortOrder 예외 발생 시뮬레이션
+        doThrow(SurveyCategoryException(ErrorCode.DUPLICATE_CATEGORY_ORDER, mapOf("sortOrder" to 2, "parentId" to null)))
+            .`when`(updateSurveyCategoryService).invoke(any(), any())
+
+        // when & then
+        mockMvc.perform(
+            put("/api/v1/survey-categories/$categoryId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf())
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(jsonPath("$.error").exists())
+            .andExpect(jsonPath("$.error.code").value("C4095"))
+            .andExpect(jsonPath("$.error.detail.sortOrder").value(2))
+            .andExpect(jsonPath("$.error.detail.parentId").isEmpty)
     }
 
     @Test
