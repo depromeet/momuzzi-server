@@ -20,8 +20,8 @@ object SurveyTestDataFactory {
     
     fun createSurveyCreateRequest(
         participantId: Long = 1L,
-        nickname: String = "테스트참가자",
-        selectedCategoryList: List<Long> = listOf(1L, 3L)
+        nickname: String = "홍길동",
+        selectedCategoryList: List<Long> = listOf(1L, 3L, 5L)
     ): SurveyCreateRequest {
         return SurveyCreateRequest(
             participantId = participantId,
@@ -32,7 +32,7 @@ object SurveyTestDataFactory {
 
     fun createMinimalSurveyCreateRequest(
         participantId: Long = 1L,
-        nickname: String = "테스트참가자"
+        nickname: String = "홍길동"
     ): SurveyCreateRequest {
         return SurveyCreateRequest(
             participantId = participantId,
@@ -43,7 +43,7 @@ object SurveyTestDataFactory {
 
     fun createEmptySurveyCreateRequest(
         participantId: Long = 1L,
-        nickname: String = "테스트참가자"
+        nickname: String = "홍길동"
     ): SurveyCreateRequest {
         return SurveyCreateRequest(
             participantId = participantId,
@@ -113,8 +113,8 @@ object SurveyTestDataFactory {
 
     fun createSurveyItemResponse(
         participantId: Long = 1L,
-        nickname: String = "참가자1",
-        selectedCategoryList: List<Long> = listOf(1L, 3L)
+        nickname: String = "홍길동",
+        selectedCategoryList: List<Long> = listOf(1L, 3L, 5L)
     ): SurveyItemResponse {
         return SurveyItemResponse(
             participantId = participantId,
@@ -128,12 +128,18 @@ object SurveyTestDataFactory {
             createSurveyItemResponse(),
             createSurveyItemResponse(
                 participantId = 2L,
-                nickname = "참가자2",
-                selectedCategoryList = listOf(2L)
+                nickname = "김철수",
+                selectedCategoryList = listOf(2L, 4L)
             )
-        )
+        ),
+        participationRate: Double = 75.0,
+        isCompleted: Boolean = false
     ): SurveyListResponse {
-        return SurveyListResponse(surveys = surveys)
+        return SurveyListResponse(
+            surveys = surveys,
+            participationRate = participationRate,
+            isCompleted = isCompleted
+        )
     }
 
     // ========== 복합 데이터 생성 ==========
