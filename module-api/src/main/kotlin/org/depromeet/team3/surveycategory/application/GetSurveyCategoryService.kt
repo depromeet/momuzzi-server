@@ -35,6 +35,7 @@ class GetSurveyCategoryService(
             .map { buildCategoryItem(it, categoryMap) }
         
         return SurveyCategoryItem(
+            id = category.id!!,
             level = category.level,
             name = category.name,
             sortOrder = category.sortOrder,

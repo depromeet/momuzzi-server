@@ -1,8 +1,11 @@
 package org.depromeet.team3.surveycategory.application
 
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.surveycategory.SurveyCategory
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
 import org.depromeet.team3.surveycategory.dto.request.CreateSurveyCategoryRequest
+import org.depromeet.team3.surveycategory.dto.response.CreateSurveyCategoryResponse
+import org.depromeet.team3.surveycategory.exception.SurveyCategoryException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -12,7 +15,23 @@ class CreateSurveyCategoryService(
 ) {
 
     @Transactional
-    operator fun invoke(request: CreateSurveyCategoryRequest): Unit {
+    operator fun invoke(request: CreateSurveyCategoryRequest): CreateSurveyCategoryResponse {
+        // sortOrder 중복 검증
+        if (surveyCategoryRepository.existsBySortOrderAndParentIdAndIsDeletedFalseAndIdNot(
+                sortOrder = request.sortOrder,
+                parentId = request.parentId,
+                excludeId = null
+            )
+        ) {
+            throw SurveyCategoryException(
+                errorCode = ErrorCode.DUPLICATE_CATEGORY_ORDER,
+                detail = mapOf(
+                    "sortOrder" to request.sortOrder,
+                    "parentId" to request.parentId
+                )
+            )
+        }
+
         val surveyCategory = SurveyCategory(
             parentId = request.parentId,
             level = request.level,
@@ -21,6 +40,14 @@ class CreateSurveyCategoryService(
             isDeleted = false
         )
 
-        surveyCategoryRepository.save(surveyCategory)
+        val savedCategory = surveyCategoryRepository.save(surveyCategory)
+        
+        return CreateSurveyCategoryResponse(
+            id = savedCategory.id!!,
+            parentId = savedCategory.parentId,
+            level = savedCategory.level,
+            name = savedCategory.name,
+            sortOrder = savedCategory.sortOrder
+        )
     }
 }
