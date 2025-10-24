@@ -167,13 +167,14 @@ pipeline {
                         // 인프라 서비스 확인 및 시작
                         sh '''
                             # CI/CD 서비스 처리
-                            CICD_HASH=$(find docker-compose.cicd-infra.yml module-infra/nginx/nginx-cicd.conf -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
+                            CICD_HASH=$(find docker-compose.cicd-infra.yml module-infra/nginx/nginx-cicd.conf Jenkinsfile -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             CICD_CACHE_FILE="/var/jenkins_home/cicd-config-hash"
                             
                             if [ ! -f "$CICD_CACHE_FILE" ] || [ "$(cat $CICD_CACHE_FILE)" != "$CICD_HASH" ]; then
-                                # 의존 관계를 고려한 순서로 재생성: registry → registry-web → nginx (jenkins 제외)
+                                # 의존 관계를 고려한 순서로 재생성: registry → registry-web → jenkins → nginx
                                 docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate registry
                                 docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate registry-web
+                                docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate jenkins
                                 docker-compose -f docker-compose.cicd-infra.yml up -d --force-recreate nginx
                                 echo "$CICD_HASH" > "$CICD_CACHE_FILE"
                                 echo "$(date): CI/CD 설정 변경됨, 의존 관계 고려하여 재생성됨" >> /var/log/jenkins-deploy.log

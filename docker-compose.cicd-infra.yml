@@ -60,7 +60,7 @@ services:
       - JENKINS_OPTS=--httpPort=8080
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
       - TZ=Asia/Seoul
-    user: root
+    user: "1000:988"  # jenkins:docker 그룹 (호스트 docker 그룹 GID: 988)
     networks:
       - depromeet_cicd_network
     mem_limit: 3g        # Jenkins 컨테이너 메모리 제한
