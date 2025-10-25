@@ -130,7 +130,6 @@ services:
     networks:
       - depromeet_network
 
-
 volumes:
   loki-data:
     driver: local
