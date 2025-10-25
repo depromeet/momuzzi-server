@@ -11,7 +11,7 @@ pipeline {
         
         // Registry 설정 (외부 접근용 HTTPS, 내부 푸시용 HTTP 분리)
         REGISTRY_URL = "registry.momuzzi.site:4430"          // Public pull용
-        REGISTRY_PUSH_URL = "172.20.0.3:5000"                // Internal push용
+        REGISTRY_PUSH_URL = "registry:5000"                  // Internal push용 (컨테이너 이름)
         REGISTRY_CREDENTIALS_ID = "depromeet-registry"
         
         // Docker 이미지 설정
@@ -56,7 +56,7 @@ pipeline {
                     sh './gradlew --stop || true'
                     sh 'pkill -f "KotlinCompileDaemon" || true'
                     
-                    // docker-compose 설치
+                    // docker-compose 설치 (컨테이너 재생성 시마다 필요)
                     sh '''
                     if ! command -v docker-compose >/dev/null 2>&1; then
                         echo "Installing docker-compose..."

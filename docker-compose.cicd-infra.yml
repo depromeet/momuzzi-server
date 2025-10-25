@@ -27,8 +27,7 @@ services:
       - registry_data:/var/lib/registry
       - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
     networks:
-      depromeet_cicd_network:
-        ipv4_address: 172.20.0.3
+      - depromeet_cicd_network
 
   registry-web:
     image: hyper/docker-registry-web
@@ -97,6 +96,3 @@ volumes:
 networks:
   depromeet_cicd_network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
