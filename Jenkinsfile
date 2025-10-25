@@ -29,6 +29,7 @@ pipeline {
         // Gradle 캐시 설정
         GRADLE_USER_HOME = "${env.WORKSPACE}/.gradle"
     }
+
     
     tools {
         gradle 'gradle-8.14.3'
