@@ -10,7 +10,7 @@ pipeline {
         TZ = 'Asia/Seoul'
         
         // Registry 설정
-        REGISTRY_URL = "registry.momuzzi.site"
+        REGISTRY_URL = "registry.momuzzi.site:4430"
         REGISTRY_CREDENTIALS_ID = "depromeet-registry"
         
         // Docker 이미지 설정
