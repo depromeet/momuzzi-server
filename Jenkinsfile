@@ -136,29 +136,34 @@ pipeline {
                             passwordVariable: 'REGISTRY_PASSWORD'
                         )]) {
                             sh """
-                                # Registry IP를 hosts 파일에 추가 (DNS 문제 해결)
+                                # Registry IP를 직접 사용 (DNS 문제 우회)
                                 REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-                                echo "\$REGISTRY_IP registry" >> /etc/hosts
+                                echo "Using Registry IP: \$REGISTRY_IP"
                                 
-                                # Docker 로그아웃 후 재로그인
-                                docker logout ${REGISTRY_PUSH_URL} || true
+                                # Docker 로그아웃 후 재로그인 (IP 직접 사용)
+                                docker logout \${REGISTRY_IP}:5000 || true
 
-                                echo "Attempting login to ${REGISTRY_PUSH_URL} with user: \$REGISTRY_USERNAME"
-                                echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_PUSH_URL} -u \$REGISTRY_USERNAME --password-stdin
+                                echo "Attempting login to \${REGISTRY_IP}:5000 with user: \$REGISTRY_USERNAME"
+                                echo \$REGISTRY_PASSWORD | docker login \${REGISTRY_IP}:5000 -u \$REGISTRY_USERNAME --password-stdin
+
+                                # 이미지 태그를 IP로 변경
+                                docker tag ${fullImageName}:${imageTag} \${REGISTRY_IP}:5000/${IMAGE_NAME}:${imageTag}
+                                docker tag ${fullImageName}:latest \${REGISTRY_IP}:5000/${IMAGE_NAME}:latest
 
                                 # 이미지 정보 확인
-                                docker images | grep ${fullImageName}
+                                docker images | grep \${REGISTRY_IP}:5000/${IMAGE_NAME}
 
-                                # Push 시도
-                                docker push ${fullImageName}:${imageTag}
-                                docker push ${fullImageName}:latest
+                                # Push 시도 (IP 직접 사용)
+                                docker push \${REGISTRY_IP}:5000/${IMAGE_NAME}:${imageTag}
+                                docker push \${REGISTRY_IP}:5000/${IMAGE_NAME}:latest
                             """
                         }
 
                         // 로컬 이미지 정리
                         sh """
-                            docker rmi ${fullImageName}:${imageTag} || true
-                            docker rmi ${fullImageName}:latest || true
+                            REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                            docker rmi \${REGISTRY_IP}:5000/${IMAGE_NAME}:${imageTag} || true
+                            docker rmi \${REGISTRY_IP}:5000/${IMAGE_NAME}:latest || true
                         """
                     } else {
                         echo "Skipping Docker Build & Push - not main branch"
