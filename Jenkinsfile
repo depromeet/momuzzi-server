@@ -56,9 +56,15 @@ pipeline {
                     sh './gradlew --stop || true'
                     sh 'pkill -f "KotlinCompileDaemon" || true'
                     
-                    // Docker 정리(일시적으로 주석 처리)
-                    // sh 'docker system prune -f || true'
-                    // sh 'docker builder prune -f || true'
+                    // docker-compose 설치 (컨테이너 재생성 시마다 필요)
+                    sh '''
+                    if ! command -v docker-compose >/dev/null 2>&1; then
+                        echo "Installing docker-compose..."
+                        curl -L "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                        chmod +x /usr/local/bin/docker-compose
+                    fi
+                    docker-compose --version
+                    '''
                 }
             }
         }
