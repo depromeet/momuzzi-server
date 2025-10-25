@@ -136,6 +136,10 @@ pipeline {
                             passwordVariable: 'REGISTRY_PASSWORD'
                         )]) {
                             sh """
+                                # Registry IP를 hosts 파일에 추가 (DNS 문제 해결)
+                                REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                                echo "\$REGISTRY_IP registry" >> /etc/hosts
+                                
                                 # Docker 로그아웃 후 재로그인
                                 docker logout ${REGISTRY_PUSH_URL} || true
 
