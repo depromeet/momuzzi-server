@@ -9,8 +9,9 @@ pipeline {
         // 타임존 설정 (한국 시간)
         TZ = 'Asia/Seoul'
         
-        // Registry 설정
-        REGISTRY_URL = "registry.momuzzi.site:4430"
+        // Registry 설정 (외부 접근용 HTTPS, 내부 푸시용 HTTP 분리)
+        REGISTRY_URL = "registry.momuzzi.site:4430"          // Public pull용
+        REGISTRY_PUSH_URL = "172.20.0.3:5000"                // Internal push용
         REGISTRY_CREDENTIALS_ID = "depromeet-registry"
         
         // Docker 이미지 설정
@@ -114,7 +115,7 @@ pipeline {
                         """
 
                         def imageTag = "${env.GIT_COMMIT_SHORT}"
-                        def fullImageName = "${REGISTRY_URL}/${IMAGE_NAME}"
+                        def fullImageName = "${REGISTRY_PUSH_URL}/${IMAGE_NAME}"
 
                         // Docker 이미지 빌드 (캐시 사용 안함)
                         sh """
@@ -130,10 +131,10 @@ pipeline {
                         )]) {
                             sh """
                                 # Docker 로그아웃 후 재로그인
-                                docker logout ${REGISTRY_URL} || true
+                                docker logout ${REGISTRY_PUSH_URL} || true
 
-                                echo "Attempting login to ${REGISTRY_URL} with user: \$REGISTRY_USERNAME"
-                                echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_URL} -u \$REGISTRY_USERNAME --password-stdin
+                                echo "Attempting login to ${REGISTRY_PUSH_URL} with user: \$REGISTRY_USERNAME"
+                                echo \$REGISTRY_PASSWORD | docker login ${REGISTRY_PUSH_URL} -u \$REGISTRY_USERNAME --password-stdin
 
                                 # 이미지 정보 확인
                                 docker images | grep ${fullImageName}
