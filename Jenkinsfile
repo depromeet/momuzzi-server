@@ -186,32 +186,30 @@ pipeline {
                             # 서버의 .env 파일을 Jenkins 워크스페이스로 복사
                             cp /home/ubuntu/momuzzi-server/.env .env
                             
-                            # 올바른 프로젝트 디렉토리로 이동
-                            cd /home/ubuntu/momuzzi-server
-                            
-                            # CI/CD 서비스 처리
+                            # CI/CD 서비스 처리 (Jenkins 워크스페이스에서 실행)
                             CICD_HASH=$(find docker-compose.cicd-infra.yml module-infra/nginx/nginx-cicd.conf Jenkinsfile -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             CICD_CACHE_FILE="/var/jenkins_home/cicd-config-hash"
                             
                             if [ ! -f "$CICD_CACHE_FILE" ] || [ "$(cat $CICD_CACHE_FILE)" != "$CICD_HASH" ]; then
-                                docker-compose -f docker-compose.cicd-infra.yml down
-                                docker-compose -f docker-compose.cicd-infra.yml up -d
+                                # 프로젝트 이름을 명시적으로 지정하여 충돌 방지
+                                COMPOSE_PROJECT_NAME=momuzzi-server docker-compose -f docker-compose.cicd-infra.yml down
+                                COMPOSE_PROJECT_NAME=momuzzi-server docker-compose -f docker-compose.cicd-infra.yml up -d
                                 echo "$CICD_HASH" > "$CICD_CACHE_FILE"
                                 echo "$(date): CI/CD 설정 변경됨, 컨테이너 재시작됨" >> /var/log/jenkins-deploy.log
                             else
-                                docker-compose -f docker-compose.cicd-infra.yml up -d
+                                COMPOSE_PROJECT_NAME=momuzzi-server docker-compose -f docker-compose.cicd-infra.yml up -d
                             fi
                             
-                            # 모니터링 서비스 처리 (이미 올바른 디렉토리에 있음)
+                            # 모니터링 서비스 처리 (Jenkins 워크스페이스에서 실행)
                             MONITORING_HASH=$(find docker-compose.monitoring.yml module-infra/nginx/nginx-app.conf -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             MONITORING_CACHE_FILE="/var/jenkins_home/monitoring-config-hash"
                             
                             if [ ! -f "$MONITORING_CACHE_FILE" ] || [ "$(cat $MONITORING_CACHE_FILE)" != "$MONITORING_HASH" ]; then
-                                docker-compose -f docker-compose.monitoring.yml up -d --remove-orphans
+                                COMPOSE_PROJECT_NAME=momuzzi-server docker-compose -f docker-compose.monitoring.yml up -d --remove-orphans
                                 echo "$MONITORING_HASH" > "$MONITORING_CACHE_FILE"
                                 echo "$(date): 모니터링 설정 변경됨, 컨테이너 재생성됨" >> /var/log/jenkins-deploy.log
                             else
-                                docker-compose -f docker-compose.monitoring.yml up -d
+                                COMPOSE_PROJECT_NAME=momuzzi-server docker-compose -f docker-compose.monitoring.yml up -d
                             fi
                         '''
                         
