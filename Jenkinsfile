@@ -56,7 +56,7 @@ pipeline {
                     sh './gradlew --stop || true'
                     sh 'pkill -f "KotlinCompileDaemon" || true'
                     
-                    // docker-compose 설치 (컨테이너 재생성 시마다 필요)
+                    // docker-compose 설치
                     sh '''
                     if ! command -v docker-compose >/dev/null 2>&1; then
                         echo "Installing docker-compose..."
