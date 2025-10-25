@@ -186,6 +186,9 @@ pipeline {
                             # 서버의 .env 파일을 Jenkins 워크스페이스로 복사
                             cp /home/ubuntu/momuzzi-server/.env .env
                             
+                            # 올바른 프로젝트 디렉토리로 이동
+                            cd /home/ubuntu/momuzzi-server
+                            
                             # CI/CD 서비스 처리
                             CICD_HASH=$(find docker-compose.cicd-infra.yml module-infra/nginx/nginx-cicd.conf Jenkinsfile -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             CICD_CACHE_FILE="/var/jenkins_home/cicd-config-hash"
@@ -199,7 +202,7 @@ pipeline {
                                 docker-compose -f docker-compose.cicd-infra.yml up -d
                             fi
                             
-                            # 모니터링 서비스 처리
+                            # 모니터링 서비스 처리 (이미 올바른 디렉토리에 있음)
                             MONITORING_HASH=$(find docker-compose.monitoring.yml module-infra/nginx/nginx-app.conf -type f -exec md5sum {} \\; | sort | md5sum | cut -d' ' -f1)
                             MONITORING_CACHE_FILE="/var/jenkins_home/monitoring-config-hash"
                             
