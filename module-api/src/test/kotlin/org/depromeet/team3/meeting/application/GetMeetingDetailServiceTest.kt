@@ -115,8 +115,7 @@ class GetMeetingDetailServiceTest {
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee1, attendee2))
-        whenever(surveyRepository.findByMeetingIdAndParticipantId(meetingId, 456L)).thenReturn(survey1)
-        whenever(surveyRepository.findByMeetingIdAndParticipantId(meetingId, 789L)).thenReturn(survey2)
+        whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1, survey2))
         whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(emptyList())
         whenever(surveyResultRepository.findBySurveyId(2L)).thenReturn(emptyList())
 
@@ -200,11 +199,9 @@ class GetMeetingDetailServiceTest {
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee))
-        whenever(surveyRepository.findByMeetingIdAndParticipantId(meetingId, 456L)).thenReturn(survey)
+        whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey))
         whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(surveyResults)
-        whenever(surveyCategoryRepository.findById(1L)).thenReturn(branchCategory)
-        whenever(surveyCategoryRepository.findById(8L)).thenReturn(leafCategory1)
-        whenever(surveyCategoryRepository.findById(9L)).thenReturn(leafCategory2)
+        whenever(surveyCategoryRepository.findAllById(listOf(1L, 8L, 9L))).thenReturn(listOf(branchCategory, leafCategory1, leafCategory2))
 
         // when
         val result = getMeetingDetailService.invoke(meetingId, userId)
@@ -286,8 +283,7 @@ class GetMeetingDetailServiceTest {
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee1, attendee2))
-        whenever(surveyRepository.findByMeetingIdAndParticipantId(meetingId, 456L)).thenReturn(survey1)
-        whenever(surveyRepository.findByMeetingIdAndParticipantId(meetingId, 789L)).thenReturn(null)
+        whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1))
         whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(emptyList())
 
         // when

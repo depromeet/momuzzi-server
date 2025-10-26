@@ -22,6 +22,11 @@ class SurveyCategoryQuery (
             .map { surveyCategoryMapper.toDomain(it) }
             .orElse(null)
     }
+    
+    override fun findAllById(ids: List<Long>): List<SurveyCategory> {
+        return surveyCategoryJpaRepository.findAllById(ids)
+            .map { surveyCategoryMapper.toDomain(it) }
+    }
 
     override fun findActive(): List<SurveyCategory> {
         return surveyCategoryJpaRepository.findByIsDeletedFalse()

@@ -5,6 +5,8 @@ interface SurveyCategoryRepository {
     fun save(surveyCategory: SurveyCategory): SurveyCategory
 
     fun findById(id: Long): SurveyCategory?
+    
+    fun findAllById(ids: List<Long>): List<SurveyCategory>
 
     fun findActive(): List<SurveyCategory>
 

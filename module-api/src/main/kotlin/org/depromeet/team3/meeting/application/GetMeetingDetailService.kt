@@ -16,6 +16,7 @@ import org.depromeet.team3.surveycategory.SurveyCategoryRepository
 import org.depromeet.team3.surveyresult.SurveyResultRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import kotlin.requireNotNull
 
 @Service
 class GetMeetingDetailService(
@@ -37,33 +38,43 @@ class GetMeetingDetailService(
         val station = stationRepository.findById(meeting.stationId)
         val stationName = station?.name ?: ""
 
+        // 필수 필드 검증
+        val validatedMeetingId = requireNotNull(meeting.id) { "모임 ID는 필수입니다" }
+        val endAt = requireNotNull(meeting.endAt) { "모임 종료 시간은 필수입니다" }
+        val createdAt = requireNotNull(meeting.createdAt) { "모임 생성 시간은 필수입니다" }
+
         // MeetingInfoResponse 생성
         val meetingInfo = MeetingInfoResponse(
-            id = meeting.id!!,
+            id = validatedMeetingId,
             title = meeting.name,
             hostUserId = meeting.hostUserId,
             totalParticipantCnt = meeting.attendeeCount,
             isClosed = meeting.isClosed,
             stationName = stationName,
-            endAt = meeting.endAt!!,
-            createdAt = meeting.createdAt!!,
+            endAt = endAt,
+            createdAt = createdAt,
             updatedAt = meeting.updatedAt
         )
 
         // 참가자 목록 조회
-        val attendees = meetingAttendeeRepository.findByMeetingId(meetingId)
+        val attendeeList = meetingAttendeeRepository.findByMeetingId(meetingId)
+        
+        // 모든 설문을 한 번에 조회 (N+1 문제 해결)
+        val surveyList = surveyRepository.findByMeetingId(meetingId)
+        val surveyMap = surveyList.associateBy { it.participantId }
         
         // 설문이 있는 참가자만 participantList에 포함
-        val participantList = attendees
+        val participantList = attendeeList
             .mapNotNull { attendee ->
-                // 해당 참가자의 설문 조회
-                val survey = surveyRepository.findByMeetingIdAndParticipantId(meetingId, attendee.userId)
+                // Map에서 참가자의 설문 조회
+                val survey = surveyMap[attendee.userId]
                 
                 // 설문이 없는 경우 null 반환하여 제외
                 survey ?: return@mapNotNull null
                 
                 // 설문이 있는 경우 선택한 카테고리 목록 생성
-                val selectedCategoryList = buildParticipantSelectedCategories(survey.id!!)
+                val surveyId = requireNotNull(survey.id) { "설문 ID는 필수입니다" }
+                val selectedCategoryList = buildParticipantSelectedCategories(surveyId)
 
                 MeetingParticipantInfo(
                     userId = attendee.userId,
@@ -88,26 +99,29 @@ class GetMeetingDetailService(
         }
 
         // 카테고리 ID 목록 조회
-        val categoryIds = surveyResults.map { it.surveyCategoryId }
-        val categories = categoryIds.mapNotNull { surveyCategoryRepository.findById(it) }
+        val categoryIdList = surveyResults.map { it.surveyCategoryId }
+        val categoryList = surveyCategoryRepository.findAllById(categoryIdList)
 
-        // BRANCH 카테고리와 LEAF 카테고리 분리
-        val branchCategories = categories.filter { it.level == SurveyCategoryLevel.BRANCH }
-        val leafCategories = categories.filter { it.level == SurveyCategoryLevel.LEAF }
+        // BRANCH 카테고리와 LEAF 카테고리 분리 (null id 제외)
+        val branchCategoryList = categoryList.filter { it.level == SurveyCategoryLevel.BRANCH && it.id != null }
+        val leafCategoryList = categoryList.filter { it.level == SurveyCategoryLevel.LEAF && it.id != null }
 
         // BRANCH 카테고리별로 해당하는 LEAF 카테고리들을 그룹화
-        return branchCategories.map { branchCategory ->
-            val leafCategoriesForBranch = leafCategories
-                .filter { it.parentId == branchCategory.id }
-                .map { leafCategory ->
+        return branchCategoryList.mapNotNull { branchCategory ->
+            val branchId = branchCategory.id ?: return@mapNotNull null
+            
+            val leafCategoriesForBranch = leafCategoryList
+                .filter { it.parentId == branchId }
+                .mapNotNull { leafCategory ->
+                    val leafId = leafCategory.id ?: return@mapNotNull null
                     SelectedLeafCategory(
-                        id = leafCategory.id!!,
+                        id = leafId,
                         name = leafCategory.name
                     )
                 }
 
             ParticipantSelectedCategory(
-                id = branchCategory.id!!,
+                id = branchId,
                 name = branchCategory.name,
                 leafCategoryList = leafCategoriesForBranch
             )

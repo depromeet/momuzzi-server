@@ -55,6 +55,10 @@ class GetSurveyListService(
 
         logger.debug("Participation rate: {}, Is completed: {} for meetingId={}", participationRate, isCompleted, meetingId)
 
+        // 모든 참가자를 한 번에 조회 (N+1 문제 해결)
+        val attendeeList = meetingAttendeeRepository.findByMeetingId(meetingId)
+        val attendeeMap = attendeeList.associateBy { it.userId }
+
         // 각 설문의 결과 정보와 함께 응답 생성
         val surveyItems = surveys.map { survey ->
             logger.debug("Processing survey id={}, participantId={} for meetingId={}", survey.id, survey.participantId, meetingId)
@@ -64,8 +68,8 @@ class GetSurveyListService(
             // 설문 결과에서 카테고리 목록 생성
             val selectedCategoryList = results.map { it.surveyCategoryId }
 
-            // 참가자 정보 조회
-            val participant = meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, survey.participantId)
+            // Map에서 참가자 정보 조회
+            val participant = attendeeMap[survey.participantId]
             logger.debug("Participant found: {} for meetingId={}, participantId={}", participant, meetingId, survey.participantId)
 
             if (participant == null) {
@@ -88,9 +92,16 @@ class GetSurveyListService(
 
     @Transactional(readOnly = true)
     fun getRespondents(meetingId: Long): List<GetRespondents> {
-        return surveyRepository.findByMeetingId(meetingId)
+        // 모든 참가자를 한 번에 조회 (N+1 문제 해결)
+        val attendeeList = meetingAttendeeRepository.findByMeetingId(meetingId)
+        val attendeeMap = attendeeList.associateBy { it.userId }
+        
+        // 설문 작성자 ID 목록 조회
+        val participantIdList = surveyRepository.findByMeetingId(meetingId)
             .map { it.participantId }
-            .mapNotNull { id -> meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, id) }
+        
+        return participantIdList
+            .mapNotNull { id -> attendeeMap[id] }
             .map { attendee -> attendee.toGetRespondents() }
     }
 
