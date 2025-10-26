@@ -228,10 +228,8 @@ else
 fi
 
 # 애플리케이션 서비스 재시작
-# 기존 컨테이너 완전히 제거 (컨테이너 이름 충돌 방지)
-docker rm -f backend nginx 2>/dev/null || true
-docker-compose -f docker-compose.prod.yml down backend nginx || true
-docker-compose -f docker-compose.prod.yml rm -f backend nginx || true
+# Backend 컨테이너만 제거
+docker rm -f backend 2>/dev/null || true
 
 if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
     # Registry 이미지를 backend:latest로 태그 후 배포
@@ -239,7 +237,6 @@ if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
     docker tag \${REGISTRY_URL}/\${IMAGE_NAME}:latest backend:latest
 fi
 
-# Backend 먼저 시작
 docker-compose -f docker-compose.prod.yml up -d backend
 
 # Backend가 healthy 상태가 될 때까지 대기 (최대 2분)
@@ -253,8 +250,8 @@ for i in {1..24}; do
     sleep 5
 done
 
-# Nginx 시작 (강제 재생성)
-docker-compose -f docker-compose.prod.yml up -d --force-recreate nginx
+# Nginx가 없다면 생성
+docker-compose -f docker-compose.prod.yml up -d nginx
 
 # 사용하지 않는 이미지 정리
 docker image prune -af --filter "until=24h"
