@@ -10,13 +10,15 @@ import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.annotation.UserId
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.depromeet.team3.meeting.application.CreateMeetingService
+import org.depromeet.team3.meeting.application.GetMeetingDetailService
 import org.depromeet.team3.meeting.application.GetMeetingService
 import org.depromeet.team3.meeting.application.InviteTokenService
 import org.depromeet.team3.meeting.application.JoinMeetingService
 import org.depromeet.team3.meeting.dto.request.CreateMeetingRequest
 import org.depromeet.team3.meeting.dto.request.JoinMeetingRequest
 import org.depromeet.team3.meeting.dto.response.CreateMeetingResponse
-import org.depromeet.team3.meeting.dto.response.MeetingResponse
+import org.depromeet.team3.meeting.dto.response.MeetingDetailResponse
+import org.depromeet.team3.meeting.dto.response.MeetingInfoResponse
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
 import org.springframework.web.bind.annotation.*
 
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*
 class MeetingController(
     private val creteMeetingService: CreateMeetingService,
     private val getMeetingService: GetMeetingService,
+    private val getMeetingDetailService: GetMeetingDetailService,
     private val inviteTokenService: InviteTokenService,
     private val joinMeetingService: JoinMeetingService
 ) {
@@ -40,8 +43,26 @@ class MeetingController(
     @GetMapping
     fun getMeeting(
         @UserId userId: Long
-    ) : DpmApiResponse<List<MeetingResponse>> {
+    ) : DpmApiResponse<List<MeetingInfoResponse>> {
         val response = getMeetingService(userId)
+
+        return DpmApiResponse.ok(response)
+    }
+
+    @Operation(
+        summary = "모임 상세 정보 조회",
+        description = "특정 모임의 상세 정보를 조회합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "모임 상세 정보 조회 성공")
+    )
+    @GetMapping("/{meetingId}")
+    fun getMeetingDetail(
+        @Parameter(description = "모임 ID", example = "1")
+        @PathVariable meetingId: Long,
+        @UserId userId: Long
+    ) : DpmApiResponse<MeetingDetailResponse> {
+        val response = getMeetingDetailService.invoke(meetingId, userId)
 
         return DpmApiResponse.ok(response)
     }
