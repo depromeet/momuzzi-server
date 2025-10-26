@@ -228,7 +228,9 @@ else
 fi
 
 # 애플리케이션 서비스 재시작
-docker-compose -f docker-compose.prod.yml stop backend nginx || true
+# 기존 컨테이너 완전히 제거 (컨테이너 이름 충돌 방지)
+docker rm -f backend nginx 2>/dev/null || true
+docker-compose -f docker-compose.prod.yml down backend nginx || true
 docker-compose -f docker-compose.prod.yml rm -f backend nginx || true
 
 if [ "\$REGISTRY_IMAGE_EXISTS" = true ]; then
@@ -251,8 +253,8 @@ for i in {1..24}; do
     sleep 5
 done
 
-# Nginx 시작
-docker-compose -f docker-compose.prod.yml up -d nginx
+# Nginx 시작 (강제 재생성)
+docker-compose -f docker-compose.prod.yml up -d --force-recreate nginx
 
 # 사용하지 않는 이미지 정리
 docker image prune -af --filter "until=24h"
