@@ -5,11 +5,8 @@ import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.common.util.TestAuthHelper
 import org.depromeet.team3.config.SecurityTestConfig
 import org.depromeet.team3.survey.application.CreateSurveyService
-import org.depromeet.team3.survey.application.GetSurveyListService
 import org.depromeet.team3.survey.dto.request.SurveyCreateRequest
 import org.depromeet.team3.survey.dto.response.SurveyCreateResponse
-import org.depromeet.team3.survey.dto.response.SurveyItemResponse
-import org.depromeet.team3.survey.dto.response.SurveyListResponse
 import org.depromeet.team3.survey.exception.SurveyException
 import org.depromeet.team3.survey.util.SurveyTestDataFactory
 import org.junit.jupiter.api.BeforeEach
@@ -44,9 +41,6 @@ class SurveyControllerTest {
     @MockitoBean
     private lateinit var createSurveyService: CreateSurveyService
 
-    @MockitoBean
-    private lateinit var getSurveyListService: GetSurveyListService
-
     @BeforeEach
     fun setUp() {
         // 테스트용 사용자 인증 설정
@@ -74,34 +68,6 @@ class SurveyControllerTest {
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.data").exists())
             .andExpect(jsonPath("$.data.message").value("설문 제출이 완료되었습니다"))
-            .andExpect(jsonPath("$.error").doesNotExist())
-    }
-
-    @Test
-    @DisplayName("설문 목록을 성공적으로 조회한다")
-    fun `설문 목록을 성공적으로 조회한다`() {
-        // given
-        val meetingId = 1L
-        val response = SurveyTestDataFactory.createSurveyListResponse()
-
-        `when`(getSurveyListService.invoke(any(), any())).thenReturn(response)
-
-        // when & then
-        mockMvc.perform(get("/api/v1/meetings/$meetingId/surveys"))
-            .andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.data").exists())
-            .andExpect(jsonPath("$.data.surveys").isArray)
-            .andExpect(jsonPath("$.data.surveys[0].participantId").value(1))
-            .andExpect(jsonPath("$.data.surveys[0].nickname").value("홍길동"))
-            .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList").isArray)
-            .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList[0]").value(1))
-            .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList[1]").value(3))
-            .andExpect(jsonPath("$.data.surveys[0].selectedCategoryList[2]").value(5))
-            .andExpect(jsonPath("$.data.surveys[1].participantId").value(2))
-            .andExpect(jsonPath("$.data.surveys[1].nickname").value("김철수"))
-            .andExpect(jsonPath("$.data.surveys[1].selectedCategoryList[0]").value(2))
-            .andExpect(jsonPath("$.data.surveys[1].selectedCategoryList[1]").value(4))
             .andExpect(jsonPath("$.error").doesNotExist())
     }
 
@@ -168,40 +134,6 @@ class SurveyControllerTest {
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.error").exists())
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 모임 조회 시 404 에러가 발생한다")
-    fun `존재하지 않는 모임 조회 시 404 에러가 발생한다`() {
-        // given
-        val meetingId = 999L
-
-        doThrow(SurveyException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId)))
-            .`when`(getSurveyListService).invoke(any(), any())
-
-        // when & then
-        mockMvc.perform(get("/api/v1/meetings/$meetingId/surveys"))
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.data").doesNotExist())
-            .andExpect(jsonPath("$.error").exists())
-            .andExpect(jsonPath("$.error.code").value("C4043"))
-    }
-
-    @Test
-    @DisplayName("모임 참가자가 아닌 사용자가 조회 시 404 에러가 발생한다")
-    fun `모임 참가자가 아닌 사용자가 조회 시 404 에러가 발생한다`() {
-        // given
-        val meetingId = 1L
-
-        doThrow(SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("userId" to 999L)))
-            .`when`(getSurveyListService).invoke(any(), any())
-
-        // when & then
-        mockMvc.perform(get("/api/v1/meetings/$meetingId/surveys"))
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.data").doesNotExist())
-            .andExpect(jsonPath("$.error").exists())
-            .andExpect(jsonPath("$.error.code").value("C4044"))
     }
 
     @Test

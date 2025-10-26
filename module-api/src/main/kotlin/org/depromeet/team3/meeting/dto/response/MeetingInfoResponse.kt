@@ -5,18 +5,18 @@ import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDateTime
 
 @Schema(description = "모임 정보 응답")
-data class MeetingResponse(
+data class MeetingInfoResponse(
     @Schema(description = "모임 ID", example = "1")
     val id: Long,
 
     @Schema(description = "모임 이름", example = "저녁 모무찌")
-    val name: String? = null,
+    val title: String? = null,
     
     @Schema(description = "호스트 사용자 ID", example = "123")
     val hostUserId: Long,
     
-    @Schema(description = "참여자 수", example = "5")
-    val attendeeCount: Int,
+    @Schema(description = "전체 참여자 수", example = "5")
+    val totalParticipantCnt: Int,
     
     @Schema(description = "모임 종료 여부", example = "false")
     val isClosed: Boolean,
