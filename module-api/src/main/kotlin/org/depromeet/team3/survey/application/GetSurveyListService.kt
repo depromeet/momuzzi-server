@@ -2,8 +2,11 @@ package org.depromeet.team3.survey.application
 
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meeting.MeetingJpaRepository
+import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
+import org.depromeet.team3.survey.Survey
 import org.depromeet.team3.survey.SurveyRepository
+import org.depromeet.team3.survey.dto.GetRespondents
 import org.depromeet.team3.surveyresult.SurveyResultRepository
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
 import org.depromeet.team3.survey.dto.response.SurveyItemResponse
@@ -83,6 +86,22 @@ class GetSurveyListService(
             surveys = surveyItems,
             participationRate = participationRate,
             isCompleted = isCompleted
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getRespondents(meetingId: Long): List<GetRespondents> {
+        return surveyRepository.findByMeetingId(meetingId)
+            .map { it.participantId }
+            .mapNotNull { id -> meetingAttendeeRepository.findByMeetingIdAndUserId(meetingId, id) }
+            .map { attendee -> attendee.toGetRespondents() }
+    }
+
+    private fun MeetingAttendee.toGetRespondents(): GetRespondents {
+        return GetRespondents(
+            userId = this.userId,
+            attendeeNickname = this.attendeeNickname ?: "",
+            color = this.muzziColor.name
         )
     }
 }
