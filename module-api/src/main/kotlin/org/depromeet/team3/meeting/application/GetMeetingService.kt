@@ -1,7 +1,7 @@
 package org.depromeet.team3.meeting.application
 
 import org.depromeet.team3.meeting.MeetingRepository
-import org.depromeet.team3.meeting.dto.response.MeetingResponse
+import org.depromeet.team3.meeting.dto.response.MeetingInfoResponse
 import org.depromeet.team3.station.StationRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -13,22 +13,20 @@ class GetMeetingService(
 ) {
 
     @Transactional(readOnly = true)
-    operator fun invoke(userId: Long): List<MeetingResponse> {
+    operator fun invoke(userId: Long): List<MeetingInfoResponse> {
         val meetings = meetingRepository.findMeetingsByUserId(userId)
         val stationIds = meetings.mapNotNull { it.stationId }.distinct()
         val stationMap = stationRepository.findAllById(stationIds)
             .associateBy { it.id }
 
         return meetings.map { meeting ->
-            val stationName = meeting.stationId?.let {
-                stationMap[it]?.name
-            } ?: ""
+            val stationName = stationMap[meeting.stationId]?.name ?: ""
 
-            MeetingResponse(
+            MeetingInfoResponse(
                 id = meeting.id!!,
-                name = meeting.name,
+                title = meeting.name,
                 hostUserId = meeting.hostUserId,
-                attendeeCount = meeting.attendeeCount,
+                totalParticipantCnt = meeting.attendeeCount,
                 isClosed = meeting.isClosed,
                 stationName = stationName,
                 endAt = meeting.endAt!!,
@@ -37,4 +35,6 @@ class GetMeetingService(
             )
         }
     }
+
+    
 }
