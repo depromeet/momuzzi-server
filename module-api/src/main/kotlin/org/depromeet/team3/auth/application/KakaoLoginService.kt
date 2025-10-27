@@ -7,7 +7,9 @@ import org.depromeet.team3.auth.client.KakaoOAuthClient
 import org.depromeet.team3.auth.command.KakaoLoginCommand
 import org.depromeet.team3.auth.dto.LoginResponse
 import org.depromeet.team3.auth.dto.UserProfileResponse
+import org.depromeet.team3.auth.exception.AuthException
 import org.depromeet.team3.auth.properties.KakaoProperties
+import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.security.jwt.JwtTokenProvider
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -26,7 +28,7 @@ class KakaoLoginService(
     private val kakaoProperties: KakaoProperties
 ) {
 
-    @Transactional
+    @Transactional(rollbackFor = [Exception::class])
     fun login(command: KakaoLoginCommand): LoginResponse {
         val code = command.authorizationCode
         val redirectUri = command.redirectUri ?: getDefaultRedirectUri()
@@ -41,11 +43,11 @@ class KakaoLoginService(
         val nickname = kakaoProfile.kakao_account.profile.nickname
         val profileImage = kakaoProfile.kakao_account.profile.profile_image_url
 
-        // 3. 사용자 조회 또는 생성 (Query Repository로 조회, Command Repository로 저장)
+        // 3. 사용자 조회 또는 생성
         val user = findOrCreateUser(email, nickname, profileImage, socialId)
 
-        // 4. JWT 토큰 생성 및 DB 저장
-        val tokens = generateAuthenticationTokens(user)
+        // 4. JWT 토큰 생성 및 변경사항 DB 저장
+        val tokens = generateAuthenticationTokens(user, profileImage)
 
         return LoginResponse(
             accessToken = tokens.accessToken,
@@ -53,14 +55,13 @@ class KakaoLoginService(
             userProfile = UserProfileResponse(
                 email = user.email,
                 nickname = user.nickname,
-                profileImage = user.profileImage
+                profileImage = tokens.updatedUserProfile?.profileImage
             )
         )
     }
 
     /**
      * 사용자 조회 또는 신규 생성
-     * Query Repository로 조회, Command Repository로 저장
      */
     private fun findOrCreateUser(
         email: String,
@@ -69,14 +70,10 @@ class KakaoLoginService(
         socialId: String
     ): User {
         val existingUser = userQueryRepository.findByEmail(email)
-        
+
         return if (existingUser != null) {
-            // 기존 사용자의 프로필 이미지 업데이트
-            val updatedUser = existingUser.copy(
-                profileImage = profileImage,
-                updatedAt = LocalDateTime.now()
-            )
-            userCommandRepository.save(updatedUser)
+            // 기존 사용자 반환 (저장은 토큰 생성 시 한 번에 처리)
+            existingUser
         } else {
             // 신규 사용자 생성
             createNewUser(email, nickname, profileImage, socialId)
@@ -109,37 +106,57 @@ class KakaoLoginService(
     /**
      * JWT 토큰 생성 및 DB 저장
      */
-    private fun generateAuthenticationTokens(user: User): AuthTokens {
+    private fun generateAuthenticationTokens(user: User, newProfileImage: String?): AuthTokens {
         val userId = user.id!!
         
         // 토큰 생성
         val accessToken = jwtTokenProvider.generateAccessToken(userId, user.email)
         val refreshToken = jwtTokenProvider.generateRefreshToken(userId)
         
-        // Refresh Token을 DB에 저장
-        val updatedUser = user.copy(
-            refreshToken = refreshToken,
-            updatedAt = LocalDateTime.now()
-        )
+        // 프로필 이미지가 변경되었는지 확인 (null 안전성 보장)
+        val hasProfileChange = when {
+            user.profileImage == null && newProfileImage == null -> false
+            user.profileImage == null || newProfileImage == null -> true
+            else -> user.profileImage != newProfileImage
+        }
+        
+        // 변경사항이 있을 때만 DB 저장
+        val updatedUser = if (hasProfileChange || user.refreshToken == null) {
+            user.copy(
+                profileImage = newProfileImage,
+                refreshToken = refreshToken,
+                updatedAt = LocalDateTime.now()
+            )
+        } else {
+            user.copy(
+                refreshToken = refreshToken,
+                updatedAt = LocalDateTime.now()
+            )
+        }
+        
         userCommandRepository.save(updatedUser)
         
-        return AuthTokens(accessToken, refreshToken)
+        return AuthTokens(accessToken, refreshToken, updatedUser)
     }
     
     /**
      * 환경에 따른 기본 redirect URI 선택
-     * 프로덕션에서는 redirect-uris 배열의 첫 번째를 기본값으로 사용
+     * 우선순위: redirectUris 배열 > redirectUri
+     * 설정이 없으면 AuthException 던짐
      */
     private fun getDefaultRedirectUri(): String {
         return when {
             kakaoProperties.redirectUris.isNotEmpty() -> kakaoProperties.redirectUris.first()
-            kakaoProperties.redirectUri.isNotEmpty() -> kakaoProperties.redirectUri
-            else -> "http://localhost:8080/auth/callback" // fallback
+            !kakaoProperties.redirectUri.isNullOrBlank() -> kakaoProperties.redirectUri
+            else -> throw AuthException(
+                errorCode = ErrorCode.KAKAO_REDIRECT_URI_NOT_CONFIGURED
+            )
         }
     }
     
     private data class AuthTokens(
         val accessToken: String,
-        val refreshToken: String
+        val refreshToken: String,
+        val updatedUserProfile: User? = null
     )
 }

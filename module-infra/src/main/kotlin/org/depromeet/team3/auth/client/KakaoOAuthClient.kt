@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
@@ -78,10 +77,6 @@ class KakaoOAuthClient(
                 kakaoTokenRequest,
                 String::class.java
             )
-
-            if (response.statusCode != HttpStatus.OK) {
-                throw AuthException(ErrorCode.KAKAO_AUTH_FAILED)
-            }
 
             objectMapper.readValue(response.body, KakaoResponse.OAuthToken::class.java)
 

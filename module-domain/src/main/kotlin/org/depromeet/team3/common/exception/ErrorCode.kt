@@ -57,6 +57,7 @@ enum class ErrorCode(
     ALREADY_REGISTERED_WITH_OTHER_LOGIN("O007", "다른 소셜 로그인으로 이미 가입된 이메일입니다.", 409),
     KAKAO_INVALID_REDIRECT_URI("O008", "허용되지 않은 redirect_uri입니다.", 400),
     KAKAO_PROFILE_REQUEST_FAILED("O009", "카카오 프로필 정보 요청에 실패했습니다.", 500),
+    KAKAO_REDIRECT_URI_NOT_CONFIGURED("O010", "카카오 OAuth redirect URI가 설정되지 않았습니다.", 500),
 
     // JWT 토큰 관련 에러 (J001~J099)
     JWT_TOKEN_MISSING("J001", "JWT 토큰이 누락되었습니다.", 401),
