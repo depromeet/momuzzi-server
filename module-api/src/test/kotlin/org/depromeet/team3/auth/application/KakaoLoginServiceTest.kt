@@ -95,8 +95,7 @@ class KakaoLoginServiceTest {
         assertThat(result.refreshToken).isEqualTo("refresh-token")
         assertThat(result.userProfile.email).isEqualTo("test@example.com")
         assertThat(result.userProfile.nickname).isEqualTo("테스트사용자")
-        // 신규 사용자는 profileImage가 null로 설정될 수 있음 (tokens.updatedUserProfile?.profileImage 사용)
-        assertThat(result.userProfile.profileImage).isNotNull
+        assertThat(result.userProfile.profileImage).isNotNull()
 
         verify(jwtTokenProvider).generateAccessToken(2L, "test@example.com")
         verify(jwtTokenProvider).generateRefreshToken(2L)
