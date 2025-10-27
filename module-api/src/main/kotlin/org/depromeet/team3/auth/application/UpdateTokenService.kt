@@ -16,7 +16,7 @@ import java.time.LocalDateTime
  * 읽기와 쓰기 작업 모두 수행
  */
 @Service
-class RefreshTokenService(
+class UpdateTokenService(
     private val userQueryRepository: UserQueryRepository,
     private val userCommandRepository: UserCommandRepository,
     private val jwtTokenProvider: JwtTokenProvider

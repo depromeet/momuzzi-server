@@ -1,8 +1,8 @@
 package org.depromeet.team3.auth.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.depromeet.team3.auth.application.KakaoLoginService
-import org.depromeet.team3.auth.application.RefreshTokenService
+import org.depromeet.team3.auth.application.KakaoOAuthService
+import org.depromeet.team3.auth.application.UpdateTokenService
 import org.depromeet.team3.auth.command.KakaoLoginCommand
 import org.depromeet.team3.auth.command.RefreshTokenCommand
 import org.depromeet.team3.auth.dto.LoginResponse
@@ -29,10 +29,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 class AuthControllerTest {
 
     @Mock
-    private lateinit var kakaoLoginService: KakaoLoginService
+    private lateinit var kakaoOAuthService: KakaoOAuthService
 
     @Mock
-    private lateinit var refreshTokenService: RefreshTokenService
+    private lateinit var updateTokenService: UpdateTokenService
 
     @InjectMocks
     private lateinit var authController: AuthController
@@ -60,7 +60,7 @@ class AuthControllerTest {
             )
         )
         
-        whenever(kakaoLoginService.login(any<KakaoLoginCommand>())).thenReturn(loginResponse)
+        whenever(kakaoOAuthService.login(any<KakaoLoginCommand>())).thenReturn(loginResponse)
 
         // when & then
         mockMvc.perform(
@@ -96,7 +96,7 @@ class AuthControllerTest {
             refreshToken = "new-refresh-token"
         )
         
-        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>())).thenReturn(tokenResponse)
+        whenever(updateTokenService.refresh(any<RefreshTokenCommand>())).thenReturn(tokenResponse)
 
         // when & then
         mockMvc.perform(
@@ -114,7 +114,7 @@ class AuthControllerTest {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "invalid-refresh-token")
         
-        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+        whenever(updateTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(AuthException(ErrorCode.REFRESH_TOKEN_INVALID))
 
         // when & then
@@ -132,7 +132,7 @@ class AuthControllerTest {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
         
-        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+        whenever(updateTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(AuthException(ErrorCode.TOKEN_USER_ID_INVALID))
 
         // when & then
@@ -150,7 +150,7 @@ class AuthControllerTest {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
         
-        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+        whenever(updateTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(AuthException(ErrorCode.USER_NOT_FOUND_FOR_TOKEN))
 
         // when & then
@@ -168,7 +168,7 @@ class AuthControllerTest {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "different-refresh-token")
         
-        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+        whenever(updateTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH))
 
         // when & then
@@ -186,7 +186,7 @@ class AuthControllerTest {
         // given
         val refreshTokenRequest = RefreshTokenRequest(refreshToken = "valid-refresh-token")
         
-        whenever(refreshTokenService.refresh(any<RefreshTokenCommand>()))
+        whenever(updateTokenService.refresh(any<RefreshTokenCommand>()))
             .thenThrow(RuntimeException("서버 오류"))
 
         // when & then
