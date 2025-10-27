@@ -2,14 +2,12 @@ package org.depromeet.team3.auth.controller
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
-import io.swagger.v3.oas.annotations.enums.ParameterIn
-import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.depromeet.team3.auth.application.KakaoLoginService
-import org.depromeet.team3.auth.application.RefreshTokenService
+import org.depromeet.team3.auth.application.KakaoOAuthService
+import org.depromeet.team3.auth.application.UpdateTokenService
 import org.depromeet.team3.auth.command.KakaoLoginCommand
 import org.depromeet.team3.auth.command.RefreshTokenCommand
 import org.depromeet.team3.auth.dto.LoginResponse
@@ -23,8 +21,8 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("${ContextConstants.API_VERSION_V1}/auth")
 class AuthController(
-    private val kakaoLoginService: KakaoLoginService,
-    private val refreshTokenService: RefreshTokenService
+    private val kakaoOAuthService: KakaoOAuthService,
+    private val updateTokenService: UpdateTokenService
 ) {
     @Operation(
         summary = "카카오 소셜 로그인 API",
@@ -60,7 +58,7 @@ class AuthController(
         @RequestParam(value = "redirect_uri", required = false) redirectUri: String?
     ): DpmApiResponse<LoginResponse> {
         val command = KakaoLoginCommand(authorizationCode = code, redirectUri = redirectUri)
-        val result = kakaoLoginService.login(command)
+        val result = kakaoOAuthService.login(command)
         return DpmApiResponse.ok(result)
     }
 
@@ -80,7 +78,7 @@ class AuthController(
         @RequestBody request: RefreshTokenRequest
     ): DpmApiResponse<TokenResponse> {
         val command = RefreshTokenCommand(request.refreshToken)
-        val result = refreshTokenService.refresh(command)
+        val result = updateTokenService.refresh(command)
         return DpmApiResponse.ok(result)
     }
 }

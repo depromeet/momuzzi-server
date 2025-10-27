@@ -20,7 +20,7 @@ import org.assertj.core.api.Assertions.assertThat
 import java.time.LocalDateTime
 
 @ExtendWith(MockitoExtension::class)
-class RefreshTokenServiceTest {
+class UpdateTokenServiceTest {
 
     @Mock
     private lateinit var userQueryRepository: UserQueryRepository
@@ -31,11 +31,11 @@ class RefreshTokenServiceTest {
     @Mock
     private lateinit var jwtTokenProvider: JwtTokenProvider
 
-    private lateinit var refreshTokenService: RefreshTokenService
+    private lateinit var updateTokenService: UpdateTokenService
     
     @BeforeEach
     fun setUp() {
-        refreshTokenService = RefreshTokenService(
+        updateTokenService = UpdateTokenService(
             userQueryRepository,
             userCommandRepository,
             jwtTokenProvider
@@ -52,7 +52,7 @@ class RefreshTokenServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            refreshTokenService.refresh(command)
+            updateTokenService.refresh(command)
         }
         
         assertThat(exception.errorCode).isEqualTo(ErrorCode.REFRESH_TOKEN_INVALID)
@@ -70,7 +70,7 @@ class RefreshTokenServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            refreshTokenService.refresh(command)
+            updateTokenService.refresh(command)
         }
         
         assertThat(exception.errorCode).isEqualTo(ErrorCode.TOKEN_USER_ID_INVALID)
@@ -91,7 +91,7 @@ class RefreshTokenServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            refreshTokenService.refresh(command)
+            updateTokenService.refresh(command)
         }
         
         assertThat(exception.errorCode).isEqualTo(ErrorCode.USER_NOT_FOUND_FOR_TOKEN)
@@ -118,7 +118,7 @@ class RefreshTokenServiceTest {
 
         // when & then
         val exception = assertThrows<AuthException> {
-            refreshTokenService.refresh(command)
+            updateTokenService.refresh(command)
         }
         
         assertThat(exception.errorCode).isEqualTo(ErrorCode.REFRESH_TOKEN_MISMATCH)
@@ -155,7 +155,7 @@ class RefreshTokenServiceTest {
             .thenReturn(updatedUser)
 
         // when
-        val result = refreshTokenService.refresh(command)
+        val result = updateTokenService.refresh(command)
 
         // then
         assertThat(result).isInstanceOf(TokenResponse::class.java)
