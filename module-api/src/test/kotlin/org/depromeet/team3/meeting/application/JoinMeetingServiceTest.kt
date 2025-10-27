@@ -217,3 +217,4 @@ class JoinMeetingServiceTest {
         assertEquals(ErrorCode.MEETING_FULL, exception.errorCode)
     }
 }
+

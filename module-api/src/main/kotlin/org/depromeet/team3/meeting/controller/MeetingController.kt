@@ -16,10 +16,7 @@ import org.depromeet.team3.meeting.application.InviteTokenService
 import org.depromeet.team3.meeting.application.JoinMeetingService
 import org.depromeet.team3.meeting.dto.request.CreateMeetingRequest
 import org.depromeet.team3.meeting.dto.request.JoinMeetingRequest
-import org.depromeet.team3.meeting.dto.response.CreateMeetingResponse
-import org.depromeet.team3.meeting.dto.response.MeetingDetailResponse
-import org.depromeet.team3.meeting.dto.response.MeetingInfoResponse
-import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
+import org.depromeet.team3.meeting.dto.response.*
 import org.springframework.web.bind.annotation.*
 
 @Tag(name = "모임", description = "모임 관련 API")
@@ -43,7 +40,7 @@ class MeetingController(
     @GetMapping
     fun getMeeting(
         @UserId userId: Long
-    ) : DpmApiResponse<List<MeetingInfoResponse>> {
+    ) : DpmApiResponse<List<MeetingsResponse>> {
         val response = getMeetingService(userId)
 
         return DpmApiResponse.ok(response)
