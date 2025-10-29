@@ -65,6 +65,26 @@ class MeetingController(
     }
 
     @Operation(
+        summary = "모임 초대 토큰 조회",
+        description = "특정 모임의 초대 토큰을 조회합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "초대 토큰 조회 성공"),
+        ApiResponse(responseCode = "400", description = "잘못된 요청 (모임이 존재하지 않거나 종료된 경우)")
+    )
+    @GetMapping("/{meetingId}/invite-token")
+    fun getInviteToken(
+        @Parameter(description = "모임 ID", example = "5")
+        @PathVariable meetingId: Long
+    ): DpmApiResponse<GetInviteTokenResponse> {
+        val inviteUrl = inviteTokenService.generateInviteToken(meetingId)
+        val token = inviteUrl.substringAfter("token=")
+        val response = GetInviteTokenResponse(token = token)
+
+        return DpmApiResponse.ok(response)
+    }
+
+    @Operation(
         summary = "모임 초대 토큰 검증",
         description = "모임 초대 토큰의 유효성을 검증합니다."
     )
