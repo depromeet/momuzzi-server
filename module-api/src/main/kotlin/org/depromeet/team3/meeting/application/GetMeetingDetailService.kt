@@ -67,7 +67,8 @@ class GetMeetingDetailService(
         val participantList = attendeeList
             .mapNotNull { attendee ->
                 // Map에서 참가자의 설문 조회
-                val survey = surveyMap[attendee.userId]
+                val attendeeId = requireNotNull(attendee.id) { "참가자 ID는 필수입니다" }
+                val survey = surveyMap[attendeeId]
                 
                 // 설문이 없는 경우 null 반환하여 제외
                 survey ?: return@mapNotNull null
