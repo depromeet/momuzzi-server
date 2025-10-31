@@ -9,7 +9,7 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki-data:/loki
-      - ./module-infra/monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - ./module-infrastructure/monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
     networks:
       - depromeet_network
     healthcheck:
@@ -27,7 +27,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./module-infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./module-infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -46,7 +46,7 @@ services:
     container_name: promtail
     restart: unless-stopped
     volumes:
-      - ./module-infra/monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./module-infrastructure/monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
     command: -config.file=/etc/promtail/config.yml
@@ -65,8 +65,8 @@ services:
       - "3001:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./module-infra/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
-      - ./module-infra/monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./module-infrastructure/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./module-infrastructure/monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
     environment:
       - GF_SERVER_ROOT_URL=https://monitoring.momuzzi.site
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}

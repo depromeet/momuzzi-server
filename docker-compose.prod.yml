@@ -31,8 +31,8 @@ services:
       - "90:80"
       - "443:443"
     volumes:
-      - ./module-infra/nginx/nginx-app.conf:/etc/nginx/nginx.conf:ro
-      - ./module-infra/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./module-infrastructure/nginx/nginx-app.conf:/etc/nginx/nginx.conf:ro
+      - ./module-infrastructure/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     environment:
       - TZ=Asia/Seoul

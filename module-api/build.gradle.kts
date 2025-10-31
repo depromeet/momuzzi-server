@@ -1,7 +1,7 @@
 dependencies {
     implementation(project(":module-global-utils"))
     implementation(project(":module-domain"))
-    implementation(project(":module-infra"))
+    implementation(project(":module-infrastructure"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")

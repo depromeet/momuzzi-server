@@ -4,5 +4,5 @@ include(
     "module-api",
     "module-domain",
     "module-global-utils",
-    "module-infra",
+    "module-infrastructure",
 )

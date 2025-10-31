@@ -25,7 +25,7 @@ services:
       REGISTRY_LOG_LEVEL: "info"
     volumes:
       - registry_data:/var/lib/registry
-      - ./module-infra/nginx/.htpasswd:/auth/htpasswd:ro
+      - ./module-infrastructure/nginx/.htpasswd:/auth/htpasswd:ro
     networks:
       - depromeet_cicd_network
 
@@ -75,9 +75,9 @@ services:
       - "900:80"
       - "4430:443"
     volumes:
-      - ./module-infra/nginx/nginx-cicd.conf:/etc/nginx/nginx.conf:ro
+      - ./module-infrastructure/nginx/nginx-cicd.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./module-infra/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./module-infrastructure/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
     environment:
       - TZ=Asia/Seoul
     networks:
