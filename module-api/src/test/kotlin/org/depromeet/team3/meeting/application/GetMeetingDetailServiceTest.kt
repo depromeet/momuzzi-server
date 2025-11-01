@@ -68,6 +68,9 @@ class GetMeetingDetailServiceTest {
         // given
         val meetingId = 1L
         val userId = 234L
+        val meetingEndAt = LocalDateTime.of(2024, 12, 31, 18, 0, 0)
+        val meetingCreatedAt = LocalDateTime.of(2024, 12, 25, 10, 0, 0)
+        val meetingUpdatedAt = LocalDateTime.of(2024, 12, 25, 15, 30, 0)
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "점심 메뉴 정하기",
@@ -75,7 +78,9 @@ class GetMeetingDetailServiceTest {
             attendeeCount = 8,
             isClosed = false,
             stationId = 1L,
-            endAt = LocalDateTime.now().plusHours(2)
+            endAt = meetingEndAt,
+            createdAt = meetingCreatedAt,
+            updatedAt = meetingUpdatedAt
         )
 
         val station = StationTestDataFactory.createStation(
@@ -129,6 +134,9 @@ class GetMeetingDetailServiceTest {
         assert(result.meetingInfo.totalParticipantCnt == 8)
         assert(result.meetingInfo.stationName == "강남")
         assert(result.participantList.size == 2)
+        assert(result.meetingInfo.endAt == meetingEndAt)
+        assert(result.meetingInfo.createdAt == meetingCreatedAt)
+        assert(result.meetingInfo.updatedAt == meetingUpdatedAt)
         
         val participant1 = result.participantList.find { it.userId == 456L }
         assert(participant1 != null)
@@ -142,6 +150,7 @@ class GetMeetingDetailServiceTest {
         // given
         val meetingId = 1L
         val userId = 234L
+        val meetingEndAt = LocalDateTime.of(2024, 12, 31, 18, 0, 0)
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "저녁 모임",
@@ -149,7 +158,7 @@ class GetMeetingDetailServiceTest {
             attendeeCount = 2,
             isClosed = false,
             stationId = 1L,
-            endAt = LocalDateTime.now().plusHours(2)
+            endAt = meetingEndAt
         )
 
         val station = StationTestDataFactory.createStation(
@@ -242,6 +251,7 @@ class GetMeetingDetailServiceTest {
         // given
         val meetingId = 1L
         val userId = 234L
+        val meetingEndAt = LocalDateTime.of(2024, 12, 31, 18, 0, 0)
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "테스트 모임",
@@ -249,7 +259,7 @@ class GetMeetingDetailServiceTest {
             attendeeCount = 2,
             isClosed = false,
             stationId = 1L,
-            endAt = LocalDateTime.now().plusHours(2)
+            endAt = meetingEndAt
         )
 
         val station = StationTestDataFactory.createStation(

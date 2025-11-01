@@ -70,10 +70,19 @@ class GlobalExceptionHandler {
                 val path = cause.path.joinToString(".") { reference ->
                     reference.fieldName ?: reference.index.toString()
                 }
+                val message = when {
+                    cause.targetType.isAssignableFrom(java.time.LocalDateTime::class.java) ||
+                        cause.targetType.isAssignableFrom(java.time.LocalDate::class.java) ||
+                        cause.targetType.isAssignableFrom(java.time.LocalTime::class.java) ->
+                        "날짜는 yyyy-MM-dd'T'HH:mm:ss 형식이어야 합니다."
+                    else -> "올바른 형식의 값을 입력해주세요."
+                }
+
                 mapOf(
                     "field" to path,
                     "value" to cause.value?.toString(),
-                    "message" to "날짜는 yyyy-MM-dd'T'HH:mm:ss 형식이어야 합니다."
+                    "message" to message,
+                    "expectedType" to cause.targetType.simpleName
                 )
             }
             else -> null
