@@ -1,9 +1,11 @@
 package org.depromeet.team3.common.exception
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException
 import org.depromeet.team3.common.response.DpmApiResponse
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -54,6 +56,31 @@ class GlobalExceptionHandler {
         logger.warn("Missing required parameter: ${e.parameterName}", e)
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(DpmApiResponse.error(ErrorCode.MISSING_PARAMETER))
+    }
+
+    /**
+     * JSON 파싱 오류
+     */
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadableException(e: HttpMessageNotReadableException): ResponseEntity<DpmApiResponse<Unit>> {
+        logger.warn("JSON parse error: ${e.message}", e)
+
+        val detail: Map<String, Any?>? = when (val cause = e.cause) {
+            is InvalidFormatException -> {
+                val path = cause.path.joinToString(".") { reference ->
+                    reference.fieldName ?: reference.index.toString()
+                }
+                mapOf(
+                    "field" to path,
+                    "value" to cause.value?.toString(),
+                    "message" to "날짜는 yyyy-MM-dd'T'HH:mm:ss 형식이어야 합니다."
+                )
+            }
+            else -> null
+        }
+
+        return ResponseEntity.status(ErrorCode.INVALID_JSON.httpStatus)
+            .body(DpmApiResponse.error(ErrorCode.INVALID_JSON, detail))
     }
 
     /**

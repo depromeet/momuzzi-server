@@ -25,14 +25,14 @@ data class MeetingInfoResponse(
     val stationName: String,
     
     @Schema(description = "모임 종료 시간", example = "2024-12-31T18:00:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     val endAt: LocalDateTime,
     
     @Schema(description = "모임 생성 시간", example = "2024-12-25T10:00:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     val createdAt: LocalDateTime,
     
     @Schema(description = "모임 수정 시간", example = "2024-12-25T15:30:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     val updatedAt: LocalDateTime?
 )
