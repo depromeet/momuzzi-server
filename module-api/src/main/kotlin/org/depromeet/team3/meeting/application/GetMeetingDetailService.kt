@@ -66,9 +66,12 @@ class GetMeetingDetailService(
         // 설문이 있는 참가자만 participantList에 포함
         val participantList = attendeeList
             .mapNotNull { attendee ->
-                // 참가자의 설문 조회 (participantId는 meetingAttendee.userId와 동일)
-                val participantId = attendee.userId
-                val survey = surveyMap[participantId] ?: return@mapNotNull null
+                // Map에서 참가자의 설문 조회
+                val attendeeId = requireNotNull(attendee.id) { "참가자 ID는 필수입니다" }
+                val survey = surveyMap[attendeeId]
+                
+                // 설문이 없는 경우 null 반환하여 제외
+                survey ?: return@mapNotNull null
                 
                 // 설문이 있는 경우 선택한 카테고리 목록 생성
                 val surveyId = requireNotNull(survey.id) { "설문 ID는 필수입니다" }
