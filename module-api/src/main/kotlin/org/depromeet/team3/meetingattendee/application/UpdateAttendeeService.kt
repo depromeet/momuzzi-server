@@ -29,7 +29,7 @@ class UpdateAttendeeService(
                     "userId" to userId
                 )
             )
-        validateNicknameDuplication(meetingId, attendeeNickname)
+        validateNicknameDuplication(meetingId, attendeeNickname, attendee.attendeeNickname)
 
         attendee.attendeeNickname = attendeeNickname
         attendee.muzziColor = MuzziColor.getOrDefault(color)
@@ -39,11 +39,18 @@ class UpdateAttendeeService(
 
     private fun validateNicknameDuplication(
         meetingId: Long,
-        attendeeNickname: String
+        attendeeNickname: String,
+        currentNickname: String?
     ) {
-        val normalizedNickname = attendeeNickname.replace("\\s".toRegex(), "")
+        val normalizedNewNickname = attendeeNickname.replace("\\s".toRegex(), "")
+        val normalizedCurrentNickname = currentNickname?.replace("\\s".toRegex(), "") ?: ""
 
-        val existingAttendee = meetingAttendeeRepository.existsByMeetingIdAndNormalizedNickname(meetingId, normalizedNickname)
+        // 본인의 현재 닉네임과 동일하면 중복 검사 스킵
+        if (normalizedNewNickname == normalizedCurrentNickname) {
+            return
+        }
+
+        val existingAttendee = meetingAttendeeRepository.existsByMeetingIdAndNormalizedNickname(meetingId, normalizedNewNickname)
         if (existingAttendee) {
             throw MeetingAttendeeException(
                 errorCode = ErrorCode.DUPLICATE_NICKNAME,
