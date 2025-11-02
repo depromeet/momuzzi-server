@@ -7,8 +7,11 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface MeetingAttendeeJpaRepository : JpaRepository<MeetingAttendeeEntity, Long> {
-    fun findByMeetingId(meetingId: Long): List<MeetingAttendeeEntity>
-    fun findByUserId(userId: Long): List<MeetingAttendeeEntity>
+    @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId")
+    fun findByMeetingId(@Param("meetingId") meetingId: Long): List<MeetingAttendeeEntity>
+    
+    @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.user.id = :userId")
+    fun findByUserId(@Param("userId") userId: Long): List<MeetingAttendeeEntity>
 
     @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.user.id = :userId")
     fun findByMeetingIdAndUserId(
@@ -16,7 +19,8 @@ interface MeetingAttendeeJpaRepository : JpaRepository<MeetingAttendeeEntity, Lo
         @Param("userId") userId: Long
     ): MeetingAttendeeEntity?
 
-    fun countByMeetingId(meetingId: Long): Int
+    @Query("SELECT COUNT(ma) FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId")
+    fun countByMeetingId(@Param("meetingId") meetingId: Long): Int
 
     @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.user.id = :userId")
     fun existsByMeetingIdAndUserId(
