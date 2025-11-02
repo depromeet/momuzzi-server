@@ -30,25 +30,33 @@ class CreateSurveyService(
            throw SurveyException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
         }
         
-        // 인증된 사용자가 자신의 설문만 제출할 수 있도록 검증
-        if (userId != request.participantId) {
-            throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to request.participantId))
+        // participantId 필드 혼동 방지: 클라이언트가 attendeeId를 보낼 수도 있어 유연하게 처리
+        val effectiveUserId = if (userId == request.participantId) {
+            userId
+        } else {
+            // participantId를 attendeeId로 해석 시도
+            val attendee = meetingAttendeeJpaRepository.findById(request.participantId)
+                .orElse(null)
+            if (attendee == null || attendee.meeting.id != meetingId || attendee.user.id != userId) {
+                throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to request.participantId))
+            }
+            userId
         }
-        
-        // 참가자 존재 확인
-        if (!meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, request.participantId)) {
+
+        // 참가자 존재 확인 (userId 기준)
+        if (!meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, effectiveUserId)) {
             throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to request.participantId))
         }
         
         // 중복 설문 제출 확인
-        if (surveyRepository.existsByMeetingIdAndParticipantId(meetingId, request.participantId)) {
+        if (surveyRepository.existsByMeetingIdAndParticipantId(meetingId, effectiveUserId)) {
             throw SurveyException(ErrorCode.SURVEY_ALREADY_SUBMITTED, mapOf("participantId" to request.participantId))
         }
         
         // 설문 생성
         val survey = Survey(
             meetingId = meetingId,
-            participantId = request.participantId
+            participantId = effectiveUserId
         )
         val savedSurvey = surveyRepository.save(survey)
         
