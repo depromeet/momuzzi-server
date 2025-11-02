@@ -18,7 +18,7 @@ class SurveyMapper(
         return Survey(
             id = entity.id,
             meetingId = entity.meeting.id ?: throw SurveyException(ErrorCode.MEETING_NOT_FOUND, mapOf("message" to "Meeting ID cannot be null")),
-            participantId = entity.participant.id ?: throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("message" to "Participant ID cannot be null")),
+            participantId = entity.participant.user.id ?: throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("message" to "Participant User ID cannot be null")),
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
         )
