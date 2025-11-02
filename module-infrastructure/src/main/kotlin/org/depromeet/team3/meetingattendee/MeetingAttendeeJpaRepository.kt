@@ -28,9 +28,10 @@ interface MeetingAttendeeJpaRepository : JpaRepository<MeetingAttendeeEntity, Lo
         @Param("userId") userId: Long
     ): Boolean
 
-    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma JOIN ma.meeting m WHERE m.id = :meetingId AND REPLACE(ma.attendeeNickname, ' ', '') = :nickname")
+    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma JOIN ma.meeting m JOIN ma.user u WHERE m.id = :meetingId AND ma.attendeeNickname IS NOT NULL AND ma.attendeeNickname = :nickname AND u.id != :excludeUserId")
     fun existsByMeetingIdAndNickname(
         @Param("meetingId") meetingId: Long,
-        @Param("nickname") nickname: String
+        @Param("nickname") nickname: String,
+        @Param("excludeUserId") excludeUserId: Long
     ): Boolean
 }

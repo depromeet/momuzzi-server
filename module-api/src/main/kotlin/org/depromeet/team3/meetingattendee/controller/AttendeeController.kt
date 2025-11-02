@@ -39,6 +39,6 @@ class AttendeeController(
             color = request.color
         )
 
-        return DpmApiResponse.ok();
+        return DpmApiResponse.ok()
     }
 }

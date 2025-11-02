@@ -12,7 +12,7 @@ interface MeetingAttendeeRepository {
 
     fun existsByMeetingIdAndUserId(meetingId: Long, userId: Long): Boolean
 
-    fun existsByMeetingIdAndNormalizedNickname(meetingId: Long, nickname: String): Boolean
+    fun existsByMeetingIdAndNormalizedNickname(meetingId: Long, nickname: String, excludeUserId: Long): Boolean
 
     fun countByMeetingId(meetingId: Long): Int
 

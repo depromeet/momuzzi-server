@@ -1,8 +1,6 @@
 package org.depromeet.team3.meetingattendee.application
 
 import org.depromeet.team3.common.exception.ErrorCode
-import org.depromeet.team3.meeting.exception.MeetingException
-import org.depromeet.team3.meetingattendee.MeetingAttendee
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.MuzziColor
 import org.depromeet.team3.meetingattendee.exception.MeetingAttendeeException
@@ -29,8 +27,22 @@ class UpdateAttendeeService(
                     "userId" to userId
                 )
             )
-        validateNicknameDuplication(meetingId, attendeeNickname, attendee.attendeeNickname)
-
+        
+        val currentNickname = attendee.attendeeNickname
+        
+        // 현재 닉네임과 동일하면 바로 에러
+        if (currentNickname != null && currentNickname == attendeeNickname) {
+            throw MeetingAttendeeException(
+                errorCode = ErrorCode.DUPLICATE_NICKNAME,
+                detail = mapOf(
+                    "meetingId" to meetingId,
+                    "nickname" to attendeeNickname
+                )
+            )
+        }
+        
+        validateNicknameDuplication(meetingId, attendeeNickname, currentNickname, userId)
+        
         attendee.attendeeNickname = attendeeNickname
         attendee.muzziColor = MuzziColor.getOrDefault(color)
 
@@ -40,18 +52,20 @@ class UpdateAttendeeService(
     private fun validateNicknameDuplication(
         meetingId: Long,
         attendeeNickname: String,
-        currentNickname: String?
+        currentNickname: String?,
+        userId: Long
     ) {
-        val normalizedNewNickname = attendeeNickname.replace("\\s".toRegex(), "")
-        val normalizedCurrentNickname = currentNickname?.replace("\\s".toRegex(), "") ?: ""
-
-        // 본인의 현재 닉네임과 동일하면 중복 검사 스킵
-        if (normalizedNewNickname == normalizedCurrentNickname) {
-            return
+        // 같은 모임 내의 모든 참여자 조회
+        val allAttendees = meetingAttendeeRepository.findByMeetingId(meetingId)
+        
+        // 다른 사용자가 같은 닉네임을 사용 중인지 확인 (본인 제외)
+        val hasDuplicate = allAttendees.any { attendee ->
+            attendee.userId != userId &&
+            attendee.attendeeNickname != null &&
+            attendee.attendeeNickname == attendeeNickname
         }
-
-        val existingAttendee = meetingAttendeeRepository.existsByMeetingIdAndNormalizedNickname(meetingId, normalizedNewNickname)
-        if (existingAttendee) {
+        
+        if (hasDuplicate) {
             throw MeetingAttendeeException(
                 errorCode = ErrorCode.DUPLICATE_NICKNAME,
                 detail = mapOf(
