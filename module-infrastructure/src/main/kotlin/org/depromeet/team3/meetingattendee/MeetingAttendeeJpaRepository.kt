@@ -9,11 +9,22 @@ import org.springframework.stereotype.Repository
 interface MeetingAttendeeJpaRepository : JpaRepository<MeetingAttendeeEntity, Long> {
     fun findByMeetingId(meetingId: Long): List<MeetingAttendeeEntity>
     fun findByUserId(userId: Long): List<MeetingAttendeeEntity>
-    fun findByMeetingIdAndUserId(meetingId: Long, userId: Long): MeetingAttendeeEntity?
-    fun countByMeetingId(meetingId: Long): Int
-    fun existsByMeetingIdAndUserId(meetingId: Long, userId: Long): Boolean
 
-    @Query("SELECT COUNT(ma) > 0 FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.attendeeNickname = :nickname")
+    @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.user.id = :userId")
+    fun findByMeetingIdAndUserId(
+        @Param("meetingId") meetingId: Long,
+        @Param("userId") userId: Long
+    ): MeetingAttendeeEntity?
+
+    fun countByMeetingId(meetingId: Long): Int
+
+    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.user.id = :userId")
+    fun existsByMeetingIdAndUserId(
+        @Param("meetingId") meetingId: Long,
+        @Param("userId") userId: Long
+    ): Boolean
+
+    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.attendeeNickname = :nickname")
     fun existsByMeetingIdAndNickname(
         @Param("meetingId") meetingId: Long,
         @Param("nickname") nickname: String
