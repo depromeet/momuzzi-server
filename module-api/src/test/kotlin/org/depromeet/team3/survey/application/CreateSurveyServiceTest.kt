@@ -160,6 +160,8 @@ class CreateSurveyServiceTest {
         )
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        // participantId가 attendeeId로 전달되었더라도, 현재 사용자가 일치하지 않도록 빈 Optional 반환
+        whenever(meetingAttendeeJpaRepository.findById(participantId)).thenReturn(java.util.Optional.empty())
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -167,5 +169,60 @@ class CreateSurveyServiceTest {
         }
 
         assert(exception.errorCode == ErrorCode.PARTICIPANT_NOT_FOUND)
+    }
+
+    @Test
+    @DisplayName("participantId가 attendeeId로 와도 동일 사용자라면 설문 생성에 성공한다")
+    fun `attendeeId 로 전송해도 성공`() {
+        // given
+        val meetingId = 10L
+        val userId = 42L
+        val attendeeId = 999L // 프론트가 attendeeId를 participantId로 보낸 경우
+
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = attendeeId)
+
+        // Survey 저장 결과
+        val savedSurvey = Survey(
+            id = 100L,
+            meetingId = meetingId,
+            participantId = userId
+        )
+
+        // infra 엔티티 구성 (attendeeId가 userId=42, meetingId=10에 소속되도록)
+        val hostUser = org.depromeet.team3.auth.UserEntity(id = 7L).apply { nickname = "host"; email = "h@e.com"; kakaoId = "k"; socialId = "s" }
+        val station = org.depromeet.team3.station.StationEntity(id = 1L, name = "강남", locX = 0.0, locY = 0.0)
+        val meetingEntity = org.depromeet.team3.meeting.MeetingEntity(
+            id = meetingId,
+            name = "테스트",
+            attendeeCount = 4,
+            isClosed = false,
+            endAt = null,
+            hostUser = hostUser,
+            station = station
+        )
+        val userEntity = org.depromeet.team3.auth.UserEntity(id = userId).apply { nickname = "u"; email = "u@e.com"; kakaoId = "k2"; socialId = "s2" }
+        val attendeeEntity = org.depromeet.team3.meetingattendee.MeetingAttendeeEntity(
+            id = attendeeId,
+            meeting = meetingEntity,
+            attendeeNickname = "nick",
+            muzziColor = org.depromeet.team3.meetingattendee.MuzziColor.DEFAULT,
+            user = userEntity
+        )
+
+        // Mock 설정
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.findById(attendeeId)).thenReturn(java.util.Optional.of(attendeeEntity))
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(savedSurvey)
+        whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
+
+        // when
+        val result = createSurveyService.invoke(meetingId, userId, request)
+
+        // then
+        assert(result.message == "설문 제출이 완료되었습니다")
+        verify(surveyRepository).save(any())
+        verify(surveyResultRepository).saveAll(any())
     }
 }
