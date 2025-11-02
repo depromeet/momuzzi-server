@@ -61,14 +61,14 @@ class GetMeetingDetailService(
         
         // 모든 설문을 한 번에 조회 (N+1 문제 해결)
         val surveyList = surveyRepository.findByMeetingId(meetingId)
+        // 주의: Survey.participantId 는 사용자 ID(userId)로 저장됨
         val surveyMap = surveyList.associateBy { it.participantId }
         
-        // 설문이 있는 참가자만 participantList에 포함
+        // 설문이 있는 참가자만 participantList에 포함 (참가자의 userId 기준 매칭)
         val participantList = attendeeList
             .mapNotNull { attendee ->
-                // Map에서 참가자의 설문 조회
-                val attendeeId = requireNotNull(attendee.id) { "참가자 ID는 필수입니다" }
-                val survey = surveyMap[attendeeId]
+                // Map에서 참가자의 설문 조회 (Survey.participantId == attendee.userId)
+                val survey = surveyMap[attendee.userId]
                 
                 // 설문이 없는 경우 null 반환하여 제외
                 survey ?: return@mapNotNull null
