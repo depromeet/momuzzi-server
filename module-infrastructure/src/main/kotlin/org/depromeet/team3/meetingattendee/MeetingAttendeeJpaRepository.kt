@@ -7,28 +7,28 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface MeetingAttendeeJpaRepository : JpaRepository<MeetingAttendeeEntity, Long> {
-    @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId")
+    @Query("SELECT ma FROM MeetingAttendeeEntity ma JOIN ma.meeting m WHERE m.id = :meetingId")
     fun findByMeetingId(@Param("meetingId") meetingId: Long): List<MeetingAttendeeEntity>
     
-    @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.user.id = :userId")
+    @Query("SELECT ma FROM MeetingAttendeeEntity ma JOIN ma.user u WHERE u.id = :userId")
     fun findByUserId(@Param("userId") userId: Long): List<MeetingAttendeeEntity>
 
-    @Query("SELECT ma FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.user.id = :userId")
+    @Query("SELECT ma FROM MeetingAttendeeEntity ma JOIN ma.meeting m JOIN ma.user u WHERE m.id = :meetingId AND u.id = :userId")
     fun findByMeetingIdAndUserId(
         @Param("meetingId") meetingId: Long,
         @Param("userId") userId: Long
     ): MeetingAttendeeEntity?
 
-    @Query("SELECT COUNT(ma) FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId")
+    @Query("SELECT COUNT(ma) FROM MeetingAttendeeEntity ma JOIN ma.meeting m WHERE m.id = :meetingId")
     fun countByMeetingId(@Param("meetingId") meetingId: Long): Int
 
-    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.user.id = :userId")
+    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma JOIN ma.meeting m JOIN ma.user u WHERE m.id = :meetingId AND u.id = :userId")
     fun existsByMeetingIdAndUserId(
         @Param("meetingId") meetingId: Long,
         @Param("userId") userId: Long
     ): Boolean
 
-    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma WHERE ma.meeting.id = :meetingId AND ma.attendeeNickname = :nickname")
+    @Query("SELECT CASE WHEN COUNT(ma) > 0 THEN true ELSE false END FROM MeetingAttendeeEntity ma JOIN ma.meeting m WHERE m.id = :meetingId AND ma.attendeeNickname = :nickname")
     fun existsByMeetingIdAndNickname(
         @Param("meetingId") meetingId: Long,
         @Param("nickname") nickname: String
