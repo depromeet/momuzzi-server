@@ -112,11 +112,10 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 1L
         val userId = 999L
-        val participantId = 999L
-        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = participantId)
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest()
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, participantId)).thenReturn(false)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -132,12 +131,11 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 1L
         val userId = 1L
-        val participantId = 1L
-        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = participantId)
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest()
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, participantId)).thenReturn(true)
-        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, participantId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(true)
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -153,15 +151,10 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 1L
         val userId = 1L
-        val participantId = 999L // 다른 사용자 ID
-        val request = SurveyTestDataFactory.createSurveyCreateRequest(
-            participantId = participantId,
-            nickname = "다른사용자"
-        )
+        val request = SurveyTestDataFactory.createSurveyCreateRequest()
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        // participantId가 attendeeId로 전달되었더라도, 현재 사용자가 일치하지 않도록 빈 Optional 반환
-        whenever(meetingAttendeeJpaRepository.findById(participantId)).thenReturn(java.util.Optional.empty())
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -177,9 +170,8 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 10L
         val userId = 42L
-        val attendeeId = 999L // 프론트가 attendeeId를 participantId로 보낸 경우
 
-        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = attendeeId)
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest()
 
         // Survey 저장 결과
         val savedSurvey = Survey(
@@ -188,30 +180,8 @@ class CreateSurveyServiceTest {
             participantId = userId
         )
 
-        // infra 엔티티 구성 (attendeeId가 userId=42, meetingId=10에 소속되도록)
-        val hostUser = org.depromeet.team3.auth.UserEntity(id = 7L).apply { nickname = "host"; email = "h@e.com"; kakaoId = "k"; socialId = "s" }
-        val station = org.depromeet.team3.station.StationEntity(id = 1L, name = "강남", locX = 0.0, locY = 0.0)
-        val meetingEntity = org.depromeet.team3.meeting.MeetingEntity(
-            id = meetingId,
-            name = "테스트",
-            attendeeCount = 4,
-            isClosed = false,
-            endAt = null,
-            hostUser = hostUser,
-            station = station
-        )
-        val userEntity = org.depromeet.team3.auth.UserEntity(id = userId).apply { nickname = "u"; email = "u@e.com"; kakaoId = "k2"; socialId = "s2" }
-        val attendeeEntity = org.depromeet.team3.meetingattendee.MeetingAttendeeEntity(
-            id = attendeeId,
-            meeting = meetingEntity,
-            attendeeNickname = "nick",
-            muzziColor = org.depromeet.team3.meetingattendee.MuzziColor.DEFAULT,
-            user = userEntity
-        )
-
         // Mock 설정
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        whenever(meetingAttendeeJpaRepository.findById(attendeeId)).thenReturn(java.util.Optional.of(attendeeEntity))
         whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
         whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
         whenever(surveyRepository.save(any())).thenReturn(savedSurvey)
