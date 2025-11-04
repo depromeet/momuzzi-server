@@ -159,4 +159,54 @@ class SurveyControllerTest {
             .andExpect(jsonPath("$.error").exists())
             .andExpect(jsonPath("$.error.code").value("C4044"))
     }
+
+    @Test
+    @DisplayName("존재하지 않는 설문 카테고리로 설문 생성 시 404 에러가 발생한다")
+    fun `존재하지 않는 설문 카테고리로 설문 생성 시 404 에러가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(999L))
+
+        doThrow(SurveyException(ErrorCode.SURVEY_CATEGORY_NOT_FOUND, mapOf("categoryId" to 999L)))
+            .`when`(createSurveyService).invoke(any(), any(), any())
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/meetings/$meetingId/surveys")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf())
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(jsonPath("$.error").exists())
+            .andExpect(jsonPath("$.error.code").value("C4047"))
+    }
+
+    @Test
+    @DisplayName("LEAF 카테고리만 선택하고 BRANCH 카테고리를 선택하지 않은 경우 400 에러가 발생한다")
+    fun `LEAF 카테고리만 선택하고 BRANCH 카테고리를 선택하지 않은 경우 400 에러가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(2L))
+
+        doThrow(SurveyException(ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED, mapOf(
+            "leafCategoryId" to 2L,
+            "leafCategoryName" to "한식",
+            "requiredBranchCategoryId" to 1L
+        )))
+            .`when`(createSurveyService).invoke(any(), any(), any())
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/meetings/$meetingId/surveys")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf())
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(jsonPath("$.error").exists())
+            .andExpect(jsonPath("$.error.code").value("C4048"))
+    }
 }
