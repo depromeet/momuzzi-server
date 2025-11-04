@@ -14,6 +14,7 @@ enum class ErrorCode(
     MISSING_PARAMETER("C003", "필수 파라미터가 누락되었습니다.", 400),
     INVALID_JSON("C004", "잘못된 JSON 형식입니다.", 400),
     USER_ID_REQUIRED("C005", "사용자 ID가 필요합니다.", 400),
+    MEETING_ALREADY_CLOSED("C4097", "이미 종료된 모임입니다.", 400),
 
     // 404 Not Found
     RESOURCE_NOT_FOUND("C404", "요청한 리소스를 찾을 수 없습니다.", 404),
@@ -37,7 +38,6 @@ enum class ErrorCode(
     DUPLICATE_CATEGORY_NAME("C4094", "같은 부모 하위에 동일한 이름의 카테고리가 이미 존재합니다.", 409),
     DUPLICATE_CATEGORY_ORDER("C4095", "같은 부모 하위에 동일한 순서의 카테고리가 이미 존재합니다.", 409),
     SURVEY_ALREADY_SUBMITTED("C4096", "이미 설문을 제출했습니다.", 409),
-    MEETING_ALREADY_CLOSED("C4097", "이미 종료된 모임입니다.", 409),
     MEETING_ALREADY_JOINED("C4098", "이미 참가한 모임입니다.", 409),
     MEETING_FULL("C4099", "모임 인원이 가득 찼습니다.", 409),
     DUPLICATE_NICKNAME("C4100", "이미 사용 중인 닉네임입니다.", 409),
