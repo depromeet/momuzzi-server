@@ -1,6 +1,7 @@
 package org.depromeet.team3.meeting.application
 
 import org.depromeet.team3.common.exception.ErrorCode
+import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.dto.response.MeetingDetailResponse
 import org.depromeet.team3.meeting.dto.response.MeetingInfoResponse
@@ -13,6 +14,7 @@ import org.depromeet.team3.station.StationRepository
 import org.depromeet.team3.survey.SurveyRepository
 import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
+import org.depromeet.team3.surveyresult.SurveyResult
 import org.depromeet.team3.surveyresult.SurveyResultRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -30,9 +32,7 @@ class GetMeetingDetailService(
 
     @Transactional(readOnly = true)
     fun invoke(meetingId: Long, userId: Long): MeetingDetailResponse {
-        // 모임 조회
-        val meeting = meetingRepository.findById(meetingId)
-            ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
+        val meeting = validateMeetingDetails(meetingId, userId)
 
         // 역 정보 조회
         val station = stationRepository.findById(meeting.stationId)
@@ -64,6 +64,15 @@ class GetMeetingDetailService(
         // 주의: Survey.participantId 는 사용자 ID(userId)로 저장됨
         val surveyMap = surveyList.associateBy { it.participantId }
         
+        // 모든 설문 결과를 한 번에 조회 (N+1 문제 해결)
+        val surveyIds = surveyList.mapNotNull { it.id }
+        val allSurveyResults = if (surveyIds.isEmpty()) {
+            emptyList()
+        } else {
+            surveyResultRepository.findBySurveyIdIn(surveyIds)
+        }
+        val surveyResultsMap = allSurveyResults.groupBy { it.surveyId }
+        
         // 설문이 있는 참가자만 participantList에 포함 (참가자의 userId 기준 매칭)
         val participantList = attendeeList
             .mapNotNull { attendee ->
@@ -75,7 +84,7 @@ class GetMeetingDetailService(
                 
                 // 설문이 있는 경우 선택한 카테고리 목록 생성
                 val surveyId = requireNotNull(survey.id) { "설문 ID는 필수입니다" }
-                val selectedCategoryList = buildParticipantSelectedCategories(surveyId)
+                val selectedCategoryList = buildParticipantSelectedCategories(surveyId, surveyResultsMap)
 
                 MeetingParticipantInfo(
                     userId = attendee.userId,
@@ -92,9 +101,9 @@ class GetMeetingDetailService(
         )
     }
 
-    private fun buildParticipantSelectedCategories(surveyId: Long): List<ParticipantSelectedCategory> {
-        // 설문 결과 조회
-        val surveyResults = surveyResultRepository.findBySurveyId(surveyId)
+    private fun buildParticipantSelectedCategories(surveyId: Long, surveyResultsMap: Map<Long, List<SurveyResult>>): List<ParticipantSelectedCategory> {
+        // 설문 결과 조회 (Map에서 조회)
+        val surveyResults = surveyResultsMap[surveyId] ?: emptyList()
         if (surveyResults.isEmpty()) {
             return emptyList()
         }
@@ -127,6 +136,35 @@ class GetMeetingDetailService(
                 leafCategoryList = leafCategoriesForBranch
             )
         }
+    }
+
+    private fun validateMeetingDetails(meetingId: Long, userId:Long): Meeting {
+        // 모임 조회
+        val meeting = meetingRepository.findById(meetingId)
+            ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
+
+        // 이미 참여 모임 검증
+        val joined = meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)
+        if (joined) throw MeetingException(
+            ErrorCode.MEETING_ALREADY_JOINED,
+            mapOf(
+                "userId" to userId,
+                "meetingId" to meetingId
+            )
+        )
+
+        // 종료 모임 검증
+        if (meeting.isClosed) {
+            throw MeetingException(
+                ErrorCode.MEETING_ALREADY_CLOSED,
+                mapOf(
+                    "meetingId" to meetingId,
+                    "userId" to userId
+                )
+            )
+        }
+
+        return meeting
     }
 }
 

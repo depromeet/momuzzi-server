@@ -1,4 +1,4 @@
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jdk-jammy
 
 ARG JAR_FILE=module-api/build/libs/*.jar
 

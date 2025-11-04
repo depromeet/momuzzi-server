@@ -1,5 +1,6 @@
 package org.depromeet.team3.survey
 
+import com.querydsl.core.annotations.QueryEntity
 import jakarta.persistence.*
 import org.depromeet.team3.common.BaseTimeEntity
 import org.depromeet.team3.meeting.MeetingEntity
@@ -7,6 +8,7 @@ import org.depromeet.team3.meetingattendee.MeetingAttendeeEntity
 import org.depromeet.team3.surveyresult.SurveyResultEntity
 
 @Entity
+@QueryEntity
 @Table(
     name = "tb_surveys",
     uniqueConstraints = [

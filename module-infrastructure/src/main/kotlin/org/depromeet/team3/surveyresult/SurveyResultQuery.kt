@@ -24,4 +24,9 @@ class SurveyResultQuery(
         return surveyResultJpaRepository.findBySurveyId(surveyId)
             .map { surveyResultMapper.toDomain(it) }
     }
+    
+    override fun findBySurveyIdIn(surveyIds: List<Long>): List<SurveyResult> {
+        return surveyResultJpaRepository.findBySurveyIdIn(surveyIds)
+            .map { surveyResultMapper.toDomain(it) }
+    }
 }

@@ -1,12 +1,15 @@
 package org.depromeet.team3.survey
 
+import com.querydsl.jpa.impl.JPAQueryFactory
 import org.depromeet.team3.mapper.SurveyMapper
+import org.depromeet.team3.survey.QSurveyEntity
 import org.springframework.stereotype.Repository
 
 @Repository
 class SurveyQuery(
     private val surveyMapper: SurveyMapper,
-    private val surveyJpaRepository: SurveyJpaRepository
+    private val surveyJpaRepository: SurveyJpaRepository,
+    private val queryFactory: JPAQueryFactory
 ) : SurveyRepository {
     
     override fun save(survey: Survey): Survey {
@@ -20,8 +23,17 @@ class SurveyQuery(
     }
     
     override fun findByMeetingId(meetingId: Long): List<Survey> {
-        return surveyJpaRepository.findByMeetingId(meetingId)
-            .map { surveyMapper.toDomain(it) }
+        val qSurvey = QSurveyEntity.surveyEntity
+        
+        val entities = queryFactory
+            .selectFrom(qSurvey)
+            .leftJoin(qSurvey.meeting).fetchJoin()
+            .leftJoin(qSurvey.participant).fetchJoin()
+            .leftJoin(qSurvey.participant.user).fetchJoin()
+            .where(qSurvey.meeting.id.eq(meetingId))
+            .fetch()
+        
+        return entities.map { surveyMapper.toDomain(it) }
     }
     
     override fun existsByMeetingIdAndParticipantId(meetingId: Long, participantId: Long): Boolean {
