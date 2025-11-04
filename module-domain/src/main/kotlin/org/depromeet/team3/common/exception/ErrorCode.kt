@@ -78,7 +78,7 @@ enum class ErrorCode(
     INVALID_TOKEN_FORMAT("T002", "토큰 형식이 올바르지 않습니다.", 400),
     INVALID_MEETING_ID_IN_TOKEN("T003", "토큰의 모임 ID 형식이 올바르지 않습니다.", 400),
     INVALID_EXPIRY_TIME_IN_TOKEN("T004", "토큰의 만료 시간 형식이 올바르지 않습니다.", 400),
-    TOKEN_EXPIRED("T005", "만료된 초대 토큰입니다.", 401),
+    TOKEN_EXPIRED("T005", "만료된 초대 토큰입니다.", 400),
     MEETING_NOT_FOUND_FOR_TOKEN("T006", "토큰에 해당하는 모임을 찾을 수 없습니다.", 404),
 
     // Place 관련 에러 (P001~P099)
