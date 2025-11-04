@@ -122,7 +122,7 @@ class SurveyControllerTest {
     fun `잘못된 요청 데이터로 설문 생성 시 400 에러가 발생한다`() {
         // given
         val meetingId = 1L
-        val invalidRequest = SurveyTestDataFactory.createEmptySurveyCreateRequest(nickname = "")
+        val invalidRequest = SurveyTestDataFactory.createEmptySurveyCreateRequest()
 
         // when & then
         mockMvc.perform(
@@ -141,13 +141,10 @@ class SurveyControllerTest {
     fun `다른 사용자의 설문을 제출하려고 할 때 404 에러가 발생한다`() {
         // given
         val meetingId = 1L
-        val request = SurveyTestDataFactory.createSurveyCreateRequest(
-            participantId = 999L,
-            nickname = "다른사용자"
-        )
+        val request = SurveyTestDataFactory.createSurveyCreateRequest()
 
         // Mock 서비스가 PARTICIPANT_NOT_FOUND 예외를 던지도록 설정
-        doThrow(SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to 999L)))
+        doThrow(SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("userId" to 999L)))
             .`when`(createSurveyService).invoke(any(), any(), any())
 
         // when & then
@@ -161,5 +158,55 @@ class SurveyControllerTest {
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.error").exists())
             .andExpect(jsonPath("$.error.code").value("C4044"))
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 설문 카테고리로 설문 생성 시 404 에러가 발생한다")
+    fun `존재하지 않는 설문 카테고리로 설문 생성 시 404 에러가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(999L))
+
+        doThrow(SurveyException(ErrorCode.SURVEY_CATEGORY_NOT_FOUND, mapOf("categoryId" to 999L)))
+            .`when`(createSurveyService).invoke(any(), any(), any())
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/meetings/$meetingId/surveys")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf())
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(jsonPath("$.error").exists())
+            .andExpect(jsonPath("$.error.code").value("C4047"))
+    }
+
+    @Test
+    @DisplayName("LEAF 카테고리만 선택하고 BRANCH 카테고리를 선택하지 않은 경우 400 에러가 발생한다")
+    fun `LEAF 카테고리만 선택하고 BRANCH 카테고리를 선택하지 않은 경우 400 에러가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(2L))
+
+        doThrow(SurveyException(ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED, mapOf(
+            "leafCategoryId" to 2L,
+            "leafCategoryName" to "한식",
+            "requiredBranchCategoryId" to 1L
+        )))
+            .`when`(createSurveyService).invoke(any(), any(), any())
+
+        // when & then
+        mockMvc.perform(
+            post("/api/v1/meetings/$meetingId/surveys")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .with(csrf())
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(jsonPath("$.error").exists())
+            .andExpect(jsonPath("$.error.code").value("C4048"))
     }
 }

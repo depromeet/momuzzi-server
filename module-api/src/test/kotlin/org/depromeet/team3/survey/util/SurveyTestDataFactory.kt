@@ -19,35 +19,21 @@ object SurveyTestDataFactory {
     // ========== SurveyCreateRequest 생성 ==========
     
     fun createSurveyCreateRequest(
-        participantId: Long = 1L,
-        nickname: String = "홍길동",
         selectedCategoryList: List<Long> = listOf(1L, 3L, 5L)
     ): SurveyCreateRequest {
         return SurveyCreateRequest(
-            participantId = participantId,
-            nickname = nickname,
             selectedCategoryList = selectedCategoryList
         )
     }
 
-    fun createMinimalSurveyCreateRequest(
-        participantId: Long = 1L,
-        nickname: String = "홍길동"
-    ): SurveyCreateRequest {
+    fun createMinimalSurveyCreateRequest(): SurveyCreateRequest {
         return SurveyCreateRequest(
-            participantId = participantId,
-            nickname = nickname,
             selectedCategoryList = listOf(1L)
         )
     }
 
-    fun createEmptySurveyCreateRequest(
-        participantId: Long = 1L,
-        nickname: String = "홍길동"
-    ): SurveyCreateRequest {
+    fun createEmptySurveyCreateRequest(): SurveyCreateRequest {
         return SurveyCreateRequest(
-            participantId = participantId,
-            nickname = nickname,
             selectedCategoryList = emptyList()
         )
     }
@@ -151,7 +137,7 @@ object SurveyTestDataFactory {
         return SurveyTestScenario(
             meetingId = meetingId,
             participantId = participantId,
-            request = createSurveyCreateRequest(participantId = participantId),
+            request = createSurveyCreateRequest(),
             survey = createSurvey(meetingId = meetingId, participantId = participantId),
             cuisineCategory = createSurveyCategory(
                 id = 1L,

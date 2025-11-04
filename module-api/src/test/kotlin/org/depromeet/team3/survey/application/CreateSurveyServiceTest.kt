@@ -77,6 +77,8 @@ class CreateSurveyServiceTest {
             .thenReturn(testScenario.cuisineCategory)
         whenever(surveyCategoryRepository.findById(3L))
             .thenReturn(testScenario.japaneseCuisineCategory)
+        whenever(surveyCategoryRepository.findById(5L))
+            .thenReturn(testScenario.cuisineCategory) // 5번 카테고리도 존재한다고 가정
         whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
 
         // when
@@ -112,11 +114,10 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 1L
         val userId = 999L
-        val participantId = 999L
-        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = participantId)
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest()
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, participantId)).thenReturn(false)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -132,12 +133,11 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 1L
         val userId = 1L
-        val participantId = 1L
-        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = participantId)
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest()
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, participantId)).thenReturn(true)
-        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, participantId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(true)
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -153,15 +153,10 @@ class CreateSurveyServiceTest {
         // given
         val meetingId = 1L
         val userId = 1L
-        val participantId = 999L // 다른 사용자 ID
-        val request = SurveyTestDataFactory.createSurveyCreateRequest(
-            participantId = participantId,
-            nickname = "다른사용자"
-        )
+        val request = SurveyTestDataFactory.createSurveyCreateRequest()
 
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        // participantId가 attendeeId로 전달되었더라도, 현재 사용자가 일치하지 않도록 빈 Optional 반환
-        whenever(meetingAttendeeJpaRepository.findById(participantId)).thenReturn(java.util.Optional.empty())
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
 
         // when & then
         val exception = assertThrows<SurveyException> {
@@ -172,14 +167,143 @@ class CreateSurveyServiceTest {
     }
 
     @Test
+    @DisplayName("존재하지 않는 설문 카테고리로 설문 생성 시 예외가 발생한다")
+    fun `존재하지 않는 설문 카테고리로 설문 생성 시 예외가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val userId = 1L
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(999L))
+
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(
+            SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
+        )
+        whenever(surveyCategoryRepository.findById(999L)).thenReturn(null)
+
+        // when & then
+        val exception = assertThrows<SurveyException> {
+            createSurveyService.invoke(meetingId, userId, request)
+        }
+
+        assert(exception.errorCode == ErrorCode.SURVEY_CATEGORY_NOT_FOUND)
+    }
+
+    @Test
+    @DisplayName("빈 카테고리 목록으로 설문 생성 시 예외가 발생한다")
+    fun `빈 카테고리 목록으로 설문 생성 시 예외가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val userId = 1L
+        val request = SurveyTestDataFactory.createEmptySurveyCreateRequest()
+
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(
+            SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
+        )
+
+        // when & then
+        val exception = assertThrows<SurveyException> {
+            createSurveyService.invoke(meetingId, userId, request)
+        }
+
+        assert(exception.errorCode == ErrorCode.INVALID_PARAMETER)
+    }
+
+    @Test
+    @DisplayName("LEAF 카테고리를 선택했는데 부모 BRANCH 카테고리가 선택되지 않은 경우 예외가 발생한다")
+    fun `LEAF 카테고리를 선택했는데 부모 BRANCH 카테고리가 선택되지 않은 경우 예외가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val userId = 1L
+        
+        // BRANCH 카테고리 (id: 1)와 그 자식 LEAF 카테고리 (id: 2) 생성
+        val branchCategory = SurveyTestDataFactory.createSurveyCategory(
+            id = 1L,
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "음식"
+        )
+        val leafCategory = SurveyTestDataFactory.createSurveyCategory(
+            id = 2L,
+            parentId = 1L,
+            level = SurveyCategoryLevel.LEAF,
+            name = "한식"
+        )
+        
+        // LEAF만 선택하고 BRANCH는 선택하지 않은 요청
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(2L))
+
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(
+            SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
+        )
+        whenever(surveyCategoryRepository.findById(2L)).thenReturn(leafCategory)
+
+        // when & then
+        val exception = assertThrows<SurveyException> {
+            createSurveyService.invoke(meetingId, userId, request)
+        }
+
+        assert(exception.errorCode == ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED)
+    }
+
+    @Test
+    @DisplayName("LEAF 카테고리와 부모 BRANCH 카테고리를 함께 선택하면 설문 생성에 성공한다")
+    fun `LEAF 카테고리와 부모 BRANCH 카테고리를 함께 선택하면 설문 생성에 성공한다`() {
+        // given
+        val meetingId = 1L
+        val userId = 1L
+        
+        // BRANCH 카테고리 (id: 1)와 그 자식 LEAF 카테고리 (id: 2) 생성
+        val branchCategory = SurveyTestDataFactory.createSurveyCategory(
+            id = 1L,
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "음식"
+        )
+        val leafCategory = SurveyTestDataFactory.createSurveyCategory(
+            id = 2L,
+            parentId = 1L,
+            level = SurveyCategoryLevel.LEAF,
+            name = "한식"
+        )
+        
+        // BRANCH와 LEAF를 함께 선택한 요청
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(selectedCategoryList = listOf(1L, 2L))
+
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(
+            SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
+        )
+        whenever(surveyCategoryRepository.findById(1L)).thenReturn(branchCategory)
+        whenever(surveyCategoryRepository.findById(2L)).thenReturn(leafCategory)
+        whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
+
+        // when
+        val result = createSurveyService.invoke(meetingId, userId, request)
+
+        // then
+        assert(result.message == "설문 제출이 완료되었습니다")
+        verify(surveyRepository).save(any())
+        verify(surveyResultRepository).saveAll(any())
+    }
+
+    @Test
     @DisplayName("participantId가 attendeeId로 와도 동일 사용자라면 설문 생성에 성공한다")
     fun `attendeeId 로 전송해도 성공`() {
         // given
         val meetingId = 10L
         val userId = 42L
-        val attendeeId = 999L // 프론트가 attendeeId를 participantId로 보낸 경우
 
-        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest(participantId = attendeeId)
+        val request = SurveyTestDataFactory.createMinimalSurveyCreateRequest()
 
         // Survey 저장 결과
         val savedSurvey = Survey(
@@ -188,33 +312,13 @@ class CreateSurveyServiceTest {
             participantId = userId
         )
 
-        // infra 엔티티 구성 (attendeeId가 userId=42, meetingId=10에 소속되도록)
-        val hostUser = org.depromeet.team3.auth.UserEntity(id = 7L).apply { nickname = "host"; email = "h@e.com"; kakaoId = "k"; socialId = "s" }
-        val station = org.depromeet.team3.station.StationEntity(id = 1L, name = "강남", locX = 0.0, locY = 0.0)
-        val meetingEntity = org.depromeet.team3.meeting.MeetingEntity(
-            id = meetingId,
-            name = "테스트",
-            attendeeCount = 4,
-            isClosed = false,
-            endAt = null,
-            hostUser = hostUser,
-            station = station
-        )
-        val userEntity = org.depromeet.team3.auth.UserEntity(id = userId).apply { nickname = "u"; email = "u@e.com"; kakaoId = "k2"; socialId = "s2" }
-        val attendeeEntity = org.depromeet.team3.meetingattendee.MeetingAttendeeEntity(
-            id = attendeeId,
-            meeting = meetingEntity,
-            attendeeNickname = "nick",
-            muzziColor = org.depromeet.team3.meetingattendee.MuzziColor.DEFAULT,
-            user = userEntity
-        )
-
         // Mock 설정
         whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
-        whenever(meetingAttendeeJpaRepository.findById(attendeeId)).thenReturn(java.util.Optional.of(attendeeEntity))
         whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
         whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
         whenever(surveyRepository.save(any())).thenReturn(savedSurvey)
+        whenever(surveyCategoryRepository.findById(1L))
+            .thenReturn(SurveyTestDataFactory.createSurveyCategory(id = 1L))
         whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
 
         // when

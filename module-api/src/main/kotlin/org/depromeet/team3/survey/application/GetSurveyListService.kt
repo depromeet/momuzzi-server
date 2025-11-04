@@ -55,6 +55,15 @@ class GetSurveyListService(
 
         logger.debug("Participation rate: {}, Is completed: {} for meetingId={}", participationRate, isCompleted, meetingId)
 
+        // 모든 설문 결과를 한 번에 조회 (N+1 문제 해결)
+        val surveyIds = surveys.mapNotNull { it.id }
+        val allSurveyResults = if (surveyIds.isEmpty()) {
+            emptyList()
+        } else {
+            surveyResultRepository.findBySurveyIdIn(surveyIds)
+        }
+        val surveyResultsMap = allSurveyResults.groupBy { it.surveyId }
+
         // 모든 참가자를 한 번에 조회 (N+1 문제 해결)
         val attendeeList = meetingAttendeeRepository.findByMeetingId(meetingId)
         val attendeeMap = attendeeList.associateBy { it.userId }
@@ -63,7 +72,7 @@ class GetSurveyListService(
         val surveyItems = surveys.map { survey ->
             logger.debug("Processing survey id={}, participantId={} for meetingId={}", survey.id, survey.participantId, meetingId)
 
-            val results = surveyResultRepository.findBySurveyId(survey.id!!)
+            val results = surveyResultsMap[survey.id] ?: emptyList()
 
             // 설문 결과에서 카테고리 목록 생성
             val selectedCategoryList = results.map { it.surveyCategoryId }

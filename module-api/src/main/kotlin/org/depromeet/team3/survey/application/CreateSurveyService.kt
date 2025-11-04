@@ -8,6 +8,8 @@ import org.depromeet.team3.survey.dto.request.SurveyCreateRequest
 import org.depromeet.team3.survey.dto.response.SurveyCreateResponse
 import org.depromeet.team3.survey.exception.SurveyException
 import org.depromeet.team3.survey.Survey
+import org.depromeet.team3.surveycategory.SurveyCategory
+import org.depromeet.team3.surveycategory.SurveyCategoryLevel
 import org.depromeet.team3.surveycategory.SurveyCategoryRepository
 import org.depromeet.team3.surveyresult.SurveyResult
 import org.depromeet.team3.surveyresult.SurveyResultRepository
@@ -22,63 +24,84 @@ class CreateSurveyService(
     private val meetingJpaRepository: MeetingJpaRepository,
     private val meetingAttendeeJpaRepository: MeetingAttendeeJpaRepository
 ) {
-    
+
     @Transactional
     fun invoke(meetingId: Long, userId: Long, request: SurveyCreateRequest): SurveyCreateResponse {
         // 모임 존재 확인
         if (!meetingJpaRepository.existsById(meetingId)){
-           throw SurveyException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
-        }
-        
-        // participantId 필드 혼동 방지: 클라이언트가 attendeeId를 보낼 수도 있어 유연하게 처리
-        val effectiveUserId = if (userId == request.participantId) {
-            userId
-        } else {
-            // participantId를 attendeeId로 해석 시도
-            val attendee = meetingAttendeeJpaRepository.findById(request.participantId)
-                .orElse(null)
-            if (attendee == null || attendee.meeting.id != meetingId || attendee.user.id != userId) {
-                throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to request.participantId))
-            }
-            userId
+            throw SurveyException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
         }
 
         // 참가자 존재 확인 (userId 기준)
-        if (!meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, effectiveUserId)) {
-            throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("participantId" to request.participantId))
+        if (!meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)) {
+            throw SurveyException(ErrorCode.PARTICIPANT_NOT_FOUND, mapOf("userId" to userId))
         }
-        
+
         // 중복 설문 제출 확인
-        if (surveyRepository.existsByMeetingIdAndParticipantId(meetingId, effectiveUserId)) {
-            throw SurveyException(ErrorCode.SURVEY_ALREADY_SUBMITTED, mapOf("participantId" to request.participantId))
+        if (surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)) {
+            throw SurveyException(ErrorCode.SURVEY_ALREADY_SUBMITTED, mapOf("userId" to userId))
         }
-        
+
         // 설문 생성
         val survey = Survey(
             meetingId = meetingId,
-            participantId = effectiveUserId
+            participantId = userId
         )
         val savedSurvey = surveyRepository.save(survey)
-        
+
         // 설문 결과 생성 (선택된 카테고리 ID들을 SurveyResult로 저장)
         val surveyResultList = mutableListOf<SurveyResult>()
-        
-        // 선택한 카테고리 목록으로 결과 생성
-        request.selectedCategoryList.forEach { categoryId ->
-            val category = surveyCategoryRepository.findById(categoryId)
-            if (category != null) {
-                surveyResultList.add(
-                    SurveyResult(
-                        surveyId = savedSurvey.id ?: throw IllegalStateException("Survey ID is null"),
-                        surveyCategoryId = categoryId
+
+        // 선택한 카테고리 목록 검증 및 결과 생성
+        if (request.selectedCategoryList.isEmpty()) {
+            throw SurveyException(ErrorCode.INVALID_PARAMETER, mapOf("message" to "최소 하나 이상의 카테고리를 선택해야 합니다."))
+        }
+
+        // 모든 카테고리를 한 번에 조회 (N+1 문제 해결)
+        val selectedCategories = surveyCategoryRepository.findAllById(request.selectedCategoryList)
+
+        // 조회된 카테고리 수가 요청된 카테고리 수와 다르면 존재하지 않는 카테고리가 있음
+        if (selectedCategories.size != request.selectedCategoryList.size) {
+            val foundCategoryIds = selectedCategories.mapNotNull { it.id }.toSet()
+            val notFoundCategoryIds = request.selectedCategoryList.filter { !foundCategoryIds.contains(it) }
+            throw SurveyException(
+                ErrorCode.SURVEY_CATEGORY_NOT_FOUND,
+                mapOf("categoryIds" to notFoundCategoryIds as List<Any>)
+            )
+        }
+
+        // LEAF 카테고리 검증: LEAF를 선택한 경우 부모 BRANCH도 선택되어야 함
+        val selectedCategoryIds = request.selectedCategoryList.toSet()
+        selectedCategories.forEach { category ->
+            if (category.level == SurveyCategoryLevel.LEAF && category.parentId != null) {
+                val parentId = category.parentId!!
+                if (!selectedCategoryIds.contains(parentId)) {
+                    val leafCategoryId = category.id ?: return@forEach
+                    throw SurveyException(
+                        ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED,
+                        mapOf<String, Any>(
+                            "leafCategoryId" to leafCategoryId,
+                            "leafCategoryName" to category.name,
+                            "requiredBranchCategoryId" to parentId
+                        )
                     )
-                )
+                }
             }
         }
-        
+
+        // 설문 결과 생성
+        request.selectedCategoryList.forEach { categoryId ->
+            surveyResultList.add(
+                SurveyResult(
+                    surveyId = savedSurvey.id ?: throw IllegalStateException("Survey ID is null"),
+                    surveyCategoryId = categoryId
+                )
+            )
+        }
+
         // 설문 결과 저장
         surveyResultRepository.saveAll(surveyResultList)
-        
+
         return SurveyCreateResponse()
     }
 }
