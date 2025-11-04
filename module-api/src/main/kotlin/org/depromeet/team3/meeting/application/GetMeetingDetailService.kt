@@ -1,6 +1,7 @@
 package org.depromeet.team3.meeting.application
 
 import org.depromeet.team3.common.exception.ErrorCode
+import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.dto.response.MeetingDetailResponse
 import org.depromeet.team3.meeting.dto.response.MeetingInfoResponse
@@ -31,9 +32,7 @@ class GetMeetingDetailService(
 
     @Transactional(readOnly = true)
     fun invoke(meetingId: Long, userId: Long): MeetingDetailResponse {
-        // 모임 조회
-        val meeting = meetingRepository.findById(meetingId)
-            ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
+        val meeting = validateMeetingDetails(meetingId, userId)
 
         // 역 정보 조회
         val station = stationRepository.findById(meeting.stationId)
@@ -137,6 +136,35 @@ class GetMeetingDetailService(
                 leafCategoryList = leafCategoriesForBranch
             )
         }
+    }
+
+    private fun validateMeetingDetails(meetingId: Long, userId:Long): Meeting {
+        // 모임 조회
+        val meeting = meetingRepository.findById(meetingId)
+            ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
+
+        // 이미 참여 모임 검증
+        val joined = meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)
+        if (joined) throw MeetingException(
+            ErrorCode.MEETING_ALREADY_JOINED,
+            mapOf(
+                "userId" to userId,
+                "meetingId" to meetingId
+            )
+        )
+
+        // 종료 모임 검증
+        if (meeting.isClosed) {
+            throw MeetingException(
+                ErrorCode.MEETING_ALREADY_CLOSED,
+                mapOf(
+                    "meetingId" to meetingId,
+                    "userId" to userId
+                )
+            )
+        }
+
+        return meeting
     }
 }
 
