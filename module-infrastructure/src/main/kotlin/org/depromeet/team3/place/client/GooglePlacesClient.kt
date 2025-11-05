@@ -63,13 +63,13 @@ class GooglePlacesClient(
                 if (statusCode == 429 || statusCode in 500..504) {
                     lastException = e
                     if (attempt < maxRetries - 1) {
-                        delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프
                         val jitter = Random.nextLong(0, jitterMaxMillis)
                         val totalDelay = delayMillis + jitter
                         logger.warn(e) { 
                             "$operation 재시도 (${attempt + 1}/${maxRetries - 1}) - 상태코드: $statusCode, $operationDetail, ${totalDelay}ms 후 재시도 (지터: ${jitter}ms)" 
                         }
                         delay(totalDelay)
+                        delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프 (다음 재시도를 위해)
                     }
                 } else {
                     throw e
@@ -78,13 +78,13 @@ class GooglePlacesClient(
                 // 네트워크 오류는 재시도
                 lastException = e
                 if (attempt < maxRetries - 1) {
-                    delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프
-                    val jitter = Random.nextLong(0, 100)
+                    val jitter = Random.nextLong(0, jitterMaxMillis)
                     val totalDelay = delayMillis + jitter
                     logger.warn(e) { 
                         "$operation 재시도 (${attempt + 1}/${maxRetries - 1}) - 네트워크 오류: ${e.message}, $operationDetail, ${totalDelay}ms 후 재시도 (지터: ${jitter}ms)" 
                     }
                     delay(totalDelay)
+                    delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프 (다음 재시도를 위해)
                 }
             } catch (e: TimeoutCancellationException) {
                 // 타임아웃은 재시도하지 않음 (이미 타임아웃으로 처리됨)
@@ -95,13 +95,13 @@ class GooglePlacesClient(
             } catch (e: Exception) {
                 lastException = e
                 if (attempt < maxRetries - 1) {
-                    delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프
-                    val jitter = Random.nextLong(0, 100)
+                    val jitter = Random.nextLong(0, jitterMaxMillis)
                     val totalDelay = delayMillis + jitter
                     logger.warn(e) { 
                         "$operation 재시도 (${attempt + 1}/${maxRetries - 1}) - 예외: ${e.javaClass.simpleName}, $operationDetail, ${totalDelay}ms 후 재시도 (지터: ${jitter}ms)" 
                     }
                     delay(totalDelay)
+                    delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프 (다음 재시도를 위해)
                 }
             }
         }
