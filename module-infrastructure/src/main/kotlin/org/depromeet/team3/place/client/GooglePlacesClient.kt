@@ -28,8 +28,8 @@ class GooglePlacesClient(
 
     private val logger = KotlinLogging.logger { GooglePlacesClient::class.java.name }
     
-    // API 호출 타임아웃 설정 (10초)
-    private val apiTimeoutMillis = 10_000L
+    // API 호출 타임아웃 설정 (5초)
+    private val apiTimeoutMillis = 5_000L
     
     // 재시도 설정
     private val maxRetries = 3  // 최대 3번 시도 (초기 1번 + 재시도 2번)
