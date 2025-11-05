@@ -106,8 +106,8 @@ class SurveyCategoryTest {
         )
 
         // when & then
-        assert(!cuisineCategory.equals(japaneseCategory))
-        assert(cuisineCategory.hashCode() != japaneseCategory.hashCode())
+        kotlin.test.assertFalse(cuisineCategory.equals(japaneseCategory))
+        kotlin.test.assertNotEquals(cuisineCategory.hashCode(), japaneseCategory.hashCode())
     }
 
     @Test

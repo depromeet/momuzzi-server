@@ -2,6 +2,8 @@ package org.depromeet.team3.surveyresult
 
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @DisplayName("[SURVEY RESULT] 설문 결과 도메인 테스트")
 class SurveyResultTest {
@@ -20,8 +22,8 @@ class SurveyResultTest {
         )
 
         // then
-        assert(surveyResult.surveyId == surveyId)
-        assert(surveyResult.surveyCategoryId == surveyCategoryId)
-        assert(surveyResult.id == null)
+        assertEquals(surveyId, surveyResult.surveyId)
+        assertEquals(surveyCategoryId, surveyResult.surveyCategoryId)
+        assertNull(surveyResult.id)
     }
 }
