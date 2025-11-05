@@ -2,7 +2,9 @@ package org.depromeet.team3.place.client
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.depromeet.team3.common.GooglePlacesApiProperties
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.place.exception.PlaceSearchException
@@ -23,6 +25,9 @@ class GooglePlacesClient(
 ) {
 
     private val logger = KotlinLogging.logger { GooglePlacesClient::class.java.name }
+    
+    // API 호출 타임아웃 설정 (10초)
+    private val apiTimeoutMillis = 10_000L
 
     /**
      * 텍스트 검색
@@ -35,6 +40,7 @@ class GooglePlacesClient(
         radius: Double = 3000.0
     ): PlacesTextSearchResponse = withContext(Dispatchers.IO) {
         try {
+            withTimeout(apiTimeoutMillis) {
             val locationBias = if (latitude != null && longitude != null) {
                 PlacesTextSearchRequest.LocationBias(
                     circle = PlacesTextSearchRequest.LocationBias.Circle(
@@ -54,17 +60,24 @@ class GooglePlacesClient(
                 locationBias = locationBias
             )
 
-            val response = googlePlacesRestClient.post()
-                .uri("/v1/places:searchText")
-                .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
-                .header("X-Goog-FieldMask", buildTextSearchFieldMask())
-                .body(request)
-                .retrieve()
-                .body(PlacesTextSearchResponse::class.java)
-            
-            response ?: throw PlaceSearchException(
-                errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
-                detail = mapOf("query" to query)
+                val response = googlePlacesRestClient.post()
+                    .uri("/v1/places:searchText")
+                    .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
+                    .header("X-Goog-FieldMask", buildTextSearchFieldMask())
+                    .body(request)
+                    .retrieve()
+                    .body(PlacesTextSearchResponse::class.java)
+                
+                response ?: throw PlaceSearchException(
+                    errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
+                    detail = mapOf("query" to query)
+                )
+            }
+        } catch (e: TimeoutCancellationException) {
+            logger.error(e) { "Google Places API 텍스트 검색 타임아웃: query=$query" }
+            throw PlaceSearchException(
+                ErrorCode.PLACE_API_ERROR,
+                detail = mapOf("query" to query, "error" to "요청 타임아웃 (${apiTimeoutMillis}ms 초과)")
             )
         } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
@@ -107,20 +120,28 @@ class GooglePlacesClient(
      */
     suspend fun getPlaceDetails(placeId: String): PlaceDetailsResponse = withContext(Dispatchers.IO) {
         try {
-            val fieldMask = buildPlaceDetailsFieldMask()
+            withTimeout(apiTimeoutMillis) {
+                val fieldMask = buildPlaceDetailsFieldMask()
 
-            val response = googlePlacesRestClient.get()
-                .uri("/v1/places/{placeId}?languageCode=ko", placeId)
-                .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
-                .header("X-Goog-FieldMask", fieldMask)
-                .retrieve()
-                .body(PlaceDetailsResponse::class.java)
-            
-            response ?: throw PlaceSearchException(
-                errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
-                detail = mapOf("placeId" to placeId)
+                val response = googlePlacesRestClient.get()
+                    .uri("/v1/places/{placeId}?languageCode=ko", placeId)
+                    .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
+                    .header("X-Goog-FieldMask", fieldMask)
+                    .retrieve()
+                    .body(PlaceDetailsResponse::class.java)
+                
+                response ?: throw PlaceSearchException(
+                    errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
+                    detail = mapOf("placeId" to placeId)
+                )
+                response
+            }
+        } catch (e: TimeoutCancellationException) {
+            logger.error(e) { "Google Places API 상세 정보 조회 타임아웃: placeId=$placeId" }
+            throw PlaceSearchException(
+                ErrorCode.PLACE_DETAILS_FETCH_FAILED,
+                detail = mapOf("placeId" to placeId, "error" to "요청 타임아웃 (${apiTimeoutMillis}ms 초과)")
             )
-            response
         } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
                 401 -> {
@@ -163,33 +184,41 @@ class GooglePlacesClient(
      */
     suspend fun searchNearby(latitude: Double, longitude: Double, radius: Double = 1000.0): NearbySearchResponse = withContext(Dispatchers.IO) {
         try {
-            val request = NearbySearchRequest(
-                includedTypes = listOf("subway_station", "transit_station", "train_station"),
-                maxResultCount = 1,
-                locationRestriction = NearbySearchRequest.LocationRestriction(
-                    circle = NearbySearchRequest.LocationRestriction.Circle(
-                        center = NearbySearchRequest.LocationRestriction.Circle.Center(
-                            latitude = latitude,
-                            longitude = longitude
-                        ),
-                        radius = radius
-                    )
-                ),
-                rankPreference = "DISTANCE"
-            )
-            
-            val response = googlePlacesRestClient.post()
-                .uri("/v1/places:searchNearby")
-                .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
-                .header("X-Goog-FieldMask", "places.id,places.displayName,places.location")
-                .header("Accept-Language", "ko")
-                .body(request)
-                .retrieve()
-                .body(NearbySearchResponse::class.java)
-            
-            response ?: throw PlaceSearchException(
-                errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
-                detail = mapOf("latitude" to latitude, "longitude" to longitude)
+            withTimeout(apiTimeoutMillis) {
+                val request = NearbySearchRequest(
+                    includedTypes = listOf("subway_station", "transit_station", "train_station"),
+                    maxResultCount = 1,
+                    locationRestriction = NearbySearchRequest.LocationRestriction(
+                        circle = NearbySearchRequest.LocationRestriction.Circle(
+                            center = NearbySearchRequest.LocationRestriction.Circle.Center(
+                                latitude = latitude,
+                                longitude = longitude
+                            ),
+                            radius = radius
+                        )
+                    ),
+                    rankPreference = "DISTANCE"
+                )
+                
+                val response = googlePlacesRestClient.post()
+                    .uri("/v1/places:searchNearby")
+                    .header("X-Goog-Api-Key", googlePlacesApiProperties.apiKey)
+                    .header("X-Goog-FieldMask", "places.id,places.displayName,places.location")
+                    .header("Accept-Language", "ko")
+                    .body(request)
+                    .retrieve()
+                    .body(NearbySearchResponse::class.java)
+                
+                response ?: throw PlaceSearchException(
+                    errorCode = ErrorCode.PLACE_API_RESPONSE_NULL,
+                    detail = mapOf("latitude" to latitude, "longitude" to longitude)
+                )
+            }
+        } catch (e: TimeoutCancellationException) {
+            logger.error(e) { "Google Places API 주변 검색 타임아웃: lat=$latitude, lng=$longitude" }
+            throw PlaceSearchException(
+                ErrorCode.PLACE_NEARBY_SEARCH_FAILED,
+                detail = mapOf("latitude" to latitude, "longitude" to longitude, "error" to "요청 타임아웃 (${apiTimeoutMillis}ms 초과)")
             )
         } catch (e: HttpClientErrorException) {
             when (e.statusCode.value()) {
