@@ -25,6 +25,9 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
 import java.time.LocalDateTime
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 @ExtendWith(MockitoExtension::class)
 @DisplayName("[MEETING] 모임 상세 조회 서비스 테스트")
@@ -118,30 +121,30 @@ class GetMeetingDetailServiceTest {
 
         // Mock 설정
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
+        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee1, attendee2))
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1, survey2))
-        whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(emptyList())
-        whenever(surveyResultRepository.findBySurveyId(2L)).thenReturn(emptyList())
+        whenever(surveyResultRepository.findBySurveyIdIn(listOf(1L, 2L))).thenReturn(emptyList())
 
         // when
         val result = getMeetingDetailService.invoke(meetingId, userId)
 
         // then
-        assert(result.currentUserId == userId)
-        assert(result.meetingInfo.title == "점심 메뉴 정하기")
-        assert(result.meetingInfo.hostUserId == 123L)
-        assert(result.meetingInfo.totalParticipantCnt == 8)
-        assert(result.meetingInfo.stationName == "강남")
-        assert(result.participantList.size == 2)
-        assert(result.meetingInfo.endAt == meetingEndAt)
-        assert(result.meetingInfo.createdAt == meetingCreatedAt)
-        assert(result.meetingInfo.updatedAt == meetingUpdatedAt)
+        assertEquals(userId, result.currentUserId)
+        assertEquals("점심 메뉴 정하기", result.meetingInfo.title)
+        assertEquals(123L, result.meetingInfo.hostUserId)
+        assertEquals(8, result.meetingInfo.totalParticipantCnt)
+        assertEquals("강남", result.meetingInfo.stationName)
+        assertEquals(2, result.participantList.size)
+        assertEquals(meetingEndAt, result.meetingInfo.endAt)
+        assertEquals(meetingCreatedAt, result.meetingInfo.createdAt)
+        assertEquals(meetingUpdatedAt, result.meetingInfo.updatedAt)
         
         val participant1 = result.participantList.find { it.userId == 456L }
-        assert(participant1 != null)
-        assert(participant1!!.nickname == "아따맘마")
-        assert(participant1.profileColor == "chocolate")
+        assertNotNull(participant1)
+        assertEquals("아따맘마", participant1.nickname)
+        assertEquals("chocolate", participant1.profileColor)
     }
 
     @Test
@@ -206,26 +209,27 @@ class GetMeetingDetailServiceTest {
 
         // Mock 설정
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
+        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee))
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey))
-        whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(surveyResults)
+        whenever(surveyResultRepository.findBySurveyIdIn(listOf(1L))).thenReturn(surveyResults)
         whenever(surveyCategoryRepository.findAllById(listOf(1L, 8L, 9L))).thenReturn(listOf(branchCategory, leafCategory1, leafCategory2))
 
         // when
         val result = getMeetingDetailService.invoke(meetingId, userId)
 
         // then
-        assert(result.participantList.isNotEmpty())
+        assertTrue(result.participantList.isNotEmpty())
         val participant = result.participantList[0]
-        assert(participant.selectedCategories.isNotEmpty())
+        assertTrue(participant.selectedCategories.isNotEmpty())
         
         val selectedCategory = participant.selectedCategories[0]
-        assert(selectedCategory.id == 1L)
-        assert(selectedCategory.name == "한식")
-        assert(selectedCategory.leafCategoryList.size == 2)
-        assert(selectedCategory.leafCategoryList.any { it.id == 8L && it.name == "밥류" })
-        assert(selectedCategory.leafCategoryList.any { it.id == 9L && it.name == "구이·조림류" })
+        assertEquals(1L, selectedCategory.id)
+        assertEquals("한식", selectedCategory.name)
+        assertEquals(2, selectedCategory.leafCategoryList.size)
+        assertTrue(selectedCategory.leafCategoryList.any { it.id == 8L && it.name == "밥류" })
+        assertTrue(selectedCategory.leafCategoryList.any { it.id == 9L && it.name == "구이·조림류" })
     }
 
     @Test
@@ -242,7 +246,7 @@ class GetMeetingDetailServiceTest {
             getMeetingDetailService.invoke(meetingId, userId)
         }
 
-        assert(exception.errorCode == ErrorCode.MEETING_NOT_FOUND)
+        assertEquals(ErrorCode.MEETING_NOT_FOUND, exception.errorCode)
     }
 
     @Test
@@ -291,18 +295,19 @@ class GetMeetingDetailServiceTest {
 
         // Mock 설정
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
+        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee1, attendee2))
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1))
-        whenever(surveyResultRepository.findBySurveyId(1L)).thenReturn(emptyList())
+        whenever(surveyResultRepository.findBySurveyIdIn(listOf(1L))).thenReturn(emptyList())
 
         // when
         val result = getMeetingDetailService.invoke(meetingId, userId)
 
         // then
-        assert(result.participantList.size == 1) // 설문이 있는 참가자만 포함
-        assert(result.participantList[0].userId == 456L)
-        assert(result.participantList[0].nickname == "설문한 참가자")
+        assertEquals(1, result.participantList.size) // 설문이 있는 참가자만 포함
+        assertEquals(456L, result.participantList[0].userId)
+        assertEquals("설문한 참가자", result.participantList[0].nickname)
     }
 }
 

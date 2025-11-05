@@ -22,6 +22,7 @@ import org.mockito.Mockito.*
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import org.mockito.junit.jupiter.MockitoExtension
+import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
 @DisplayName("[SURVEY] 설문 생성 서비스 테스트")
@@ -73,19 +74,17 @@ class CreateSurveyServiceTest {
         whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, participantId)).thenReturn(true)
         whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, participantId)).thenReturn(false)
         whenever(surveyRepository.save(any())).thenReturn(testScenario.survey)
-        whenever(surveyCategoryRepository.findById(1L))
-            .thenReturn(testScenario.cuisineCategory)
-        whenever(surveyCategoryRepository.findById(3L))
-            .thenReturn(testScenario.japaneseCuisineCategory)
-        whenever(surveyCategoryRepository.findById(5L))
-            .thenReturn(testScenario.cuisineCategory) // 5번 카테고리도 존재한다고 가정
+        // 5번 카테고리도 추가 (요청된 카테고리 수와 일치하도록)
+        val category5 = SurveyTestDataFactory.createSurveyCategory(id = 5L, name = "기타")
+        whenever(surveyCategoryRepository.findAllById(testScenario.request.selectedCategoryList))
+            .thenReturn(listOf(testScenario.cuisineCategory, testScenario.japaneseCuisineCategory, category5))
         whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
 
         // when
         val result = createSurveyService.invoke(meetingId, userId, testScenario.request)
 
         // then
-        assert(result.message == "설문 제출이 완료되었습니다")
+        assertEquals("설문 제출이 완료되었습니다", result.message)
         verify(surveyRepository).save(any())
         verify(surveyResultRepository).saveAll(any())
     }
@@ -105,7 +104,7 @@ class CreateSurveyServiceTest {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.MEETING_NOT_FOUND)
+        assertEquals(ErrorCode.MEETING_NOT_FOUND, exception.errorCode)
     }
 
     @Test
@@ -124,7 +123,7 @@ class CreateSurveyServiceTest {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.PARTICIPANT_NOT_FOUND)
+        assertEquals(ErrorCode.PARTICIPANT_NOT_FOUND, exception.errorCode)
     }
 
     @Test
@@ -144,7 +143,7 @@ class CreateSurveyServiceTest {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.SURVEY_ALREADY_SUBMITTED)
+        assertEquals(ErrorCode.SURVEY_ALREADY_SUBMITTED, exception.errorCode)
     }
 
     @Test
@@ -163,7 +162,7 @@ class CreateSurveyServiceTest {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.PARTICIPANT_NOT_FOUND)
+        assertEquals(ErrorCode.PARTICIPANT_NOT_FOUND, exception.errorCode)
     }
 
     @Test
@@ -180,14 +179,14 @@ class CreateSurveyServiceTest {
         whenever(surveyRepository.save(any())).thenReturn(
             SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
         )
-        whenever(surveyCategoryRepository.findById(999L)).thenReturn(null)
+        whenever(surveyCategoryRepository.findAllById(listOf(999L))).thenReturn(emptyList())
 
         // when & then
         val exception = assertThrows<SurveyException> {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.SURVEY_CATEGORY_NOT_FOUND)
+        assertEquals(ErrorCode.SURVEY_CATEGORY_NOT_FOUND, exception.errorCode)
     }
 
     @Test
@@ -210,7 +209,7 @@ class CreateSurveyServiceTest {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.INVALID_PARAMETER)
+        assertEquals(ErrorCode.INVALID_PARAMETER, exception.errorCode)
     }
 
     @Test
@@ -243,14 +242,14 @@ class CreateSurveyServiceTest {
         whenever(surveyRepository.save(any())).thenReturn(
             SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
         )
-        whenever(surveyCategoryRepository.findById(2L)).thenReturn(leafCategory)
+        whenever(surveyCategoryRepository.findAllById(listOf(2L))).thenReturn(listOf(leafCategory))
 
         // when & then
         val exception = assertThrows<SurveyException> {
             createSurveyService.invoke(meetingId, userId, request)
         }
 
-        assert(exception.errorCode == ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED)
+        assertEquals(ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED, exception.errorCode)
     }
 
     @Test
@@ -283,15 +282,14 @@ class CreateSurveyServiceTest {
         whenever(surveyRepository.save(any())).thenReturn(
             SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
         )
-        whenever(surveyCategoryRepository.findById(1L)).thenReturn(branchCategory)
-        whenever(surveyCategoryRepository.findById(2L)).thenReturn(leafCategory)
+        whenever(surveyCategoryRepository.findAllById(listOf(1L, 2L))).thenReturn(listOf(branchCategory, leafCategory))
         whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
 
         // when
         val result = createSurveyService.invoke(meetingId, userId, request)
 
         // then
-        assert(result.message == "설문 제출이 완료되었습니다")
+        assertEquals("설문 제출이 완료되었습니다", result.message)
         verify(surveyRepository).save(any())
         verify(surveyResultRepository).saveAll(any())
     }
@@ -317,15 +315,15 @@ class CreateSurveyServiceTest {
         whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
         whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
         whenever(surveyRepository.save(any())).thenReturn(savedSurvey)
-        whenever(surveyCategoryRepository.findById(1L))
-            .thenReturn(SurveyTestDataFactory.createSurveyCategory(id = 1L))
+        whenever(surveyCategoryRepository.findAllById(request.selectedCategoryList))
+            .thenReturn(listOf(SurveyTestDataFactory.createSurveyCategory(id = 1L)))
         whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
 
         // when
         val result = createSurveyService.invoke(meetingId, userId, request)
 
         // then
-        assert(result.message == "설문 제출이 완료되었습니다")
+        assertEquals("설문 제출이 완료되었습니다", result.message)
         verify(surveyRepository).save(any())
         verify(surveyResultRepository).saveAll(any())
     }
