@@ -3,10 +3,13 @@ package org.depromeet.team3.place
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
 import org.depromeet.team3.place.client.GooglePlacesClient
 import org.depromeet.team3.place.model.PlaceDetailsResponse
 import org.depromeet.team3.place.model.PlacesTextSearchResponse
+import org.depromeet.team3.place.util.PlaceAddressResolver
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,6 +19,7 @@ class PlaceQuery(
     private val placeJpaRepository: PlaceJpaRepository,
     private val placeAddressResolver: org.depromeet.team3.place.util.PlaceAddressResolver
 ) {
+    private val logger = LoggerFactory.getLogger(PlaceQuery::class.java)
     /**
      * 텍스트 검색
      */
@@ -30,200 +34,67 @@ class PlaceQuery(
     }
 
     /**
-     * Place Details 조회 (DB 캐싱 포함)
-     * 1. DB에서 googlePlaceId로 조회
-     * 2. 없으면 API 호출 후 DB 저장
-     */
-    suspend fun getPlaceDetails(placeId: String, openNow: Boolean? = null, link: String? = null): PlaceDetailsResponse {
-        // 1. DB 조회
-        val cachedPlace = placeJpaRepository.findByGooglePlaceId(placeId)
-        if (cachedPlace != null && !cachedPlace.isDeleted) {
-            // DB에 있으면 PlaceDetailsResponse로 변환하여 반환
-            return convertToPlaceDetailsResponse(cachedPlace)
-        }
-        
-        // 2. API 호출
-        val apiResponse = googlePlacesClient.getPlaceDetails(placeId)
-        
-        // 3. DB 저장 (비동기로 처리, 응답은 바로 반환)
-        savePlaceToDb(apiResponse, openNow, link)
-        
-        return apiResponse
-    }
-    
-    /**
      * 여러 Place Details 조회 (배치 DB 캐싱 + 병렬 API 호출)
      * 
      * 주의: DB 캐싱은 placeIds 목록에 있는 것만 조회하므로, 
      * Google API에서 반환한 placeId만 전달해야 함
      */
+    /**
+     * Google placeIds 목록에 대해 DB 캐시 → 상세 조회 → 저장 → 응답 DTO 변환을 순서대로 수행한다.
+     * 1) DB에서 현재 캐시 상태를 읽고
+     * 2) 누락/갱신 대상 placeId만 병렬로 상세 API 호출 (최대 32 동시)
+     * 3) 단일 @Transactional 메서드에서 저장 후 캐시 갱신
+     * 4) 요청 순서를 보존한 응답 맵으로 반환한다.
+     */
     suspend fun getPlaceDetailsBatch(
         placeIds: List<String>,
         openNowMap: Map<String, Boolean?> = emptyMap(),
         linkMap: Map<String, String?> = emptyMap()
-    ): Map<String, PlaceDetailsResponse> = coroutineScope {
-        // 1. DB에서 일괄 조회 (1번의 쿼리) - placeIds에 포함된 것만 조회
-        val cachedPlaces: MutableMap<String, PlaceEntity> = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
-            .filter { !it.isDeleted }
-            .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
-            .toMap()
-            .toMutableMap()
-        
-        // 1-1. photos 또는 addressDescriptor가 없거나 유효하지 않은 기존 데이터는 API로 다시 조회해서 업데이트
-        val placesNeedingUpdate = cachedPlaces.values.filter { entity: PlaceEntity -> 
-            entity.photos.isNullOrBlank() || !placeAddressResolver.isValidAddressDescriptor(entity.addressDescriptor)
-        }
-        if (placesNeedingUpdate.isNotEmpty()) {
-
-            // 업데이트가 필요한 장소들을 API로 다시 조회
-            val updateResults = placesNeedingUpdate.map { entity: PlaceEntity ->
-                entity.googlePlaceId?.let { placeId: String ->
-                    try {
-                        val response = googlePlacesClient.getPlaceDetails(placeId)
-                        Triple(response, openNowMap[placeId], linkMap[placeId])
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            }.filterNotNull()
-            
-            // photos 및 addressDescriptor 정보 업데이트
-            if (updateResults.isNotEmpty()) {
-                updatePhotosInDb(updateResults, openNowMap, linkMap)
-                
-                // 업데이트 후 다시 조회해서 캐시 갱신
-                val updatedPlaceIds = updateResults.map { it.first.id }
-                val updatedPlaces: Map<String, PlaceEntity> = placeJpaRepository.findByGooglePlaceIdIn(updatedPlaceIds)
-                    .filter { !it.isDeleted }
-                    .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
-                    .toMap()
-                
-                // 업데이트된 데이터만 교체 (기존 캐시는 유지)
-                updatedPlaces.forEach { (id, entity) ->
-                    cachedPlaces[id] = entity
-                }
-            }
+    ): Map<String, PlaceDetailsResponse> = supervisorScope {
+        val cachedPlaces: MutableMap<String, PlaceEntity> = withContext(Dispatchers.IO) {
+            placeJpaRepository.findByGooglePlaceIdIn(placeIds)
+                .filter { !it.isDeleted }
+                .mapNotNull { entity -> entity.googlePlaceId?.let { id -> id to entity } }
+                .toMap()
+                .toMutableMap()
         }
 
-        // 2. DB에 없는 것만 병렬로 API 호출
+        val needingUpdateIds = cachedPlaces.values
+            .filter { it.photos.isNullOrBlank() || !placeAddressResolver.isValidAddressDescriptor(it.addressDescriptor) }
+            .mapNotNull { it.googlePlaceId }
+
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }
-        val apiResults = uncachedIds.map { placeId ->
-            async(Dispatchers.IO) {
+
+        val idsToFetch = (needingUpdateIds + uncachedIds).distinct()
+        val fetchResults = idsToFetch.map { placeId ->
+            async(Dispatchers.IO.limitedParallelism(32)) {
                 try {
                     val response = googlePlacesClient.getPlaceDetails(placeId)
                     Triple(response, openNowMap[placeId], linkMap[placeId])
+                } catch (e: org.depromeet.team3.place.exception.PlaceSearchException) {
+                    logger.warn("Place 상세 정보 조회 실패: placeId=$placeId, errorCode=${e.errorCode.code}, message=${e.message}")
+                    null
                 } catch (e: Exception) {
-                    // 개별 place 조회 실패는 로깅만 하고 계속 진행
+                    logger.error("Place 상세 정보 조회 중 예상치 못한 오류: placeId=$placeId", e)
                     null
                 }
             }
         }.awaitAll().filterNotNull()
 
-            // 3. API 결과를 한 번에 DB 저장 (배치 INSERT)
-            if (apiResults.isNotEmpty()) {
-                savePlacesToDbBatch(apiResults)
+        if (fetchResults.isNotEmpty()) {
+            val persistedEntities = updatePhotosInDbTransactional(fetchResults)
+            persistedEntities.forEach { entity ->
+                entity.googlePlaceId?.let { cachedPlaces[it] = entity }
             }
-        
-        // 4. 결과 합치기
-        val result = mutableMapOf<String, PlaceDetailsResponse>()
-        cachedPlaces.forEach { (id: String, entity: PlaceEntity) ->
-            result[id] = convertToPlaceDetailsResponse(entity)
         }
-        apiResults.forEach { (response, _, _) ->
-            result[response.id] = response
-        }
-        
 
-        return@coroutineScope result
-    }
-    
-    /**
-     * DB에 저장 (API 응답 기반)
-     * googlePlaceId가 이미 존재하면 저장하지 않음 (unique 제약조건)
-     */
-    private suspend fun savePlaceToDb(response: PlaceDetailsResponse, openNow: Boolean?, link: String?): PlaceEntity? {
-        try {
-            // 이미 존재하는지 체크 (unique 제약조건 위반 방지)
-            val existing = placeJpaRepository.findByGooglePlaceId(response.id)
-            if (existing != null) {
-                return existing
-            }
-            
-            // PlaceAddressResolver로 addressDescriptor 계산
-            val addressDescriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
-            
-            val entity = PlaceEntity(
-                googlePlaceId = response.id,
-                name = response.displayName?.text ?: "",
-                address = response.formattedAddress ?: "",
-                rating = response.rating ?: 0.0,
-                userRatingsTotal = response.userRatingCount ?: 0,
-                openNow = openNow,
-                link = link,
-                weekdayText = response.regularOpeningHours?.weekdayDescriptions?.joinToString("\n"),
-                topReviewRating = response.reviews?.firstOrNull()?.rating,
-                topReviewText = response.reviews?.firstOrNull()?.text?.text,
-                priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
-                priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
-                addressDescriptor = addressDescriptorResult?.description,
-                photos = response.photos?.take(5)?.joinToString(",") { it.name }
-            )
-            return placeJpaRepository.save(entity)
-        } catch (e: Exception) {
-            // 저장 실패해도 API 응답은 정상 반환
-            return null
-        }
+        return@supervisorScope buildResponseFromEntities(cachedPlaces, placeIds)
     }
     
     /**
      * 여러 Place를 한 번에 DB 저장 (배치 INSERT) 후 저장된 엔티티 반환
      * 이미 존재하는 googlePlaceId는 저장하지 않음
      */
-    private suspend fun savePlacesToDbBatch(results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>): List<PlaceEntity> {
-        try {
-            // 1. 이미 존재하는 placeId 확인
-            val placeIds = results.map { it.first.id }
-            val existingPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
-                .associateBy { it.googlePlaceId }
-            
-            // 2. 존재하지 않는 것만 필터링
-            val newResults = results.filter { (response, _, _) ->
-                response.id !in existingPlaces.keys
-            }
-            
-            if (newResults.isEmpty()) {
-                return existingPlaces.values.toList()
-            }
-
-            // 3. 각 response에 대해 addressDescriptor 계산
-            val entities = newResults.map { (response, openNow, link) ->
-                val addressDescriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
-                
-                PlaceEntity(
-                    googlePlaceId = response.id,
-                    name = response.displayName?.text ?: "",
-                    address = response.formattedAddress ?: "",
-                    rating = response.rating ?: 0.0,
-                    userRatingsTotal = response.userRatingCount ?: 0,
-                    openNow = openNow,
-                    link = link,
-                    weekdayText = response.regularOpeningHours?.weekdayDescriptions?.joinToString("\n"),
-                    topReviewRating = response.reviews?.firstOrNull()?.rating,
-                    topReviewText = response.reviews?.firstOrNull()?.text?.text,
-                    priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
-                    priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" },
-                    addressDescriptor = addressDescriptorResult?.description,
-                    photos = response.photos?.take(5)?.joinToString(",") { it.name }
-                )
-            }
-            
-            val savedEntities = placeJpaRepository.saveAll(entities).toList()
-            return existingPlaces.values.toList() + savedEntities
-        } catch (e: Exception) {
-            return emptyList()
-        }
-    }
-    
     /**
      * Entity를 PlaceDetailsResponse로 변환
      */
@@ -304,59 +175,72 @@ class PlaceQuery(
             )
         }
     }
-    
+
     /**
-     * 기존 Place 데이터의 photos 정보 업데이트
+     * 상세 결과를 DB에 저장하는 단일 진입점.
+     * - 트랜잭션 경계를 이 메서드로 모으고
+     * - 내부에서만 JPA saveAll을 호출하며
+     * - 저장된 엔티티를 그대로 돌려줘 재조회 없이 캐시를 갱신하게 한다.
      */
     @Transactional
-    suspend fun updatePhotosInDb(
-        results: List<Triple<PlaceDetailsResponse, Boolean?, String?>>,
-        openNowMap: Map<String, Boolean?>,
-        linkMap: Map<String, String?>
-    ) {
-        try {
-            val placeIds = results.map { it.first.id }
-            val existingPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
-                .associateBy { it.googlePlaceId }
-            
-            val updatedEntities = results.mapNotNull { (response, _, _) ->
-                val existingEntity = existingPlaces[response.id]
-                if (existingEntity != null) {
-                    // PlaceAddressResolver로 addressDescriptor 계산
-                    val addressDescriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
-                    
-                    // photos 정보만 업데이트 (새로운 엔티티 생성)
-                    val photosStr = response.photos?.take(5)?.joinToString(",") { it.name }
-                    val updatedEntity = PlaceEntity(
-                        id = existingEntity.id,
-                        googlePlaceId = existingEntity.googlePlaceId,
-                        name = existingEntity.name,
-                        address = existingEntity.address,
-                        rating = existingEntity.rating,
-                        userRatingsTotal = existingEntity.userRatingsTotal,
-                        openNow = openNowMap[response.id] ?: existingEntity.openNow,
-                        link = linkMap[response.id] ?: existingEntity.link,
-                        weekdayText = response.regularOpeningHours?.weekdayDescriptions?.joinToString("\n") ?: existingEntity.weekdayText,
-                        topReviewRating = response.reviews?.firstOrNull()?.rating ?: existingEntity.topReviewRating,
-                        topReviewText = response.reviews?.firstOrNull()?.text?.text ?: existingEntity.topReviewText,
-                        priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existingEntity.priceRangeStart,
-                        priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existingEntity.priceRangeEnd,
-                        addressDescriptor = addressDescriptorResult?.description ?: existingEntity.addressDescriptor,
-                        photos = photosStr,
-                        isDeleted = existingEntity.isDeleted
-                    )
-                    updatedEntity
-                } else {
-                    null
-                }
-            }
-            
-            if (updatedEntities.isNotEmpty()) {
-                placeJpaRepository.saveAll(updatedEntities)
-            }
-        } catch (e: Exception) {
-            throw e
+    suspend fun updatePhotosInDbTransactional(
+        rows: List<Triple<PlaceDetailsResponse, Boolean?, String?>>
+    ): List<PlaceEntity> = withContext(Dispatchers.IO) {
+        if (rows.isEmpty()) {
+            return@withContext emptyList()
         }
+
+        val placeIds = rows.map { it.first.id }
+        val existingPlaces = placeJpaRepository.findByGooglePlaceIdIn(placeIds)
+            .associateBy { it.googlePlaceId }
+
+        val entities = mutableListOf<PlaceEntity>()
+        for ((response, openNow, link) in rows) {
+            val existing = existingPlaces[response.id]
+            val descriptorResult = placeAddressResolver.resolveAddressDescriptor(response)
+            entities += mapToEntity(response, existing, openNow, link, descriptorResult)
+        }
+
+        placeJpaRepository.saveAll(entities).toList()
+    }
+
+    private fun mapToEntity(
+        response: PlaceDetailsResponse,
+        existing: PlaceEntity?,
+        openNow: Boolean?,
+        link: String?,
+        descriptorResult: PlaceAddressResolver.AddressDescriptorResult?
+    ): PlaceEntity {
+        return PlaceEntity(
+            id = existing?.id,
+            googlePlaceId = existing?.googlePlaceId ?: response.id,
+            name = response.displayName?.text ?: existing?.name ?: "",
+            address = response.formattedAddress ?: existing?.address ?: "",
+            rating = response.rating ?: existing?.rating ?: 0.0,
+            userRatingsTotal = response.userRatingCount ?: existing?.userRatingsTotal ?: 0,
+            openNow = openNow ?: existing?.openNow,
+            link = link ?: existing?.link,
+            weekdayText = response.regularOpeningHours?.weekdayDescriptions?.joinToString("\n") ?: existing?.weekdayText,
+            topReviewRating = response.reviews?.firstOrNull()?.rating ?: existing?.topReviewRating,
+            topReviewText = response.reviews?.firstOrNull()?.text?.text ?: existing?.topReviewText,
+            priceRangeStart = response.priceRange?.startPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existing?.priceRangeStart,
+            priceRangeEnd = response.priceRange?.endPrice?.let { "${it.currencyCode} ${it.units ?: ""}" } ?: existing?.priceRangeEnd,
+            addressDescriptor = descriptorResult?.description ?: existing?.addressDescriptor,
+            photos = response.photos?.take(5)?.joinToString(",") { it.name } ?: existing?.photos,
+            isDeleted = existing?.isDeleted ?: false
+        )
+    }
+
+    /**
+     * 요청한 placeIds 순서를 유지하며 PlaceEntity → PlaceDetailsResponse로 변환한다.
+     */
+    private fun buildResponseFromEntities(
+        cachedPlaces: Map<String, PlaceEntity>,
+        placeIds: List<String>
+    ): Map<String, PlaceDetailsResponse> {
+        return placeIds.mapNotNull { placeId ->
+            cachedPlaces[placeId]?.let { placeId to convertToPlaceDetailsResponse(it) }
+        }.toMap()
     }
     
     /**
