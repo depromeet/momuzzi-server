@@ -94,9 +94,10 @@ class MeetingController(
     @GetMapping("/validate-invite")
     fun validateInviteToken(
         @Parameter(description = "모임 초대 토큰", example = "abc123def456")
-        @RequestParam token: String
+        @RequestParam token: String,
+        @UserId userId: Long
     ): DpmApiResponse<ValidateInviteTokenResponse> {
-        val response = inviteTokenService.validateInviteToken(token)
+        val response = inviteTokenService.validateInviteToken(userId,token)
 
         return DpmApiResponse.ok(response)
     }

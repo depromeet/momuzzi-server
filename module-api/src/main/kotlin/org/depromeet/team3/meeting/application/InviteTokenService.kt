@@ -4,9 +4,11 @@ import org.depromeet.team3.common.ContextConstants.API_VERSION_V1
 import org.depromeet.team3.common.ContextConstants.BASE_DOMAIN
 import org.depromeet.team3.common.ContextConstants.HTTPS_PROTOCOL
 import org.depromeet.team3.common.exception.ErrorCode
+import org.depromeet.team3.meeting.Meeting
 import org.depromeet.team3.meeting.MeetingRepository
 import org.depromeet.team3.meeting.dto.response.ValidateInviteTokenResponse
 import org.depromeet.team3.meeting.exception.InvalidInviteTokenException
+import org.depromeet.team3.meeting.exception.MeetingException
 import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.util.DataEncoder
 import org.springframework.stereotype.Service
@@ -41,23 +43,37 @@ class InviteTokenService(
     }
 
     @Transactional(readOnly = true)
-    fun validateInviteToken(token: String): ValidateInviteTokenResponse {
+    fun validateInviteToken(userId: Long, token: String): ValidateInviteTokenResponse {
         val (meetingId, expiryTimestamp) = parseTokenData(token)
 
+        // 토큰 만료 조회
         if (System.currentTimeMillis() > expiryTimestamp) {
             throw InvalidInviteTokenException(ErrorCode.TOKEN_EXPIRED)
         }
 
+        // 모임 조회
         val meeting = meetingRepository.findById(meetingId)
-            ?: throw InvalidInviteTokenException(ErrorCode.MEETING_NOT_FOUND_FOR_TOKEN)
+            ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
 
+        // 이미 참여 모임 검증
+        val joined = meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)
+        if (joined) throw MeetingException(
+            ErrorCode.MEETING_ALREADY_JOINED,
+            mapOf(
+                "userId" to userId,
+                "meetingId" to meetingId
+            )
+        )
+
+        // 종료 모임 검증
         if (meeting.isClosed) {
-            throw InvalidInviteTokenException(ErrorCode.MEETING_ALREADY_CLOSED)
-        }
-
-        val currentAttendeeCount = meetingAttendeeRepository.countByMeetingId(meetingId)
-        if (currentAttendeeCount >= meeting.attendeeCount) {
-            throw IllegalStateException("Meeting is full. Current: $currentAttendeeCount, Max: ${meeting.attendeeCount}")
+            throw MeetingException(
+                ErrorCode.MEETING_ALREADY_CLOSED,
+                mapOf(
+                    "meetingId" to meetingId,
+                    "userId" to userId
+                )
+            )
         }
 
         return ValidateInviteTokenResponse(meetingId)
