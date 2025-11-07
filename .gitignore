@@ -62,5 +62,3 @@ out/
 
 # nginx auth files
 module-infra/nginx/.htpasswd
-
-/srv

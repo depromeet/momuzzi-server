@@ -1,0 +1,27 @@
+services:
+  web:
+    image: ${IMAGE}
+    container_name: deploy-web-1
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../../.env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_KAKAO_CLIENT_ID: ${NEXT_PUBLIC_KAKAO_CLIENT_ID}
+      NEXT_PUBLIC_KAKAO_REDIRECT_URL: ${NEXT_PUBLIC_KAKAO_REDIRECT_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    networks:
+      - depromeet_network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+
+networks:
+  depromeet_network:
+    external: true
