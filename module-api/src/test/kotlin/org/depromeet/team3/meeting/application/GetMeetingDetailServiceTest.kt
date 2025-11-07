@@ -121,7 +121,6 @@ class GetMeetingDetailServiceTest {
 
         // Mock 설정
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
-        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee1, attendee2))
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1, survey2))
@@ -209,7 +208,6 @@ class GetMeetingDetailServiceTest {
 
         // Mock 설정
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
-        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee))
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey))
@@ -295,7 +293,6 @@ class GetMeetingDetailServiceTest {
 
         // Mock 설정
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
-        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
         whenever(stationRepository.findById(1L)).thenReturn(station)
         whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee1, attendee2))
         whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(listOf(survey1))
