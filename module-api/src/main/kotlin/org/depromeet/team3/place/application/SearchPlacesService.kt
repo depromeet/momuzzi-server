@@ -1,7 +1,7 @@
 package org.depromeet.team3.place.application
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import org.depromeet.team3.meetingplace.MeetingPlace
 import org.depromeet.team3.meetingplace.MeetingPlaceRepository
@@ -35,8 +35,11 @@ class SearchPlacesService(
      * 맛집 검색 및 전체 결과 반환
      * @param request 검색 요청 (검색어, 결과 개수, meetingId)
      * @return 검색 결과 목록 (좋아요 순으로 정렬됨)
+     * 
+     * coroutineScope => supervisorScope 사용으로 코루틴 중 일부 작업 실패 시에도 다른 작업은 계속 진행
+     * 10개 장소 중 1개 조회 실패해도 나머지 9개 반환
      */
-    suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse = coroutineScope {
+    suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse = supervisorScope {
         val queryKey = request.query.trim().lowercase()
         
         // 1. meetingId가 있으면 Meeting의 Station 좌표 가져오기
@@ -48,10 +51,10 @@ class SearchPlacesService(
         val response = fetchPlacesFromGoogle(queryKey, stationCoordinates)
         
         // 3. Google Places API 결과를 그대로 사용
-        val allPlaces = response.places ?: return@coroutineScope PlacesSearchResponse(emptyList())
+        val allPlaces = response.places ?: return@supervisorScope PlacesSearchResponse(emptyList())
         
         if (allPlaces.isEmpty()) {
-            return@coroutineScope PlacesSearchResponse(emptyList())
+            return@supervisorScope PlacesSearchResponse(emptyList())
         }
         
         // 4. 10개를 확실히 보장하기 위해 처리
@@ -65,7 +68,7 @@ class SearchPlacesService(
         val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(placesToProcess)
         
         if (allPlaceDetails.isEmpty()) {
-            return@coroutineScope PlacesSearchResponse(emptyList())
+            return@supervisorScope PlacesSearchResponse(emptyList())
         }
         
         // 6. 필터링 없이 Google 결과 그대로 사용
