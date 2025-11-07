@@ -104,14 +104,15 @@ class InviteTokenServiceTest {
             endAt = LocalDateTime.now().plusHours(2)
         )
 
+        val userId = 42L
         whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
-        whenever(meetingAttendeeRepository.countByMeetingId(meetingId)).thenReturn(3)
+        whenever(meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(false)
 
         val tokenUrl = inviteTokenService.generateInviteToken(meetingId)
         val token = tokenUrl.substringAfter("token=")
 
         // When
-        val result = inviteTokenService.validateInviteToken(token)
+        val result = inviteTokenService.validateInviteToken(userId, token)
 
         // Then
         assertNotNull(result)
@@ -125,7 +126,7 @@ class InviteTokenServiceTest {
 
         // When & Then
         assertThrows<org.depromeet.team3.meeting.exception.InvalidInviteTokenException> {
-            inviteTokenService.validateInviteToken(invalidToken)
+            inviteTokenService.validateInviteToken(1L, invalidToken)
         }
     }
 
@@ -144,7 +145,7 @@ class InviteTokenServiceTest {
 
         // When & Then
         assertThrows<org.depromeet.team3.meeting.exception.InvalidInviteTokenException> {
-            inviteTokenService.validateInviteToken(fakeToken)
+            inviteTokenService.validateInviteToken(1L, fakeToken)
         }
     }
 }
