@@ -143,16 +143,6 @@ class GetMeetingDetailService(
         val meeting = meetingRepository.findById(meetingId)
             ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
 
-        // 이미 참여 모임 검증
-        val joined = meetingAttendeeRepository.existsByMeetingIdAndUserId(meetingId, userId)
-        if (joined) throw MeetingException(
-            ErrorCode.MEETING_ALREADY_JOINED,
-            mapOf(
-                "userId" to userId,
-                "meetingId" to meetingId
-            )
-        )
-
         // 종료 모임 검증
         if (meeting.isClosed) {
             throw MeetingException(
