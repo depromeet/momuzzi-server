@@ -254,8 +254,45 @@ done
 docker-compose -f docker-compose.prod.yml rm -f nginx 2>/dev/null || true
 docker-compose -f docker-compose.prod.yml up -d nginx
 
-# 사용하지 않는 이미지 정리
+# 사용하지 않는 Docker 리소스 정리 (디스크 절약)
+echo "=== Cleaning up Docker resources ==="
+# 1. 사용하지 않는 컨테이너 제거
+docker container prune -f
+
+# 2. 오래된 이미지 정리 (24시간 이상 된 dangling 이미지)
 docker image prune -af --filter "until=24h"
+
+# 3. 실행 중인 컨테이너의 로그 파일 정리 (특히 registry)
+echo "=== Cleaning up container logs ==="
+# 각 컨테이너의 로그 파일 크기 확인 및 100MB 이상인 경우 truncate
+for container_id in \$(docker ps -q); do
+    CONTAINER_NAME=\$(docker inspect --format='{{.Name}}' \$container_id | sed 's/^\///')
+    LOG_FILE="/var/lib/docker/containers/\${container_id}/\${container_id}-json.log"
+    if [ -f "\$LOG_FILE" ]; then
+        LOG_SIZE=\$(du -m "\$LOG_FILE" 2>/dev/null | cut -f1)
+        if [ "\$LOG_SIZE" -gt 100 ]; then
+            echo "Truncating large log file for \$CONTAINER_NAME (Size: \${LOG_SIZE}MB)"
+            # 마지막 1000줄만 남기고 truncate
+            tail -n 1000 "\$LOG_FILE" > "\$LOG_FILE.tmp" && mv "\$LOG_FILE.tmp" "\$LOG_FILE"
+        fi
+    fi
+done
+
+# 4. 사용하지 않는 볼륨 정리 - 안전하게 (중요 볼륨은 제외)
+# Monitoring 관련 볼륨은 보호
+PROTECTED_VOLUMES="loki-data|grafana-data|prometheus-data|jenkins_home|registry_data"
+docker volume ls -q | grep -vE "\${PROTECTED_VOLUMES}" | xargs -r docker volume rm 2>/dev/null || true
+
+# 5. 빌드 캐시 정리 (1일 이상 된 것)
+docker builder prune -af --filter "until=24h" || true
+
+# 6. 디스크 사용량 확인
+echo "=== Docker disk usage ==="
+docker system df
+
+# 7. 서버 디스크 사용량 확인
+echo "=== Server disk usage ==="
+df -h /
 
 # 배포 상태 확인
 sleep 10
@@ -276,10 +313,42 @@ EOF
     
     post {
         always {
-            // Gradle daemon 정리
-            sh './gradlew --stop || true'
-            // .gradle 캐시는 보존하면서 워크스페이스 정리
-            cleanWs patterns: [[pattern: '.gradle/**', type: 'EXCLUDE']]
+            script {
+                // Gradle daemon 정리
+                sh './gradlew --stop || true'
+                
+                // Jenkins 워크스페이스 정리 (디스크 절약)
+                sh '''
+                    echo "=== Cleaning up Jenkins workspace ==="
+                    # 빌드 산출물 정리
+                    find . -type d -name "build" -exec rm -rf {} + 2>/dev/null || true
+                    find . -type f -name "*.jar" -mtime +1 -delete 2>/dev/null || true
+                    
+                    # 오래된 로그 파일 정리
+                    find . -type f -name "*.log" -mtime +1 -delete 2>/dev/null || true
+                '''
+                
+                // .gradle 캐시는 보존하면서 워크스페이스 정리
+                cleanWs patterns: [[pattern: '.gradle/**', type: 'EXCLUDE']]
+                
+                // Jenkins 내부 디스크 정리
+                sh '''
+                    echo "=== Cleaning up old Jenkins builds ==="
+                    # 7일 이상 된 빌드 로그 삭제
+                    find /var/jenkins_home/jobs/*/builds/*/log -type f -mtime +7 -delete 2>/dev/null || true
+                    
+                    # 오래된 워크스페이스 정리 (현재 작업 중인 것은 제외)
+                    CURRENT_WORKSPACE=$(pwd)
+                    find /var/jenkins_home/workspace/* -maxdepth 0 -type d -mtime +3 2>/dev/null | while read workspace; do
+                        if [ "$workspace" != "$CURRENT_WORKSPACE" ]; then
+                            rm -rf "$workspace" 2>/dev/null || true
+                        fi
+                    done
+                    
+                    # 시스템 로그 정리
+                    journalctl --vacuum-time=3d 2>/dev/null || true
+                ''' 
+            }
         }
         success {
             echo 'Pipeline succeeded!'

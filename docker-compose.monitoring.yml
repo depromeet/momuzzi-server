@@ -12,6 +12,11 @@ services:
       - ./module-infrastructure/monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
       interval: 30s
@@ -34,6 +39,11 @@ services:
       - '--storage.tsdb.path=/prometheus'
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
       interval: 30s
@@ -52,6 +62,11 @@ services:
     command: -config.file=/etc/promtail/config.yml
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
     depends_on:
       loki:
         condition: service_healthy
@@ -76,6 +91,11 @@ services:
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/home.json
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       loki:
         condition: service_healthy
@@ -98,6 +118,11 @@ services:
       - /:/rootfs:ro
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   # cAdvisor - Docker 컨테이너 메트릭
   cadvisor:
@@ -118,6 +143,11 @@ services:
       - /dev/kmsg
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
@@ -129,6 +159,11 @@ services:
       - "9113:9113"
     networks:
       - depromeet_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
 volumes:
   loki-data:
