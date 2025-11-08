@@ -67,7 +67,12 @@ class GetSurveyAggregateService(
             }
         }
 
+        // 각 설문(참가자)별로 선택한 카테고리를 그룹화
+        // Survey는 참가자당 1개씩 생성되므로, surveyId로 그룹화하면 참가자별 응답을 구분할 수 있음
         val resultsBySurvey = surveyResults.groupBy { it.surveyId }
+        
+        // 설문을 제출한 참가자 수 = 설문 개수
+        // (Survey는 meetingId + participantId 조합이 unique하므로, 각 surveyId는 고유한 참가자를 의미)
         val totalRespondents = resultsBySurvey.size
         if (totalRespondents == 0) {
             throw PlaceSearchException(ErrorCode.SURVEY_RESULT_NOT_FOUND, mapOf("meetingId" to meetingId))
@@ -76,8 +81,12 @@ class GetSurveyAggregateService(
         val branchVotes = mutableMapOf<Long, Int>()
         val leafVotes = mutableMapOf<Long, Int>()
 
+        // 각 참가자(설문)별로 선택한 카테고리를 집계
         resultsBySurvey.values.forEach { answers ->
+            // 한 참가자가 같은 카테고리를 중복 선택한 경우를 제거 (실제로는 발생하지 않아야 함)
             val uniqueCategoryIds = answers.map { it.surveyCategoryId }.toSet()
+            
+            // 이 참가자가 선택한 BRANCH와 LEAF 카테고리를 분류
             val branchSet = mutableSetOf<Long>()
             val leafSet = mutableSetOf<Long>()
 
@@ -88,6 +97,7 @@ class GetSurveyAggregateService(
                 }
             }
 
+            // 각 카테고리에 1표씩 추가 (한 참가자당 최대 1표)
             branchSet.forEach { branchId ->
                 branchVotes[branchId] = (branchVotes[branchId] ?: 0) + 1
             }
