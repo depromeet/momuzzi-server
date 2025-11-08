@@ -71,9 +71,10 @@ class GetMeetingDetailServiceTest {
         // given
         val meetingId = 1L
         val userId = 234L
-        val meetingEndAt = LocalDateTime.of(2024, 12, 31, 18, 0, 0)
-        val meetingCreatedAt = LocalDateTime.of(2024, 12, 25, 10, 0, 0)
-        val meetingUpdatedAt = LocalDateTime.of(2024, 12, 25, 15, 30, 0)
+        val now = LocalDateTime.now()
+        val meetingEndAt = now.plusDays(1)
+        val meetingCreatedAt = now.minusDays(2)
+        val meetingUpdatedAt = now.minusDays(1)
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "점심 메뉴 정하기",
@@ -152,7 +153,7 @@ class GetMeetingDetailServiceTest {
         // given
         val meetingId = 1L
         val userId = 234L
-        val meetingEndAt = LocalDateTime.of(2024, 12, 31, 18, 0, 0)
+        val meetingEndAt = LocalDateTime.now().plusDays(1)
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "저녁 모임",
@@ -253,7 +254,7 @@ class GetMeetingDetailServiceTest {
         // given
         val meetingId = 1L
         val userId = 234L
-        val meetingEndAt = LocalDateTime.of(2024, 12, 31, 18, 0, 0)
+        val meetingEndAt = LocalDateTime.now().plusDays(1)
         val meeting = MeetingTestDataFactory.createMeeting(
             id = meetingId,
             name = "테스트 모임",
