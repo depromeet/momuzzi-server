@@ -50,11 +50,6 @@ services:
       - registry
     networks:
       - depromeet_cicd_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
 
   jenkins:
     image: jenkins/jenkins:lts
