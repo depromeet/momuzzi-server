@@ -38,7 +38,7 @@ class CreateMeetingService(
         val savedMeeting = meetingRepository.save(meeting)
         val meetingId = savedMeeting.id ?: throw IllegalStateException("Meeting ID is null")
 
-        // 사용자 정보 조회하여 닉네임 가져오기
+        // 사용자 정보 조회
         val user = userRepository.findById(userId)
             .orElseThrow { 
                 MeetingException(
@@ -51,7 +51,7 @@ class CreateMeetingService(
             id = null,
             meetingId = meetingId,
             userId = userId,
-            attendeeNickname = user.nickname,
+            attendeeNickname = null,
             muzziColor = MuzziColor.DEFAULT,
             createdAt = null,
             updatedAt = null
