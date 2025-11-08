@@ -1,4 +1,4 @@
-package org.depromeet.team3.place.controller
+package org.depromeet.team3.placelike.controller
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -8,8 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.depromeet.team3.common.ContextConstants
 import org.depromeet.team3.common.annotation.UserId
 import org.depromeet.team3.common.response.DpmApiResponse
-import org.depromeet.team3.place.application.SearchPlaceLikeService
-import org.depromeet.team3.place.dto.response.PlaceLikeResponse
+import org.depromeet.team3.placelike.application.SearchPlaceLikeService
+import org.depromeet.team3.placelike.dto.PlaceLikeResponse
 import org.springframework.web.bind.annotation.*
 
 @Tag(name = "맛집 좋아요", description = "맛집 좋아요 API")

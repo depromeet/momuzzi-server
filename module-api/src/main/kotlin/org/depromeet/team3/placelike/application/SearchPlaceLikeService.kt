@@ -1,4 +1,4 @@
-package org.depromeet.team3.place.application
+package org.depromeet.team3.placelike.application
 
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meetingplace.MeetingPlaceRepository
