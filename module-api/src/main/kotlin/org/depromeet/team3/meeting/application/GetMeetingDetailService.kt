@@ -18,6 +18,7 @@ import org.depromeet.team3.surveyresult.SurveyResult
 import org.depromeet.team3.surveyresult.SurveyResultRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 import kotlin.requireNotNull
 
 @Service
@@ -30,9 +31,21 @@ class GetMeetingDetailService(
     private val surveyCategoryRepository: SurveyCategoryRepository
 ) {
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun invoke(meetingId: Long, userId: Long): MeetingDetailResponse {
-        val meeting = validateMeetingDetails(meetingId, userId)
+        // 모임 조회 및 endAt 기반 자동 종료 처리
+        val meeting = findAndAutoCloseIfExpired(meetingId)
+        
+        // 종료 모임 검증
+        if (meeting.isClosed) {
+            throw MeetingException(
+                ErrorCode.MEETING_ALREADY_CLOSED,
+                mapOf(
+                    "meetingId" to meetingId,
+                    "userId" to userId
+                )
+            )
+        }
 
         // 역 정보 조회
         val station = stationRepository.findById(meeting.stationId)
@@ -138,20 +151,23 @@ class GetMeetingDetailService(
         }
     }
 
-    private fun validateMeetingDetails(meetingId: Long, userId:Long): Meeting {
-        // 모임 조회
+    /**
+     * 모임을 조회하고, endAt이 지났다면 자동으로 isClosed를 true로 설정하여 DB에 반영
+     */
+    private fun findAndAutoCloseIfExpired(meetingId: Long): Meeting {
         val meeting = meetingRepository.findById(meetingId)
             ?: throw MeetingException(ErrorCode.MEETING_NOT_FOUND, mapOf("meetingId" to meetingId))
 
-        // 종료 모임 검증
-        if (meeting.isClosed) {
-            throw MeetingException(
-                ErrorCode.MEETING_ALREADY_CLOSED,
-                mapOf(
-                    "meetingId" to meetingId,
-                    "userId" to userId
-                )
+        // endAt이 지났고 아직 종료되지 않은 경우 자동 종료 처리
+        val now = LocalDateTime.now()
+        if (meeting.endAt != null && 
+            now.isAfter(meeting.endAt) && 
+            !meeting.isClosed) {
+            val closedMeeting = meeting.copy(
+                isClosed = true,
+                updatedAt = now
             )
+            return meetingRepository.save(closedMeeting)
         }
 
         return meeting
