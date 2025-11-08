@@ -34,17 +34,15 @@ class PlaceQuery(
     }
 
     /**
-     * 여러 Place Details 조회 (배치 DB 캐싱 + 병렬 API 호출)
-     * 
-     * 주의: DB 캐싱은 placeIds 목록에 있는 것만 조회하므로, 
-     * Google API에서 반환한 placeId만 전달해야 함
-     */
-    /**
-     * Google placeIds 목록에 대해 DB 캐시 → 상세 조회 → 저장 → 응답 DTO 변환을 순서대로 수행한다.
-     * 1) DB에서 현재 캐시 상태를 읽고
-     * 2) 누락/갱신 대상 placeId만 병렬로 상세 API 호출 (최대 32 동시)
-     * 3) 단일 @Transactional 메서드에서 저장 후 캐시 갱신
-     * 4) 요청 순서를 보존한 응답 맵으로 반환한다.
+     * Google `placeIds` 목록을 대상으로 DB 캐싱과 병렬 API 호출을 결합해 상세 정보를 조회한다.
+     *
+     * 처리 순서:
+     * - 캐시된 엔티티를 읽어 삭제되지 않은 항목만 선별한다.
+     * - 누락되었거나 정보가 부족한 `placeId`만 병렬(최대 32개)로 상세 API 호출을 수행한다.
+     * - 단일 `@Transactional` 메서드에서 조회한 상세 정보를 저장하고 캐시를 갱신한다.
+     * - 요청 순서를 유지한 맵 형태로 `PlaceDetailsResponse`를 반환한다.
+     *
+     * 메서드 입력으로는 Google Places API가 반환한 `placeId`만 전달해야 캐시가 일관성을 유지한다.
      */
     suspend fun getPlaceDetailsBatch(
         placeIds: List<String>,
@@ -156,7 +154,13 @@ class PlaceQuery(
                     photoList
                 } else {
                     null
-                }
+                },
+                location = if (entity.latitude != null && entity.longitude != null) {
+                    PlaceDetailsResponse.Location(
+                        latitude = entity.latitude,
+                        longitude = entity.longitude
+                    )
+                } else null
             )
         } catch (e: Exception) {
             // 변환 실패 시 기본값으로 반환
@@ -171,7 +175,13 @@ class PlaceQuery(
                 reviews = null,
                 priceRange = null,
                 addressDescriptor = null,
-                photos = null
+                photos = null,
+                location = if (entity.latitude != null && entity.longitude != null) {
+                    PlaceDetailsResponse.Location(
+                        latitude = entity.latitude,
+                        longitude = entity.longitude
+                    )
+                } else null
             )
         }
     }
@@ -216,6 +226,8 @@ class PlaceQuery(
             googlePlaceId = existing?.googlePlaceId ?: response.id,
             name = response.displayName?.text ?: existing?.name ?: "",
             address = response.formattedAddress ?: existing?.address ?: "",
+            latitude = response.location?.latitude ?: existing?.latitude,
+            longitude = response.location?.longitude ?: existing?.longitude,
             rating = response.rating ?: existing?.rating ?: 0.0,
             userRatingsTotal = response.userRatingCount ?: existing?.userRatingsTotal ?: 0,
             openNow = openNow ?: existing?.openNow,

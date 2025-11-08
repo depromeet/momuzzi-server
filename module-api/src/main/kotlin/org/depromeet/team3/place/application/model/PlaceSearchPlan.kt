@@ -1,0 +1,27 @@
+package org.depromeet.team3.place.application.model
+
+import org.depromeet.team3.meeting.MeetingQuery
+import org.depromeet.team3.place.application.plan.CreateSurveyKeywordService
+
+/**
+ *  검색 실행 전 '검색 전략' 표현하는 모델
+ */
+sealed interface PlaceSearchPlan {
+    val stationCoordinates: MeetingQuery.StationCoordinates?
+
+    /**
+     *  Query를 통한 수동 검색
+     */
+    data class Manual(
+        val keyword: String,
+        override val stationCoordinates: MeetingQuery.StationCoordinates?
+    ) : PlaceSearchPlan
+
+    /**
+     *  설문 결과로 도출된 키워드 기반 검색
+     */
+    data class Automatic(
+        val keywords: List<CreateSurveyKeywordService.KeywordCandidate>,
+        override val stationCoordinates: MeetingQuery.StationCoordinates?
+    ) : PlaceSearchPlan
+}
