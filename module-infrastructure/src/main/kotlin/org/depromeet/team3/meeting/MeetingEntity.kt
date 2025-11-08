@@ -31,7 +31,7 @@ class MeetingEntity(
     val hostUser: UserEntity,
     
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "station_id")
+    @JoinColumn(name = "station_id", unique = false)
     val station: StationEntity,
     
     @OneToMany(mappedBy = "meeting", fetch = FetchType.LAZY)
