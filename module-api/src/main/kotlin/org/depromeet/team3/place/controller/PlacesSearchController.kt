@@ -23,8 +23,6 @@ import org.slf4j.LoggerFactory
 class PlacesSearchController(
     private val searchPlacesService: SearchPlacesService
 ) {
-    private val logger = LoggerFactory.getLogger(PlacesSearchController::class.java)
-
     @Operation(
         summary = "맛집 데이터 검색",
         description = "키워드 입력으로 맛집 데이터를 반환 받습니다. meetingId를 포함하면 좋아요 정보가 함께 반환되며 좋아요순으로 정렬됩니다."
@@ -35,8 +33,8 @@ class PlacesSearchController(
     )
     @GetMapping
     suspend fun textSearch(
-        @Parameter(description = "검색 키워드", example = "신논현역 한식 맛집", required = true)
-        @RequestParam query: String,
+        @Parameter(description = "검색 키워드", example = "신논현역 한식 맛집", required = false)
+        @RequestParam(required = false) query: String?,
         @Parameter(description = "모임 ID (선택사항, 좋아요 정보 포함시)", example = "1", required = false)
         @RequestParam(required = false) meetingId: Long?,
         @UserId userId: Long?
