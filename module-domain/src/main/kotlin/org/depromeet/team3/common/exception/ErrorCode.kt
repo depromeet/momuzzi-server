@@ -26,12 +26,12 @@ enum class ErrorCode(
     SURVEY_RESULT_NOT_FOUND("C4046", "설문 결과를 찾을 수 없습니다.", 404),
     SURVEY_CATEGORY_NOT_FOUND("C4047", "설문 카테고리가 존재하지 않습니다.", 404),
     SURVEY_BRANCH_CATEGORY_REQUIRED("C4048", "LEAF 카테고리를 선택한 경우 해당 BRANCH 카테고리도 반드시 선택해야 합니다.", 400),
-    SURVEY_LEAF_CATEGORY_LIMIT_EXCEEDED("C4049", "LEAF 카테고리는 최대 5개까지 선택할 수 있습니다.", 400),
-    MEETING_PLACE_NOT_FOUND("C4050", "해당 모임에 추천되지 않은 맛집입니다.", 404),
-    PLACE_NOT_FOUND("C4051", "맛집 정보를 찾을 수 없습니다.", 404),
-    USER_NOT_FOUND("C4052", "사용자를 찾을 수 없습니다.", 404),
-    STATION_NOT_FOUND("C4053", "역 정보를 찾을 수 없습니다.", 404),
-    MENU_NOT_FOUND("C4054", "메뉴를 찾을 수 없습니다.", 404),
+    MEETING_PLACE_NOT_FOUND("C4049", "해당 모임에 추천되지 않은 맛집입니다.", 404),
+    PLACE_NOT_FOUND("C4050", "맛집 정보를 찾을 수 없습니다.", 404),
+    USER_NOT_FOUND("C4051", "사용자를 찾을 수 없습니다.", 404),
+    STATION_NOT_FOUND("C4052", "역 정보를 찾을 수 없습니다.", 404),
+    MENU_NOT_FOUND("C4053", "메뉴를 찾을 수 없습니다.", 404),
+    SURVEY_LEAF_CATEGORY_LIMIT_EXCEEDED("C4055", "LEAF 카테고리는 최대 5개까지 선택할 수 있습니다.", 400),
 
     // 409 Conflict
     RESOURCE_CONFLICT("C409", "리소스 충돌이 발생했습니다.", 409),
