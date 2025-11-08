@@ -327,4 +327,96 @@ class CreateSurveyServiceTest {
         verify(surveyRepository).save(any())
         verify(surveyResultRepository).saveAll(any())
     }
+
+    @Test
+    @DisplayName("LEAF 카테고리를 5개 초과로 선택하면 예외가 발생한다")
+    fun `LEAF 카테고리를 5개 초과로 선택하면 예외가 발생한다`() {
+        // given
+        val meetingId = 1L
+        val userId = 1L
+        
+        // BRANCH 카테고리 1개와 LEAF 카테고리 6개 생성
+        val branchCategory = SurveyTestDataFactory.createSurveyCategory(
+            id = 1L,
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "음식"
+        )
+        val leafCategories = (2L..7L).map { id ->
+            SurveyTestDataFactory.createSurveyCategory(
+                id = id,
+                parentId = 1L,
+                level = SurveyCategoryLevel.LEAF,
+                name = "카테고리$id"
+            )
+        }
+        
+        // BRANCH 1개와 LEAF 6개를 선택한 요청 (총 7개)
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(
+            selectedCategoryList = listOf(1L) + leafCategories.mapNotNull { it.id }
+        )
+
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(
+            SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
+        )
+        whenever(surveyCategoryRepository.findAllById(request.selectedCategoryList))
+            .thenReturn(listOf(branchCategory) + leafCategories)
+
+        // when & then
+        val exception = assertThrows<SurveyException> {
+            createSurveyService.invoke(meetingId, userId, request)
+        }
+
+        assertEquals(ErrorCode.SURVEY_LEAF_CATEGORY_LIMIT_EXCEEDED, exception.errorCode)
+    }
+
+    @Test
+    @DisplayName("LEAF 카테고리를 정확히 5개 선택하면 설문 생성에 성공한다")
+    fun `LEAF 카테고리를 정확히 5개 선택하면 설문 생성에 성공한다`() {
+        // given
+        val meetingId = 1L
+        val userId = 1L
+        
+        // BRANCH 카테고리 1개와 LEAF 카테고리 5개 생성
+        val branchCategory = SurveyTestDataFactory.createSurveyCategory(
+            id = 1L,
+            parentId = null,
+            level = SurveyCategoryLevel.BRANCH,
+            name = "음식"
+        )
+        val leafCategories = (2L..6L).map { id ->
+            SurveyTestDataFactory.createSurveyCategory(
+                id = id,
+                parentId = 1L,
+                level = SurveyCategoryLevel.LEAF,
+                name = "카테고리$id"
+            )
+        }
+        
+        // BRANCH 1개와 LEAF 5개를 선택한 요청 (총 6개)
+        val request = SurveyTestDataFactory.createSurveyCreateRequest(
+            selectedCategoryList = listOf(1L) + leafCategories.mapNotNull { it.id }
+        )
+
+        whenever(meetingJpaRepository.existsById(meetingId)).thenReturn(true)
+        whenever(meetingAttendeeJpaRepository.existsByMeetingIdAndUserId(meetingId, userId)).thenReturn(true)
+        whenever(surveyRepository.existsByMeetingIdAndParticipantId(meetingId, userId)).thenReturn(false)
+        whenever(surveyRepository.save(any())).thenReturn(
+            SurveyTestDataFactory.createSurvey(meetingId = meetingId, participantId = userId)
+        )
+        whenever(surveyCategoryRepository.findAllById(request.selectedCategoryList))
+            .thenReturn(listOf(branchCategory) + leafCategories)
+        whenever(surveyResultRepository.saveAll(any())).thenReturn(emptyList())
+
+        // when
+        val result = createSurveyService.invoke(meetingId, userId, request)
+
+        // then
+        assertEquals("설문 제출이 완료되었습니다", result.message)
+        verify(surveyRepository).save(any())
+        verify(surveyResultRepository).saveAll(any())
+    }
 }
