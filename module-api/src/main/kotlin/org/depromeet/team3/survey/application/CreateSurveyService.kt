@@ -73,20 +73,33 @@ class CreateSurveyService(
         // LEAF 카테고리 검증: LEAF를 선택한 경우 부모 BRANCH도 선택되어야 함
         val selectedCategoryIds = request.selectedCategoryList.toSet()
         selectedCategories.forEach { category ->
-            if (category.level == SurveyCategoryLevel.LEAF && category.parentId != null) {
-                val parentId = category.parentId!!
-                if (!selectedCategoryIds.contains(parentId)) {
-                    val leafCategoryId = category.id ?: return@forEach
-                    throw SurveyException(
-                        ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED,
-                        mapOf<String, Any>(
-                            "leafCategoryId" to leafCategoryId,
-                            "leafCategoryName" to category.name,
-                            "requiredBranchCategoryId" to parentId
+            if (category.level == SurveyCategoryLevel.LEAF) {
+                category.parentId?.let { parentId ->
+                    if (!selectedCategoryIds.contains(parentId)) {
+                        val leafCategoryId = category.id ?: return@forEach
+                        throw SurveyException(
+                            ErrorCode.SURVEY_BRANCH_CATEGORY_REQUIRED,
+                            mapOf<String, Any>(
+                                "leafCategoryId" to leafCategoryId,
+                                "leafCategoryName" to category.name,
+                                "requiredBranchCategoryId" to parentId
+                            )
                         )
-                    )
+                    }
                 }
             }
+        }
+
+        // LEAF 카테고리 개수 제한 검증: 최대 5개까지 선택 가능
+        val leafCategoryCount = selectedCategories.count { it.level == SurveyCategoryLevel.LEAF }
+        if (leafCategoryCount > 5) {
+            throw SurveyException(
+                ErrorCode.SURVEY_LEAF_CATEGORY_LIMIT_EXCEEDED,
+                mapOf<String, Any>(
+                    "selectedLeafCategoryCount" to leafCategoryCount,
+                    "maxAllowedCount" to 5
+                )
+            )
         }
 
         // 설문 결과 생성

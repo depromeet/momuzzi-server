@@ -6,13 +6,16 @@ import org.depromeet.team3.common.BaseTimeEntity
 @Entity
 @Table(
     name = "tb_stations",
+    indexes = [
+        Index(name = "idx_station_name", columnList = "name")
+    ]
 )
 class StationEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
     
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     val name: String,
     
     @Column(name = "loc_x", nullable = false)
