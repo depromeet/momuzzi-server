@@ -137,7 +137,7 @@ pipeline {
                         )]) {
                             sh """
                                 # Registry IP를 직접 사용 (DNS 문제 우회)
-                                REGISTRY_IP=\$(docker inspect 9d09312d3b33_registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                                REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
                                 echo "Using Registry IP: \$REGISTRY_IP"
                                 
                                 # Docker 로그아웃 후 재로그인 (IP 직접 사용)
@@ -161,7 +161,7 @@ pipeline {
 
                         // 로컬 이미지 정리
                         sh """
-                            REGISTRY_IP=\$(docker inspect 9d09312d3b33_registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                            REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
                             docker rmi \${REGISTRY_IP}:5000/${IMAGE_NAME}:${imageTag} || true
                             docker rmi \${REGISTRY_IP}:5000/${IMAGE_NAME}:latest || true
                         """
