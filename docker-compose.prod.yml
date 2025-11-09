@@ -29,15 +29,14 @@ services:
       retries: 5
       start_period: 60s
 
-  nginx:
-    container_name: nginx
+  nginx-app:
+    container_name: nginx-app
     image: nginx:1.29.0
     ports:
       - "90:80"
       - "443:443"
     volumes:
       - ./module-infrastructure/nginx/nginx-app.conf:/etc/nginx/nginx.conf:ro
-      - ./module-infrastructure/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     environment:
       - TZ=Asia/Seoul
