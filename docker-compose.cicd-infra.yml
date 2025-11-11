@@ -28,6 +28,11 @@ services:
       - ./module-infrastructure/nginx/.htpasswd:/auth/htpasswd:ro
     networks:
       - depromeet_cicd_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "7"
 
   registry-web:
     image: hyper/docker-registry-web
@@ -64,6 +69,11 @@ services:
     user: root
     networks:
       - depromeet_cicd_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "10"
     mem_limit: 3g        # Jenkins 컨테이너 메모리 제한
     mem_reservation: 1g  # 예약 메모리
     cpus: 2.0
@@ -83,6 +93,11 @@ services:
     networks:
       - depromeet_cicd_network
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       - jenkins
       - registry

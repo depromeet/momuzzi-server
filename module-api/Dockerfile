@@ -2,7 +2,7 @@ FROM eclipse-temurin:21-jre-alpine
 
 ARG JAR_FILE=module-api/build/libs/*.jar
 
-# Alpine은 apk 사용 (GPG 서명 문제 없음)
+# Alpine은 apk 사용
 RUN apk add --no-cache curl tzdata
 
 COPY ${JAR_FILE} app.jar

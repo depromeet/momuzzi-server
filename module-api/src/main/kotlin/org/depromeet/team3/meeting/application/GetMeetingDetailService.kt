@@ -106,6 +106,7 @@ class GetMeetingDetailService(
                     selectedCategories = selectedCategoryList
                 )
             }
+            .sortedByDescending { it.userId == userId } // 현재 사용자의 설문 결과를 맨 앞으로 정렬
 
         return MeetingDetailResponse(
             currentUserId = userId,

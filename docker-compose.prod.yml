@@ -17,6 +17,11 @@ services:
     external_links:
       - signoz-otel-collector:signoz-otel-collector
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "7"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
@@ -24,21 +29,25 @@ services:
       retries: 5
       start_period: 60s
 
-  nginx:
-    container_name: nginx
+  nginx-app:
+    container_name: nginx-app
     image: nginx:1.29.0
     ports:
       - "90:80"
       - "443:443"
     volumes:
       - ./module-infrastructure/nginx/nginx-app.conf:/etc/nginx/nginx.conf:ro
-      - ./module-infrastructure/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     environment:
       - TZ=Asia/Seoul
     networks:
       - depromeet_network
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       backend:
         condition: service_healthy

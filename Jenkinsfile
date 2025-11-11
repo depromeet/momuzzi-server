@@ -137,7 +137,7 @@ pipeline {
                         )]) {
                             sh """
                                 # Registry IP를 직접 사용 (DNS 문제 우회)
-                                REGISTRY_IP=\$(docker inspect 9d09312d3b33_registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                                REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
                                 echo "Using Registry IP: \$REGISTRY_IP"
                                 
                                 # Docker 로그아웃 후 재로그인 (IP 직접 사용)
@@ -161,7 +161,7 @@ pipeline {
 
                         // 로컬 이미지 정리
                         sh """
-                            REGISTRY_IP=\$(docker inspect 9d09312d3b33_registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                            REGISTRY_IP=\$(docker inspect registry --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
                             docker rmi \${REGISTRY_IP}:5000/${IMAGE_NAME}:${imageTag} || true
                             docker rmi \${REGISTRY_IP}:5000/${IMAGE_NAME}:latest || true
                         """
@@ -254,8 +254,32 @@ done
 docker-compose -f docker-compose.prod.yml rm -f nginx 2>/dev/null || true
 docker-compose -f docker-compose.prod.yml up -d nginx
 
-# 사용하지 않는 이미지 정리
-docker image prune -af --filter "until=24h"
+# 사용하지 않는 Docker 리소스 정리 (디스크 절약)
+echo "=== Cleaning up Docker resources ==="
+
+# 1. 사용하지 않는 컨테이너 제거
+docker container prune -f
+
+# 2. 오래된 이미지 정리
+# 주의: githubPush 트리거 사용 시 푸시 빈도에 따라 조정 필요
+# 현재: 72시간(3일) 이상 사용 안 한 dangling 이미지만 삭제
+docker image prune -af --filter "until=72h"
+
+# 3. 사용하지 않는 볼륨 정리 - 안전하게
+PROTECTED_VOLUMES="loki-data|grafana-data|prometheus-data|jenkins_home|registry_data"
+echo "Protected volumes: \${PROTECTED_VOLUMES}"
+docker volume ls -q | grep -vE "\${PROTECTED_VOLUMES}" | xargs -r docker volume rm 2>/dev/null || true
+
+# 4. 빌드 캐시 정리 (3일 이상 된 것)
+docker builder prune -af --filter "until=72h" || true
+
+# 5. 디스크 사용량 확인
+echo "=== Docker disk usage ==="
+docker system df
+
+# 6. 서버 디스크 사용량 확인
+echo "=== Server disk usage ==="
+df -h /
 
 # 배포 상태 확인
 sleep 10
@@ -276,10 +300,42 @@ EOF
     
     post {
         always {
-            // Gradle daemon 정리
-            sh './gradlew --stop || true'
-            // .gradle 캐시는 보존하면서 워크스페이스 정리
-            cleanWs patterns: [[pattern: '.gradle/**', type: 'EXCLUDE']]
+            script {
+                // Gradle daemon 정리
+                sh './gradlew --stop || true'
+                
+                // Jenkins 워크스페이스 정리 (디스크 절약)
+                sh '''
+                    echo "=== Cleaning up Jenkins workspace ==="
+                    # 빌드 산출물 정리
+                    find . -type d -name "build" -exec rm -rf {} + 2>/dev/null || true
+                    find . -type f -name "*.jar" -mtime +1 -delete 2>/dev/null || true
+                    
+                    # 오래된 로그 파일 정리
+                    find . -type f -name "*.log" -mtime +1 -delete 2>/dev/null || true
+                '''
+                
+                // .gradle 캐시는 보존하면서 워크스페이스 정리
+                cleanWs patterns: [[pattern: '.gradle/**', type: 'EXCLUDE']]
+                
+                // Jenkins 내부 디스크 정리
+                sh '''
+                    echo "=== Cleaning up old Jenkins builds ==="
+                    # 7일 이상 된 빌드 로그 삭제
+                    find /var/jenkins_home/jobs/*/builds/*/log -type f -mtime +7 -delete 2>/dev/null || true
+                    
+                    # 오래된 워크스페이스 정리 (현재 작업 중인 것은 제외)
+                    CURRENT_WORKSPACE=$(pwd)
+                    find /var/jenkins_home/workspace/* -maxdepth 0 -type d -mtime +3 2>/dev/null | while read workspace; do
+                        if [ "$workspace" != "$CURRENT_WORKSPACE" ]; then
+                            rm -rf "$workspace" 2>/dev/null || true
+                        fi
+                    done
+                    
+                    # 시스템 로그 정리
+                    journalctl --vacuum-time=3d 2>/dev/null || true
+                ''' 
+            }
         }
         success {
             echo 'Pipeline succeeded!'
