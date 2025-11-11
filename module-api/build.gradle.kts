@@ -32,6 +32,7 @@ dependencies {
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.8.20")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     
     runtimeOnly("com.mysql:mysql-connector-j")
     

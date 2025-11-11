@@ -34,27 +34,59 @@ class ExecutePlaceSearchService(
     private val placeQuery: PlaceQuery,
     private val placeDetailsProcessor: PlaceDetailsProcessor,
     private val meetingPlaceRepository: MeetingPlaceRepository,
-    private val placeLikeRepository: PlaceLikeRepository
+    private val placeLikeRepository: PlaceLikeRepository,
+    private val cacheManager: MeetingPlaceSearchCacheManager
 ) {
 
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
     private val totalFetchSize = 15
 
     suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
-        val keywordResult = when (plan) {
-            // 수동 검색 : 사용자가 입력한 단일 키워드로 검색 (가중치 없음)
-            is PlaceSearchPlan.Manual -> {
-                val response = fetchPlacesFromGoogle(plan.keyword, plan.stationCoordinates)
-                KeywordSearchResult(
-                    places = response.places ?: emptyList(),
-                    placeWeights = emptyMap(),
-                    usedKeywords = listOf(plan.keyword)
-                )
-            }
+        // 캐시 확인 (Automatic 검색 + meetingId 있을 때만)
+        val cachedResult = if (plan is PlaceSearchPlan.Automatic && request.meetingId != null) {
+            cacheManager.getCachedAutomaticResult(request.meetingId)
+        } else null
+        
+        val keywordResult = if (cachedResult != null) {
+            // 캐시 HIT: 저장된 결과를 그대로 사용 (Place 정보 + 가중치)
+            logger.info("자동 검색 캐시 HIT - meetingId=${request.meetingId}, places=${cachedResult.placeIds.size}개")
+            val places = fetchPlacesFromCache(cachedResult.placeIds)
+            KeywordSearchResult(
+                places = places,
+                placeWeights = cachedResult.placeWeights,
+                usedKeywords = cachedResult.usedKeywords
+            )
+        } else {
+            // 캐시 MISS: 기존 검색 로직 실행
+            when (plan) {
+                // 수동 검색: 사용자가 직접 입력한 단일 키워드로 검색 (캐시 미적용)
+                is PlaceSearchPlan.Manual -> {
+                    val response = fetchPlacesFromGoogle(plan.keyword, plan.stationCoordinates)
+                    val places = response.places ?: emptyList()
+                    
+                    KeywordSearchResult(
+                        places = places,
+                        placeWeights = emptyMap(),
+                        usedKeywords = listOf(plan.keyword)
+                    )
+                }
 
-            // 자동 검색: 설문 기반 키워드 목록으로 병렬 검색 후 가중치 기반 병합
-            is PlaceSearchPlan.Automatic -> {
-                fetchPlacesForKeywords(plan)
+                // 자동 검색: 설문 기반 키워드 목록으로 병렬 검색 후 가중치 기반 병합
+                is PlaceSearchPlan.Automatic -> {
+                    val result = fetchPlacesForKeywords(plan)
+                    
+                    // 캐시에 저장 (meetingId 있을 때만)
+                    if (request.meetingId != null && result.places.isNotEmpty()) {
+                        cacheManager.cacheAutomaticResult(
+                            meetingId = request.meetingId,
+                            placeIds = result.places.map { it.id },
+                            placeWeights = result.placeWeights,
+                            usedKeywords = result.usedKeywords
+                        )
+                    }
+                    
+                    result
+                }
             }
         }
 
@@ -159,6 +191,43 @@ class ExecutePlaceSearchService(
         PlacesSearchResponse(sortedItems)
     }
 
+    /**
+     * 캐시된 Google Place ID 리스트로 DB에서 Place 정보 조회
+     * (Google API 호출 없이 DB 캐시만 사용)
+     */
+    private suspend fun fetchPlacesFromCache(
+        googlePlaceIds: List<String>
+    ): List<PlacesTextSearchResponse.Place> {
+        return withContext(Dispatchers.IO) {
+            val places = placeQuery.findByGooglePlaceIds(googlePlaceIds)
+            val placeMap = places.mapNotNull { place ->
+                val gId = place.googlePlaceId ?: return@mapNotNull null
+                gId to place
+            }.toMap()
+            
+            // 캐시된 순서대로 Place 생성
+            googlePlaceIds.mapNotNull { googlePlaceId ->
+                val place = placeMap[googlePlaceId]
+                if (place == null) {
+                    logger.warn("캐시된 Place를 DB에서 찾을 수 없음: googlePlaceId=$googlePlaceId")
+                    return@mapNotNull null
+                }
+                
+                // PlaceEntity -> PlacesTextSearchResponse.Place 변환
+                PlacesTextSearchResponse.Place(
+                    id = place.googlePlaceId ?: googlePlaceId,
+                    displayName = PlacesTextSearchResponse.Place.DisplayName(text = place.name),
+                    formattedAddress = place.address,
+                    rating = place.rating,
+                    userRatingCount = place.userRatingsTotal,
+                    currentOpeningHours = if (place.openNow != null) {
+                        PlacesTextSearchResponse.Place.OpeningHours(openNow = place.openNow)
+                    } else null
+                )
+            }
+        }
+    }
+    
     /**
      * 설문 기반 키워드 목록으로 병렬 검색을 수행하고 결과를 가중치 기반으로 병합한다.
      *
