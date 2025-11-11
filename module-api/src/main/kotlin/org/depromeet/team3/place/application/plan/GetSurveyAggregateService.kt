@@ -50,10 +50,24 @@ class GetSurveyAggregateService(
             throw PlaceSearchException(ErrorCode.SURVEY_CATEGORY_NOT_FOUND, mapOf("meetingId" to meetingId))
         }
 
-        val categories = surveyCategoryRepository.findAllById(categoryIds).toList()
-        if (categories.isEmpty()) {
+        val initialCategories = surveyCategoryRepository.findAllById(categoryIds).toList()
+        if (initialCategories.isEmpty()) {
             throw PlaceSearchException(ErrorCode.SURVEY_CATEGORY_NOT_FOUND, mapOf("meetingId" to meetingId))
         }
+
+        val parentIds = initialCategories
+            .filter { it.level == SurveyCategoryLevel.LEAF }
+            .mapNotNull { it.parentId }
+            .distinct()
+
+        val parentCategories = if (parentIds.isNotEmpty()) {
+            surveyCategoryRepository.findAllById(parentIds).toList()
+        } else {
+            emptyList()
+        }
+
+        val categories = (initialCategories + parentCategories)
+            .distinctBy { it.id }
 
         val branchCategories = mutableMapOf<Long, SurveyCategory>()
         val leafCategories = mutableMapOf<Long, SurveyCategory>()
@@ -103,6 +117,11 @@ class GetSurveyAggregateService(
             }
             leafSet.forEach { leafId ->
                 leafVotes[leafId] = (leafVotes[leafId] ?: 0) + 1
+
+                val parentId = leafCategories[leafId]?.parentId
+                if (parentId != null) {
+                    branchSet.add(parentId)
+                }
             }
         }
 

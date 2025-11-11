@@ -45,7 +45,8 @@ class CreatePlaceSearchPlanService(
 
         return PlaceSearchPlan.Automatic(
             keywords = keywordPlan.keywords,
-            stationCoordinates = keywordPlan.stationCoordinates
+            stationCoordinates = keywordPlan.stationCoordinates,
+            fallbackKeyword = keywordPlan.fallbackKeyword
         )
     }
 }

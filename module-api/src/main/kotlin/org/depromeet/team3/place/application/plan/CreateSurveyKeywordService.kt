@@ -32,9 +32,13 @@ class CreateSurveyKeywordService(
         val keywordCandidates = selectSurveyKeywordsService.selectKeywords(aggregate)
         return KeywordPlan(
             keywords = keywordCandidates,
-            stationCoordinates = aggregate.stationCoordinates
+            stationCoordinates = aggregate.stationCoordinates,
+            fallbackKeyword = buildFallbackKeyword(aggregate.stationName)
         )
     }
+
+    private fun buildFallbackKeyword(stationName: String): String =
+        "$stationName 맛집"
 
     companion object {
         private val whitespaceRegex = "\\s+".toRegex()
@@ -45,11 +49,23 @@ class CreateSurveyKeywordService(
 
     data class KeywordPlan(
         val keywords: List<KeywordCandidate>,
-        val stationCoordinates: MeetingQuery.StationCoordinates?
+        val stationCoordinates: MeetingQuery.StationCoordinates?,
+        val fallbackKeyword: String
     )
 
     data class KeywordCandidate(
         val keyword: String,
-        val weight: Double
+        val weight: Double,
+        val type: KeywordType,
+        val categoryName: String? = null,
+        val matchKeywords: Set<String> = emptySet(),
+        val fallbackKeyword: String? = null,
+        val fallbackMatchKeywords: Set<String> = emptySet()
     )
+
+    enum class KeywordType {
+        LEAF,
+        BRANCH,
+        GENERAL
+    }
 }

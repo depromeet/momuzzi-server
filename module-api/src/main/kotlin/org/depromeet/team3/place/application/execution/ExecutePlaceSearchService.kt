@@ -39,7 +39,7 @@ class ExecutePlaceSearchService(
 ) {
 
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
-    private val totalFetchSize = 15
+    private val totalFetchSize = 10  // 최종 반환 개수
 
     suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
         // 캐시 확인 (Automatic 검색 + meetingId 있을 때만)
@@ -181,13 +181,6 @@ class ExecutePlaceSearchService(
             else -> items
         }
 
-        logger.info(
-            "장소 검색 완료 - keywords={}, meetingId={}, 응답수={}",
-            keywordResult.usedKeywords,
-            request.meetingId,
-            sortedItems.size
-        )
-
         PlacesSearchResponse(sortedItems)
     }
 
@@ -229,14 +222,21 @@ class ExecutePlaceSearchService(
     }
     
     /**
-     * 설문 기반 키워드 목록으로 병렬 검색을 수행하고 결과를 가중치 기반으로 병합한다.
+     * 설문 기반 키워드 목록으로 병렬 검색을 수행하고 결과를 가중치 비례로 병합한다.
      *
      * 처리 흐름:
      * 1. 각 키워드마다 독립적인 코루틴으로 Google Places API 병렬 호출
-     * 2. 실패한 키워드는 무시하고 성공한 결과만 수집
-     * 3. 모든 장소에 키워드 가중치를 부여하여 수집
-     * 4. 중복된 장소는 최고 가중치로 통합
-     * 5. 가중치 순으로 정렬하여 반환
+     * 2. 총 10개를 가중치 비례로 키워드별 할당량 계산
+     * 3. 각 키워드에서 할당량만큼 평점 높은 장소 선택
+     * 4. 최종 결과를 가중치 순으로 정렬 (같은 가중치면 평점 순)
+     *
+     * 예시:
+     * - 한식 40%, 양식 30%, 일식 20%, 중식 10%
+     * - → 한식 4개, 양식 3개, 일식 2개, 중식 1개
+     *
+     * 정렬 우선순위:
+     * 1순위: 가중치 (설문 득표율) - 높을수록 먼저
+     * 2순위: 좋아요 개수 (좋아요 정보는 나중에 DB에서 조회하여 적용)
      *
      * @param plan 설문 기반으로 생성된 키워드 목록과 역 좌표
      * @return 병합된 장소 목록, 장소별 가중치, 사용된 키워드 목록
@@ -255,33 +255,180 @@ class ExecutePlaceSearchService(
 
         val results = deferredResponses.awaitAll().filterNotNull()
 
-        // 2단계: 모든 장소를 수집하고 가중치 매핑 (중복 장소는 최고 가중치 유지)
-        val placeById = mutableMapOf<String, PlacesTextSearchResponse.Place>()
-        val placeWeights = mutableMapOf<String, Double>()
+        // 2단계: 가중치 비례로 각 키워드별 할당량 계산
+        val allocations = calculateKeywordAllocations(
+            results.map { it.first.weight },
+            totalFetchSize
+        )
 
-        results.forEach { (candidate, response) ->
-            val places = response.places ?: emptyList()
-            places.forEach { place ->
-                // 장소를 처음 보거나, 이미 본 장소라도 가중치 정보는 업데이트
-                placeById.putIfAbsent(place.id, place)
-                
-                // 가중치는 여러 키워드에서 나온 경우 최댓값 유지
-                val currentWeight = placeWeights[place.id] ?: 0.0
-                if (candidate.weight > currentWeight) {
+        // 3단계: 각 키워드에서 할당량만큼 선택
+        val selectedPlaces = mutableListOf<PlacesTextSearchResponse.Place>()
+        val placeWeights = mutableMapOf<String, Double>()
+        val usedPlaceIds = mutableSetOf<String>()
+        val appliedKeywords = mutableSetOf<String>()
+
+        results.forEach { appliedKeywords.add(it.first.keyword) }
+
+        results.forEachIndexed { index, (candidate, response) ->
+            val allocation = allocations[index]
+            if (allocation == 0) return@forEachIndexed
+            
+            val rawPlaces = response.places ?: emptyList()
+            val places = filterPlacesByKeyword(rawPlaces, candidate)
+            var addedCount = 0
+            
+            // 평점 높은 순으로 정렬하여 할당량만큼 선택
+            places
+                .filter { !usedPlaceIds.contains(it.id) }  // 중복 제거
+                .sortedByDescending { it.rating ?: 0.0 }   // 평점 순
+                .take(allocation)                           // 할당량만큼
+                .forEach { place ->
+                    selectedPlaces.add(place)
                     placeWeights[place.id] = candidate.weight
+                    usedPlaceIds.add(place.id)
+                    addedCount++
+                }
+
+            if (addedCount < allocation) {
+                val fallbackKeyword = candidate.fallbackKeyword
+                if (!fallbackKeyword.isNullOrBlank()) {
+                    val fallbackResponse = fetchPlacesFromGoogle(fallbackKeyword, plan.stationCoordinates)
+                    val fallbackRawPlaces = fallbackResponse.places ?: emptyList()
+                    val fallbackPlaces = filterPlacesByKeyword(fallbackRawPlaces, candidate, candidate.fallbackMatchKeywords)
+                    var fallbackAdded = false
+                    fallbackPlaces
+                        .filter { !usedPlaceIds.contains(it.id) }
+                        .sortedByDescending { it.rating ?: 0.0 }
+                        .take(allocation - addedCount)
+                        .forEach { place ->
+                            selectedPlaces.add(place)
+                            placeWeights[place.id] = candidate.weight
+                            usedPlaceIds.add(place.id)
+                            addedCount++
+                            fallbackAdded = true
+                        }
+
+                    if (fallbackAdded) {
+                        appliedKeywords.add(fallbackKeyword)
+                    }
                 }
             }
         }
 
-        // 3단계: 가중치 순으로 정렬
-        val sortedPlaces = placeById.values
-            .sortedByDescending { placeWeights[it.id] ?: 0.0 }
+        // 4단계: 할당량을 못 채운 경우, 가중치 높은 키워드부터 추가 선택
+        if (selectedPlaces.size < totalFetchSize) {
+            val sortedResults = results.sortedByDescending { it.first.weight }
+            
+            sortedResults.forEach { (candidate, response) ->
+                if (selectedPlaces.size >= totalFetchSize) return@forEach
+                
+                val places = filterPlacesByKeyword(response.places ?: emptyList(), candidate)
+                places
+                    .filter { !usedPlaceIds.contains(it.id) }
+                    .sortedByDescending { it.rating ?: 0.0 }
+                    .take(totalFetchSize - selectedPlaces.size)
+                    .forEach { place ->
+                        selectedPlaces.add(place)
+                        placeWeights[place.id] = candidate.weight
+                        usedPlaceIds.add(place.id)
+                    }
+            }
+        }
+
+        // 5단계: 최종 정렬 (가중치 순 → 평점 순)
+        // 좋아요 정렬은 나중에 search() 메서드에서 DB 데이터와 함께 처리됨
+        val sortedPlaces = selectedPlaces
+            .sortedWith(
+                compareByDescending<PlacesTextSearchResponse.Place> { placeWeights[it.id] ?: 0.0 }
+                    .thenByDescending { it.rating ?: 0.0 }
+            )
+            .take(totalFetchSize)
+
+        if (sortedPlaces.isNotEmpty()) {
+            return@coroutineScope KeywordSearchResult(
+                places = sortedPlaces,
+                placeWeights = placeWeights,
+                usedKeywords = appliedKeywords.toList()
+            )
+        }
+
+        logger.warn("설문 기반 키워드로 결과 없음 - fallback keyword 사용: {}", plan.fallbackKeyword)
+
+        val fallbackResponse = fetchPlacesFromGoogle(plan.fallbackKeyword, plan.stationCoordinates)
+        val fallbackPlaces = (fallbackResponse.places ?: emptyList()).take(totalFetchSize)
+        val fallbackWeights = fallbackPlaces.associate { it.id to 0.1 }
 
         KeywordSearchResult(
-            places = sortedPlaces,
-            placeWeights = placeWeights,
-            usedKeywords = plan.keywords.map { it.keyword }
+            places = fallbackPlaces,
+            placeWeights = fallbackWeights,
+            usedKeywords = listOf(plan.fallbackKeyword)
         )
+    }
+
+    private fun filterPlacesByKeyword(
+        places: List<PlacesTextSearchResponse.Place>,
+        candidate: CreateSurveyKeywordService.KeywordCandidate,
+        overrideKeywords: Set<String>? = null
+    ): List<PlacesTextSearchResponse.Place> {
+        val keywords = overrideKeywords ?: candidate.matchKeywords
+        if (keywords.isEmpty()) {
+            return emptyList()
+        }
+
+        val filtered = places.filter { place ->
+            val normalizedName = place.displayName.text.lowercase().replace(" ", "")
+            val types = place.types?.map { it.lowercase() } ?: emptyList()
+
+            keywords.any { keyword ->
+                normalizedName.contains(keyword) ||
+                    place.displayName.text.lowercase().contains(keyword) ||
+                    types.any { it.contains(keyword) }
+            }
+        }
+
+        return if (filtered.isNotEmpty()) filtered else emptyList()
+    }
+
+    /**
+     * 가중치 비례로 각 키워드별 할당량 계산
+     * 
+     * @param weights 각 키워드의 가중치 리스트
+     * @param totalSlots 총 할당할 개수
+     * @return 각 키워드별 할당량 리스트
+     */
+    private fun calculateKeywordAllocations(weights: List<Double>, totalSlots: Int): List<Int> {
+        if (weights.isEmpty()) return emptyList()
+        
+        val totalWeight = weights.sum()
+        if (totalWeight == 0.0) {
+            // 모든 가중치가 0이면 균등 분배
+            val equalSlots = totalSlots / weights.size
+            return List(weights.size) { equalSlots }
+        }
+        
+        // 가중치 비례로 계산
+        val allocations = weights.map { weight ->
+            ((weight / totalWeight) * totalSlots).toInt()
+        }.toMutableList()
+        
+        // 반올림 오차로 인한 부족분 처리
+        var allocated = allocations.sum()
+        if (allocated < totalSlots) {
+            // 가중치 높은 순서대로 1개씩 추가
+            val sortedIndices = weights.indices.sortedByDescending { weights[it] }
+            for (i in 0 until (totalSlots - allocated)) {
+                allocations[sortedIndices[i % sortedIndices.size]]++
+            }
+        }
+        
+        logger.debug(
+            "키워드 할당량 계산 - 가중치: {}, 할당: {}, 총: {}개",
+            weights.map { "%.2f".format(it) },
+            allocations,
+            allocations.sum()
+        )
+        
+        return allocations
     }
 
     /**

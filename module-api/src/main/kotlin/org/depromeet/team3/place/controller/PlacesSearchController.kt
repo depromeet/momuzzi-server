@@ -32,7 +32,7 @@ class PlacesSearchController(
     )
     @GetMapping
     suspend fun textSearch(
-        @Parameter(description = "검색 키워드", example = "신논현역 한식 맛집", required = false)
+        @Parameter(description = "검색 키워드", required = false)
         @RequestParam(required = false) query: String?,
         @Parameter(description = "모임 ID", example = "1", required = true)
         @RequestParam(required = true) meetingId: Long,
