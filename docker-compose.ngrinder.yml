@@ -47,4 +47,3 @@ services:
 
 networks:
   ngrinder_network:
-    driver: bridge

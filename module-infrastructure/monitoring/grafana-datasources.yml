@@ -10,3 +10,13 @@ datasources:
     editable: true
     jsonData:
       maxLines: 1000
+  
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s
