@@ -123,6 +123,9 @@ services:
       options:
         max-size: "10m"
         max-file: "7"
+    mem_limit: 768m
+    mem_reservation: 512m
+    cpus: 0.8
 
   sonarqube:
     image: sonarqube:10.6.0-community
@@ -137,7 +140,10 @@ services:
       SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER:-sonar}
       SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD:-sonar}
       SONAR_WEB_JAVAADDITIONALOPTS: "-server"
-      SONAR_SEARCH_JAVAADDITIONALOPTS: "-XX:+UseG1GC"
+      SONAR_WEB_JAVAOPTS: "-Xmx256m"
+      SONAR_SEARCH_JAVAADDITIONALOPTS: "-XX:+UseG1GC -XX:ActiveProcessorCount=2"
+      SONAR_SEARCH_JAVAOPTS: "-Xmx512m -Xms512m"
+      SONAR_CE_JAVAOPTS: "-Xmx512m"
       TZ: Asia/Seoul
     ports:
       - "9001:9000"
@@ -152,6 +158,9 @@ services:
       options:
         max-size: "10m"
         max-file: "7"
+    mem_limit: 2g
+    mem_reservation: 1g
+    cpus: 1.5
 
 volumes:
   registry_data:
