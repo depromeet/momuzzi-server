@@ -14,6 +14,7 @@ enum class ErrorCode(
     MISSING_PARAMETER("C003", "필수 파라미터가 누락되었습니다.", 400),
     INVALID_JSON("C004", "잘못된 JSON 형식입니다.", 400),
     USER_ID_REQUIRED("C005", "사용자 ID가 필요합니다.", 400),
+    INVALID_END_TIME("C006", "모임 종료 시간이 현재 시간보다 이전일 수 없습니다. 종료 시간을 다시 확인해주세요.", 400),
     MEETING_ALREADY_CLOSED("C4097", "이미 종료된 모임입니다.", 400),
 
     // 404 Not Found
