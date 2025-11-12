@@ -23,6 +23,7 @@ services:
     ports:
       - "16001:16001"   # nGrinder 웹 콘솔 (HTTP)
       - "16010:16010"   # 에이전트 제어 포트
+      - "8000:80"
     environment:
       - TZ=Asia/Seoul
       - NGRINDER_HOME=/opt/ngrinder-controller
