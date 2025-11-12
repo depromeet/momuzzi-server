@@ -31,6 +31,11 @@ class MeetingPlaceSearchCacheManager {
     private val automaticSearchCache = Caffeine.newBuilder()
         .expireAfterWrite(3, TimeUnit.DAYS)  // 3일 후 만료
         .maximumSize(100)                    // 최대 100개 모임 캐싱
+        .removalListener<Long, AutomaticSearchResult> { key, _, _ ->
+            if (key != null) {
+                meetingMutexMap.remove(key)
+            }
+        }
         .build<Long, AutomaticSearchResult>()
     
     /**

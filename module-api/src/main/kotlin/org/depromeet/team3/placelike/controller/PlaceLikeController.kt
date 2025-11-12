@@ -32,7 +32,7 @@ class PlaceLikeController(
     suspend fun toggleLike(
         @Parameter(description = "모임 ID", required = true)
         @PathVariable meetingId: Long,
-        @Parameter(description = "맛집 Place DB ID", required = true)
+        @Parameter(description = "Place ID", required = true)
         @PathVariable placeId: Long,
         @UserId userId: Long
     ): DpmApiResponse<PlaceLikeResponse> {

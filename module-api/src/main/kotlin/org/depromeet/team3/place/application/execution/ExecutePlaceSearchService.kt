@@ -11,8 +11,8 @@ import org.depromeet.team3.meeting.MeetingQuery
 import org.depromeet.team3.meetingplace.MeetingPlace
 import org.depromeet.team3.meetingplace.MeetingPlaceRepository
 import org.depromeet.team3.place.PlaceQuery
-import org.depromeet.team3.place.application.plan.CreateSurveyKeywordService
 import org.depromeet.team3.place.application.model.PlaceSearchPlan
+import org.depromeet.team3.place.application.plan.CreateSurveyKeywordService
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
 import org.depromeet.team3.place.dto.response.PlacesSearchResponse
 import org.depromeet.team3.place.exception.PlaceSearchException
@@ -21,12 +21,12 @@ import org.depromeet.team3.place.util.PlaceDetailsProcessor
 import org.depromeet.team3.placelike.PlaceLikeRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import kotlin.math.ln
 
 /**
  * PlaceSearchPlan(Manual/Automatic)에 따라 Google Places API 호출을 실행하고
  * 장소 상세 정보·좋아요·가중치 기반 정렬을 적용해 최종 검색 응답을 생성한다.
  *
- * - Manual: 사용자가 직접 입력한 키워드로 단일 검색
  * - Automatic: 설문 기반으로 생성된 여러 키워드로 병렬 검색 후 가중치 기반 병합
  */
 @Service
@@ -40,6 +40,8 @@ class ExecutePlaceSearchService(
 
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
     private val totalFetchSize = 10  // 최종 반환 개수
+    private val weightScoreMultiplier = 100.0
+    private val likeScoreMultiplier = 15.0
 
     suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
         // 캐시 확인 (Automatic 검색 + meetingId 있을 때만)
@@ -57,37 +59,21 @@ class ExecutePlaceSearchService(
                 usedKeywords = cachedResult.usedKeywords
             )
         } else {
-            // 캐시 MISS: 기존 검색 로직 실행
-            when (plan) {
-                // 수동 검색: 사용자가 직접 입력한 단일 키워드로 검색 (캐시 미적용)
-                is PlaceSearchPlan.Manual -> {
-                    val response = fetchPlacesFromGoogle(plan.keyword, plan.stationCoordinates)
-                    val places = response.places ?: emptyList()
-                    
-                    KeywordSearchResult(
-                        places = places,
-                        placeWeights = emptyMap(),
-                        usedKeywords = listOf(plan.keyword)
-                    )
-                }
+            val automaticPlan = plan as? PlaceSearchPlan.Automatic
+                ?: throw IllegalArgumentException("PlaceSearchPlan.Automatic만 지원합니다.")
 
-                // 자동 검색: 설문 기반 키워드 목록으로 병렬 검색 후 가중치 기반 병합
-                is PlaceSearchPlan.Automatic -> {
-                    val result = fetchPlacesForKeywords(plan)
-                    
-                    // 캐시에 저장 (meetingId 있을 때만)
-                    if (request.meetingId != null && result.places.isNotEmpty()) {
-                        cacheManager.cacheAutomaticResult(
-                            meetingId = request.meetingId,
-                            placeIds = result.places.map { it.id },
-                            placeWeights = result.placeWeights,
-                            usedKeywords = result.usedKeywords
-                        )
-                    }
-                    
-                    result
-                }
+            val result = fetchPlacesForKeywords(automaticPlan)
+
+            if (request.meetingId != null && result.places.isNotEmpty()) {
+                cacheManager.cacheAutomaticResult(
+                    meetingId = request.meetingId,
+                    placeIds = result.places.map { it.id },
+                    placeWeights = result.placeWeights,
+                    usedKeywords = result.usedKeywords
+                )
             }
+
+            result
         }
 
         if (keywordResult.places.isEmpty()) {
@@ -165,18 +151,21 @@ class ExecutePlaceSearchService(
         }
 
         // 정렬 우선순위:
-        // 1. 자동 검색(가중치 있음): 가중치 → 좋아요 순
-        // 2. 수동 검색(meetingId 있음): 좋아요 순
-        // 3. 그 외: API 응답 순서 유지
+        // 자동 검색(가중치 있음): (설문가중치 * 100) + (ln(좋아요+1) * 10) 점수 → 좋아요 순
         val sortedItems = when {
-            placeWeightByDbId.isNotEmpty() ->
+            placeWeightByDbId.isNotEmpty() -> {
+                val scoreByPlaceId = items.associate { item ->
+                    val weight = placeWeightByDbId[item.placeId] ?: 0.0
+                    val likeScore = if (item.likeCount > 0) ln(item.likeCount.toDouble() + 1) * likeScoreMultiplier else 0.0
+                    val combinedScore = weight * weightScoreMultiplier + likeScore
+                    item.placeId to combinedScore
+                }
+
                 items.sortedWith(
-                    compareByDescending<PlacesSearchResponse.PlaceItem> { placeWeightByDbId[it.placeId] ?: 0.0 }
+                    compareByDescending<PlacesSearchResponse.PlaceItem> { scoreByPlaceId[it.placeId] ?: 0.0 }
                         .thenByDescending { it.likeCount }
                 )
-
-            request.meetingId != null ->
-                items.sortedByDescending { it.likeCount }
+            }
 
             else -> items
         }
@@ -434,7 +423,7 @@ class ExecutePlaceSearchService(
     /**
      * Google Places Text Search API를 호출하여 장소 목록을 조회한다.
      *
-     * @param query 검색 키워드 (이미 정규화된 상태로 전달됨)
+     * @param query 검색 키워드 (호출 시점에서 정규화되어 있지만, 방어적으로 한 번 더 정규화)
      * @param stationCoordinates 역 좌표 (있으면 반경 3km 내 우선 검색)
      * @return Google Places API 응답 (최대 15개 장소)
      */
@@ -442,8 +431,9 @@ class ExecutePlaceSearchService(
         query: String,
         stationCoordinates: MeetingQuery.StationCoordinates?
     ): PlacesTextSearchResponse {
-        val normalizedQuery = CreateSurveyKeywordService.normalizeKeyword(query)
-        if (normalizedQuery.isBlank()) {
+        // 호출부에서 정규화되지만, 외부 입력을 고려해 한 번 더 정규화
+        val sanitizedQuery = CreateSurveyKeywordService.normalizeKeyword(query)
+        if (sanitizedQuery.isBlank()) {
             throw PlaceSearchException(
                 ErrorCode.PLACE_INVALID_QUERY,
                 detail = mapOf("query" to query)
@@ -453,7 +443,7 @@ class ExecutePlaceSearchService(
         return try {
             withContext(Dispatchers.IO) {
                 placeQuery.textSearch(
-                    query = normalizedQuery,
+                    query = sanitizedQuery,
                     maxResults = totalFetchSize,
                     latitude = stationCoordinates?.latitude,
                     longitude = stationCoordinates?.longitude,
@@ -463,10 +453,10 @@ class ExecutePlaceSearchService(
         } catch (e: PlaceSearchException) {
             throw e
         } catch (e: Exception) {
-            logger.error("Google Places API 호출 실패: query=$normalizedQuery", e)
+            logger.error("Google Places API 호출 실패: query=$sanitizedQuery", e)
             throw PlaceSearchException(
                 ErrorCode.PLACE_SEARCH_FAILED,
-                detail = mapOf("query" to normalizedQuery, "error" to e.message)
+                detail = mapOf("query" to sanitizedQuery, "error" to e.message)
             )
         }
     }

@@ -10,14 +10,6 @@ sealed interface PlaceSearchPlan {
     val stationCoordinates: MeetingQuery.StationCoordinates?
 
     /**
-     *  Query를 통한 수동 검색
-     */
-    data class Manual(
-        val keyword: String,
-        override val stationCoordinates: MeetingQuery.StationCoordinates?
-    ) : PlaceSearchPlan
-
-    /**
      *  설문 결과로 도출된 키워드 기반 검색
      */
     data class Automatic(

@@ -70,7 +70,7 @@ class PlaceSearchIntegrationTest {
     }
 
     @Test
-    fun `BRANCH 카테고리도 50% 이상이면 키워드로 선택됨`() {
+    fun `BRANCH 카테고리는 임계값 이상 득표 시 선택됨`() {
         // given
         val summary = createMockSurveySummary(
             stationName = "강남역",
@@ -91,28 +91,41 @@ class PlaceSearchIntegrationTest {
 
         // then
         assertThat(keywords.map { it.keyword }).contains("강남역 양식 맛집")
-        assertThat(keywords.map { it.keyword }).doesNotContain("강남역 아시안 맛집")
+        assertThat(keywords.map { it.keyword }).contains("강남역 아시안 맛집")
     }
 
     @Test
-    fun `키워드가 부족하면 일반 키워드로 보충됨`() {
-        // given: 득표율이 낮아서 선택되는 키워드가 적음
-        val summary = createMockSurveySummary(
-            stationName = "강남역",
-            totalRespondents = 10,
-            leafVotes = mapOf(101L to 2),  // 20% - 임계값 미달
+    fun `10% 미만 득표만 있으면 일반 키워드 반환`() {
+        // given - 모두 10% 미만
+        val summary = PlaceSurveySummary(
+            stationName = "강남",
+            stationCoordinates = null,
+            totalRespondents = 20,
+            leafVotes = mapOf(
+                101L to 1,  // 5%
+                102L to 1   // 5%
+            ),
+            branchVotes = mapOf(
+                10L to 1,   // 5%
+                20L to 1    // 5%
+            ),
             leafCategories = mapOf(
-                101L to createCategory(101L, "이탈리안", SurveyCategoryLevel.LEAF)
+                101L to createLeafCategory(101L, "파스타", 10L),
+                102L to createLeafCategory(102L, "초밥", 20L)
+            ),
+            branchCategories = mapOf(
+                10L to createCategory(10L, "양식", SurveyCategoryLevel.BRANCH),
+                20L to createCategory(20L, "일식", SurveyCategoryLevel.BRANCH)
             )
         )
 
         // when
-        val keywords = selectSurveyKeywordsService.selectKeywords(summary)
+        val result = selectSurveyKeywordsService.selectKeywords(summary)
 
-        // then
-        assertThat(keywords).isNotEmpty
-        assertThat(keywords.last().keyword).isEqualTo("강남역 맛집")
-        assertThat(keywords.last().weight).isEqualTo(0.1)
+        // then - 일반 키워드로 폴백
+        assertThat(result).hasSize(1)
+        assertThat(result[0].keyword).isEqualTo("강남 맛집")
+        assertThat(result[0].weight).isEqualTo(0.1)
     }
 
     private fun createMockSurveySummary(
@@ -131,6 +144,24 @@ class PlaceSearchIntegrationTest {
             branchVotes = branchVotes,
             leafCategories = leafCategories,
             branchCategories = branchCategories
+        )
+    }
+
+    private fun createLeafCategory(
+        id: Long,
+        name: String,
+        parentId: Long,
+        sortOrder: Int = 0
+    ): SurveyCategory {
+        return SurveyCategory(
+            id = id,
+            parentId = parentId,
+            level = SurveyCategoryLevel.LEAF,
+            name = name,
+            sortOrder = sortOrder,
+            isDeleted = false,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
         )
     }
 

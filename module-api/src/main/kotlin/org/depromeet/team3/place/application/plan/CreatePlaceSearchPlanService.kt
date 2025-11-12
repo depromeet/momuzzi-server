@@ -14,25 +14,11 @@ class CreatePlaceSearchPlanService(
     private val createSurveyKeywordService: CreateSurveyKeywordService
 ) {
     suspend fun resolve(request: PlacesSearchRequest): PlaceSearchPlan {
-        // 설문 결과 기반이 아닌 경우 -> PlaceSearchPlan.Manual 생성
-        val normalizedManualQuery = request.query
-            ?.let { CreateSurveyKeywordService.normalizeKeyword(it) }
-            ?.takeIf { it.isNotBlank() }
-
-        // 설문 결과 기반 -> createSurveyKeywordService 호출
-        val stationCoordinates = request.meetingId?.let { createSurveyKeywordService.getStationCoordinates(it) }
-
-        if (normalizedManualQuery != null) {
-            return PlaceSearchPlan.Manual(
-                keyword = normalizedManualQuery,
-                stationCoordinates = stationCoordinates
-            )
-        }
-
         val meetingId = request.meetingId ?: throw PlaceSearchException(
             errorCode = ErrorCode.MISSING_PARAMETER,
-            detail = mapOf("parameter" to "query|meetingId")
+            detail = mapOf("parameter" to "meetingId")
         )
+        val stationCoordinates = createSurveyKeywordService.getStationCoordinates(meetingId)
 
         // 설문 키워드 생성 (PlaceSearchPlan.Automatic)
         val keywordPlan = createSurveyKeywordService.generateKeywordPlan(meetingId)
@@ -45,7 +31,7 @@ class CreatePlaceSearchPlanService(
 
         return PlaceSearchPlan.Automatic(
             keywords = keywordPlan.keywords,
-            stationCoordinates = keywordPlan.stationCoordinates,
+            stationCoordinates = stationCoordinates,
             fallbackKeyword = keywordPlan.fallbackKeyword
         )
     }

@@ -111,10 +111,7 @@ class GetSurveyAggregateService(
                 }
             }
 
-            // 각 카테고리에 1표씩 추가 (한 참가자당 최대 1표)
-            branchSet.forEach { branchId ->
-                branchVotes[branchId] = (branchVotes[branchId] ?: 0) + 1
-            }
+            // LEAF 득표를 먼저 집계하고, 부모 BRANCH를 branchSet에 추가
             leafSet.forEach { leafId ->
                 leafVotes[leafId] = (leafVotes[leafId] ?: 0) + 1
 
@@ -122,6 +119,11 @@ class GetSurveyAggregateService(
                 if (parentId != null) {
                     branchSet.add(parentId)
                 }
+            }
+
+            // BRANCH 득표는 부모 정보까지 모두 반영한 뒤 집계
+            branchSet.forEach { branchId ->
+                branchVotes[branchId] = (branchVotes[branchId] ?: 0) + 1
             }
         }
 
