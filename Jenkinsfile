@@ -23,6 +23,15 @@ pipeline {
         NCP_SERVER_USER = "ubuntu"
 
         DEPLOY_PATH = "/home/ubuntu/momuzzi-server"
+
+        // SonarQube 설정
+        SONARQUBE_SERVER_NAME = "depromeet-sonarqube"
+        SONARQUBE_TOKEN_CREDENTIALS_ID = "sonarqube-token"
+        SONARQUBE_PROJECT_KEY = "depromeet-team3-server"
+        SONARQUBE_PROJECT_NAME = "Depromeet Team 3 Server"
+        SONARQUBE_SCANNER_IMAGE = "sonarsource/sonar-scanner-cli:5.0.1"
+        SONARQUBE_BINARY_PATH_JAVA = "module-api/build/classes/java/main"
+        SONARQUBE_BINARY_PATH_KOTLIN = "module-api/build/classes/kotlin/main"
         
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=512m"
@@ -87,6 +96,115 @@ pipeline {
                     -Dkotlin.daemon.jvm.options="-Xmx512m,-XX:MaxMetaspaceSize=256m" \
                     -Dkotlin.incremental=false
                     '''
+                }
+            }
+        }
+
+        stage('SonarQube Analysis (PR)') {
+            when {
+                changeRequest()
+            }
+            steps {
+                script {
+                    withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+                        withCredentials([string(
+                            credentialsId: "${SONARQUBE_TOKEN_CREDENTIALS_ID}",
+                            variable: 'SONARQUBE_TOKEN'
+                        )]) {
+                            sh """
+                                mkdir -p module-api/build
+                                docker run --rm \\
+                                  -e SONAR_HOST_URL=$SONAR_HOST_URL \\
+                                  -e SONAR_LOGIN=$SONARQUBE_TOKEN \\
+                                  -v ${env.WORKSPACE}:/usr/src \\
+                                  -w /usr/src \\
+                                  ${SONARQUBE_SCANNER_IMAGE} sonar-scanner \\
+                                    -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \\
+                                    -Dsonar.projectName="${SONARQUBE_PROJECT_NAME}" \\
+                                    -Dsonar.sources=module-api/src/main/java,module-api/src/main/kotlin \\
+                                    -Dsonar.tests=module-api/src/test/java,module-api/src/test/kotlin \\
+                                    -Dsonar.java.binaries=${SONARQUBE_BINARY_PATH_JAVA} \\
+                                    -Dsonar.kotlin.binaries=${SONARQUBE_BINARY_PATH_KOTLIN} \\
+                                    -Dsonar.sourceEncoding=UTF-8 \\
+                                    -Dsonar.pullrequest.key=${env.CHANGE_ID} \\
+                                    -Dsonar.pullrequest.branch=${env.BRANCH_NAME} \\
+                                    -Dsonar.pullrequest.base=${env.CHANGE_TARGET}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate (PR)') {
+            when {
+                changeRequest()
+            }
+            steps {
+                script {
+                    withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Analysis (Main)') {
+            when {
+                expression {
+                    env.BRANCH_NAME == 'main' ||
+                    env.GIT_BRANCH == 'origin/main' ||
+                    env.GIT_BRANCH == 'main' ||
+                    sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                }
+            }
+            steps {
+                script {
+                    withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+                        withCredentials([string(
+                            credentialsId: "${SONARQUBE_TOKEN_CREDENTIALS_ID}",
+                            variable: 'SONARQUBE_TOKEN'
+                        )]) {
+                            sh """
+                                mkdir -p module-api/build
+                                docker run --rm \\
+                                  -e SONAR_HOST_URL=$SONAR_HOST_URL \\
+                                  -e SONAR_LOGIN=$SONARQUBE_TOKEN \\
+                                  -v ${env.WORKSPACE}:/usr/src \\
+                                  -w /usr/src \\
+                                  ${SONARQUBE_SCANNER_IMAGE} sonar-scanner \\
+                                    -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \\
+                                    -Dsonar.projectName="${SONARQUBE_PROJECT_NAME}" \\
+                                    -Dsonar.sources=module-api/src/main/java,module-api/src/main/kotlin \\
+                                    -Dsonar.tests=module-api/src/test/java,module-api/src/test/kotlin \\
+                                    -Dsonar.java.binaries=${SONARQUBE_BINARY_PATH_JAVA} \\
+                                    -Dsonar.kotlin.binaries=${SONARQUBE_BINARY_PATH_KOTLIN} \\
+                                    -Dsonar.sourceEncoding=UTF-8
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate (Main)') {
+            when {
+                expression {
+                    env.BRANCH_NAME == 'main' ||
+                    env.GIT_BRANCH == 'origin/main' ||
+                    env.GIT_BRANCH == 'main' ||
+                    sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                }
+            }
+            steps {
+                script {
+                    withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
                 }
             }
         }
