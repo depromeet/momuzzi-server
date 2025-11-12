@@ -84,7 +84,9 @@ class PlaceDetailsProcessor(
                         weekdayText = placeDetails.regularOpeningHours?.weekdayDescriptions,
                         topReview = topReview,
                         priceRange = priceRange,
-                        addressDescriptor = addressDescriptor?.description
+                        addressDescriptor = addressDescriptor?.description,
+                        latitude = placeDetails.location?.latitude,
+                        longitude = placeDetails.location?.longitude
                     )
                 } catch (e: Exception) {
                     logger.warn("장소 변환 실패: placeId=${place.id}, error=${e.message}")
@@ -101,7 +103,9 @@ class PlaceDetailsProcessor(
                         weekdayText = null,
                         topReview = null,
                         priceRange = null,
-                        addressDescriptor = null
+                        addressDescriptor = null,
+                        latitude = placeDetails?.location?.latitude,
+                        longitude = placeDetails?.location?.longitude
                     )
                 }
             }
@@ -216,7 +220,9 @@ class PlaceDetailsProcessor(
         val weekdayText: List<String>?,
         val topReview: ReviewResult?,
         val priceRange: PriceRangeResult?,
-        val addressDescriptor: String?
+        val addressDescriptor: String?,
+        val latitude: Double? = null,
+        val longitude: Double? = null
     )
     
     data class ReviewResult(

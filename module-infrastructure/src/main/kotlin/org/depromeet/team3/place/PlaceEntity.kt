@@ -25,6 +25,12 @@ class PlaceEntity(
     @Column(nullable = false, length = 1000)
     val address: String,
     
+    @Column(name = "latitude")
+    val latitude: Double? = null,
+    
+    @Column(name = "longitude")
+    val longitude: Double? = null,
+    
     @Column(nullable = false)
     val rating: Double,
     

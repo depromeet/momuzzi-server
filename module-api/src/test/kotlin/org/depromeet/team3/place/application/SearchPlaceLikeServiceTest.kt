@@ -9,6 +9,7 @@ import org.depromeet.team3.meetingplace.MeetingPlaceRepository
 import org.depromeet.team3.meetingplace.exception.MeetingPlaceException
 import org.depromeet.team3.placelike.PlaceLike
 import org.depromeet.team3.placelike.PlaceLikeRepository
+import org.depromeet.team3.placelike.application.SearchPlaceLikeService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
