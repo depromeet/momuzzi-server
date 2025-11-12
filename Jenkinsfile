@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        timestamps()
+    }
+
     triggers {
         githubPush()
     }
@@ -32,6 +36,17 @@ pipeline {
         SONARQUBE_SCANNER_IMAGE = "sonarsource/sonar-scanner-cli:5.0.1"
         SONARQUBE_BINARY_PATH_JAVA = "module-api/build/classes/java/main"
         SONARQUBE_BINARY_PATH_KOTLIN = "module-api/build/classes/kotlin/main"
+
+        // Main 브랜치 감지 로직 통합
+        IS_MAIN_BRANCH = """${sh(
+            script: '''
+                [[ ${BRANCH_NAME} == "main" ]] || \
+                [[ ${GIT_BRANCH} == "origin/main" ]] || \
+                [[ ${GIT_BRANCH} == "main" ]] || \
+                [[ $(git branch --show-current) == "main" ]]
+            ''',
+            returnStatus: true
+        ) == 0}"""
         
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=512m"
@@ -154,10 +169,7 @@ pipeline {
         stage('SonarQube Analysis (Main)') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'main' ||
-                    env.GIT_BRANCH == 'origin/main' ||
-                    env.GIT_BRANCH == 'main' ||
-                    sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                    env.IS_MAIN_BRANCH == 'true'
                 }
             }
             steps {
@@ -192,10 +204,7 @@ pipeline {
         stage('SonarQube Quality Gate (Main)') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'main' ||
-                    env.GIT_BRANCH == 'origin/main' ||
-                    env.GIT_BRANCH == 'main' ||
-                    sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
+                    env.IS_MAIN_BRANCH == 'true'
                 }
             }
             steps {
@@ -226,12 +235,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' ||
-                                     env.GIT_BRANCH == 'origin/main' ||
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-
-                    if (isMainBranch) {
+                    if (env.IS_MAIN_BRANCH == 'true') {
                         // Docker 캐시 정리 (손상된 레이어 제거)
                         sh """
                             docker system prune -af
