@@ -40,6 +40,7 @@ class ExecutePlaceSearchService(
 
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
     private val totalFetchSize = 10  // 최종 반환 개수
+    private val photoFallbackBuffer = 5  // 사진 없는 결과를 대체할 여분 슬롯
     private val weightScoreMultiplier = 100.0
     private val likeScoreMultiplier = 15.0
 
@@ -55,6 +56,7 @@ class ExecutePlaceSearchService(
             val places = fetchPlacesFromCache(cachedResult.placeIds)
             KeywordSearchResult(
                 places = places,
+                fallbackPlaces = emptyList(),
                 placeWeights = cachedResult.placeWeights,
                 usedKeywords = cachedResult.usedKeywords
             )
@@ -62,7 +64,7 @@ class ExecutePlaceSearchService(
             val automaticPlan = plan as? PlaceSearchPlan.Automatic
                 ?: throw IllegalArgumentException("PlaceSearchPlan.Automatic만 지원합니다.")
 
-            val result = fetchPlacesForKeywords(automaticPlan)
+            val result = fetchPlacesForKeywords(automaticPlan, photoFallbackBuffer)
 
             if (request.meetingId != null && result.places.isNotEmpty()) {
                 cacheManager.cacheAutomaticResult(
@@ -81,10 +83,12 @@ class ExecutePlaceSearchService(
             return@supervisorScope PlacesSearchResponse(emptyList())
         }
 
-        // 가중치 기반으로 정렬 후 상위 15개만 상세 조회
-        val placesToProcess = keywordResult.places
+        // 가중치 기반으로 정렬 후 상위 (결과 + 여분) 개수만큼 상세 조회
+        val candidatePlaces = (keywordResult.places + keywordResult.fallbackPlaces)
+            .distinctBy { it.id }
+        val placesToProcess = candidatePlaces
             .sortedByDescending { keywordResult.placeWeights[it.id] ?: 0.0 }
-            .take(totalFetchSize)
+            .take(totalFetchSize + photoFallbackBuffer)
         val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(placesToProcess)
 
         if (allPlaceDetails.isEmpty()) {
@@ -162,15 +166,18 @@ class ExecutePlaceSearchService(
                 }
 
                 items.sortedWith(
-                    compareByDescending<PlacesSearchResponse.PlaceItem> { scoreByPlaceId[it.placeId] ?: 0.0 }
+                    compareByDescending<PlacesSearchResponse.PlaceItem> { hasPhoto(it) }
+                        .thenByDescending { scoreByPlaceId[it.placeId] ?: 0.0 }
                         .thenByDescending { it.likeCount }
                 )
             }
 
-            else -> items
+            else -> items.sortedWith(
+                compareByDescending<PlacesSearchResponse.PlaceItem> { hasPhoto(it) }
+            )
         }
 
-        PlacesSearchResponse(sortedItems)
+        PlacesSearchResponse(sortedItems.take(totalFetchSize))
     }
 
     /**
@@ -209,6 +216,9 @@ class ExecutePlaceSearchService(
             }
         }
     }
+
+    private fun hasPhoto(item: PlacesSearchResponse.PlaceItem): Boolean =
+        item.photos?.isNullOrEmpty() == false
     
     /**
      * 설문 기반 키워드 목록으로 병렬 검색을 수행하고 결과를 가중치 비례로 병합한다.
@@ -230,7 +240,10 @@ class ExecutePlaceSearchService(
      * @param plan 설문 기반으로 생성된 키워드 목록과 역 좌표
      * @return 병합된 장소 목록, 장소별 가중치, 사용된 키워드 목록
      */
-    private suspend fun fetchPlacesForKeywords(plan: PlaceSearchPlan.Automatic): KeywordSearchResult = coroutineScope {
+    private suspend fun fetchPlacesForKeywords(
+        plan: PlaceSearchPlan.Automatic,
+        fallbackLimit: Int
+    ): KeywordSearchResult = coroutineScope {
         // 1단계: 각 키워드로 병렬 API 호출
         val deferredResponses = plan.keywords.map { candidate ->
             async {
@@ -254,7 +267,10 @@ class ExecutePlaceSearchService(
         val selectedPlaces = mutableListOf<PlacesTextSearchResponse.Place>()
         val placeWeights = mutableMapOf<String, Double>()
         val usedPlaceIds = mutableSetOf<String>()
+        val fallbackCandidates = mutableListOf<PlacesTextSearchResponse.Place>()
+        val fallbackIds = mutableSetOf<String>()
         val appliedKeywords = mutableSetOf<String>()
+        val fallbackResponses = mutableListOf<Pair<CreateSurveyKeywordService.KeywordCandidate, List<PlacesTextSearchResponse.Place>>>()
 
         results.forEach { appliedKeywords.add(it.first.keyword) }
 
@@ -263,41 +279,53 @@ class ExecutePlaceSearchService(
             if (allocation == 0) return@forEachIndexed
             
             val rawPlaces = response.places ?: emptyList()
-            val places = filterPlacesByKeyword(rawPlaces, candidate)
+            val candidatePlaces = filterPlacesByKeyword(rawPlaces, candidate)
+                .sortedByDescending { it.rating ?: 0.0 }
             var addedCount = 0
-            
-            // 평점 높은 순으로 정렬하여 할당량만큼 선택
-            places
-                .filter { !usedPlaceIds.contains(it.id) }  // 중복 제거
-                .sortedByDescending { it.rating ?: 0.0 }   // 평점 순
-                .take(allocation)                           // 할당량만큼
-                .forEach { place ->
+
+            candidatePlaces.forEach { place ->
+                if (usedPlaceIds.contains(place.id)) return@forEach
+
+                if (addedCount < allocation && selectedPlaces.size < totalFetchSize) {
                     selectedPlaces.add(place)
                     placeWeights[place.id] = candidate.weight
                     usedPlaceIds.add(place.id)
                     addedCount++
+                } else if (fallbackCandidates.size < fallbackLimit && fallbackIds.add(place.id)) {
+                    placeWeights.putIfAbsent(place.id, candidate.weight)
+                    fallbackCandidates.add(place)
                 }
+            }
 
-            if (addedCount < allocation) {
+            if (addedCount < allocation && selectedPlaces.size < totalFetchSize) {
                 val fallbackKeyword = candidate.fallbackKeyword
                 if (!fallbackKeyword.isNullOrBlank()) {
                     val fallbackResponse = fetchPlacesFromGoogle(fallbackKeyword, plan.stationCoordinates)
                     val fallbackRawPlaces = fallbackResponse.places ?: emptyList()
                     val fallbackPlaces = filterPlacesByKeyword(fallbackRawPlaces, candidate, candidate.fallbackMatchKeywords)
-                    var fallbackAdded = false
-                    fallbackPlaces
-                        .filter { !usedPlaceIds.contains(it.id) }
                         .sortedByDescending { it.rating ?: 0.0 }
-                        .take(allocation - addedCount)
-                        .forEach { place ->
+
+                    fallbackResponses.add(candidate to fallbackPlaces)
+
+                    var fallbackUsed = false
+
+                    fallbackPlaces.forEach { place ->
+                        if (usedPlaceIds.contains(place.id)) return@forEach
+
+                        if (addedCount < allocation && selectedPlaces.size < totalFetchSize) {
                             selectedPlaces.add(place)
                             placeWeights[place.id] = candidate.weight
                             usedPlaceIds.add(place.id)
                             addedCount++
-                            fallbackAdded = true
+                            fallbackUsed = true
+                        } else if (fallbackCandidates.size < fallbackLimit && fallbackIds.add(place.id)) {
+                            placeWeights.putIfAbsent(place.id, candidate.weight)
+                            fallbackCandidates.add(place)
+                            fallbackUsed = true
                         }
+                    }
 
-                    if (fallbackAdded) {
+                    if (fallbackUsed) {
                         appliedKeywords.add(fallbackKeyword)
                     }
                 }
@@ -324,6 +352,35 @@ class ExecutePlaceSearchService(
             }
         }
 
+        // fallback 후보군 보충 (가중치 순 → 평점 순, 기존 선택 제외)
+        if (fallbackCandidates.size < fallbackLimit) {
+            val candidateSources = buildList {
+                addAll(results.map { (candidate, resp) ->
+                    candidate to filterPlacesByKeyword(resp.places ?: emptyList(), candidate)
+                        .sortedByDescending { it.rating ?: 0.0 }
+                })
+                addAll(fallbackResponses)
+            }
+
+            candidateSources.forEach { (candidate, places) ->
+                places
+                    .filter { place -> !usedPlaceIds.contains(place.id) && fallbackIds.add(place.id) }
+                    .sortedByDescending { it.rating ?: 0.0 }
+                    .forEach { place ->
+                        if (fallbackCandidates.size < fallbackLimit) {
+                            fallbackCandidates.add(place)
+                            placeWeights.putIfAbsent(place.id, candidate.weight)
+                        }
+                    }
+
+                if (fallbackCandidates.size >= fallbackLimit) return@forEach
+            }
+        }
+
+        // 이미 선택된 ID는 fallback 후보에서 제거
+        val uniqueFallbackCandidates = fallbackCandidates
+            .filterNot { usedPlaceIds.contains(it.id) }
+
         // 5단계: 최종 정렬 (가중치 순 → 평점 순)
         // 좋아요 정렬은 나중에 search() 메서드에서 DB 데이터와 함께 처리됨
         val sortedPlaces = selectedPlaces
@@ -331,11 +388,20 @@ class ExecutePlaceSearchService(
                 compareByDescending<PlacesTextSearchResponse.Place> { placeWeights[it.id] ?: 0.0 }
                     .thenByDescending { it.rating ?: 0.0 }
             )
-            .take(totalFetchSize)
 
         if (sortedPlaces.isNotEmpty()) {
+            val primaryPlaces = sortedPlaces.take(totalFetchSize)
+            val primaryIds = primaryPlaces.map { it.id }.toSet()
+
             return@coroutineScope KeywordSearchResult(
-                places = sortedPlaces,
+                places = primaryPlaces,
+                fallbackPlaces = uniqueFallbackCandidates
+                    .filter { it.id !in primaryIds }
+                    .sortedWith(
+                        compareByDescending<PlacesTextSearchResponse.Place> { placeWeights[it.id] ?: 0.0 }
+                            .thenByDescending { it.rating ?: 0.0 }
+                    )
+                    .take(fallbackLimit),
                 placeWeights = placeWeights,
                 usedKeywords = appliedKeywords.toList()
             )
@@ -349,6 +415,7 @@ class ExecutePlaceSearchService(
 
         KeywordSearchResult(
             places = fallbackPlaces,
+            fallbackPlaces = emptyList(),
             placeWeights = fallbackWeights,
             usedKeywords = listOf(plan.fallbackKeyword)
         )
@@ -534,6 +601,7 @@ class ExecutePlaceSearchService(
 
     private data class KeywordSearchResult(
         val places: List<PlacesTextSearchResponse.Place>,
+        val fallbackPlaces: List<PlacesTextSearchResponse.Place>,
         val placeWeights: Map<String, Double>,
         val usedKeywords: List<String>
     )
