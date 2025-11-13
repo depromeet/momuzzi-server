@@ -249,8 +249,8 @@ class GetMeetingDetailServiceTest {
     }
 
     @Test
-    @DisplayName("설문이 없는 참가자는 participantList에 포함되지 않는다")
-    fun `설문이 없는 참가자는 participantList에 포함되지 않는다`() {
+    @DisplayName("설문이 없는 참가자도 participantList에 포함된다")
+    fun `설문이 없는 참가자도 participantList에 포함된다`() {
         // given
         val meetingId = 1L
         val userId = 234L
@@ -303,9 +303,18 @@ class GetMeetingDetailServiceTest {
         val result = getMeetingDetailService.invoke(meetingId, userId)
 
         // then
-        assertEquals(1, result.participantList.size) // 설문이 있는 참가자만 포함
-        assertEquals(456L, result.participantList[0].userId)
-        assertEquals("설문한 참가자", result.participantList[0].nickname)
+        assertEquals(2, result.participantList.size) // 설문이 있는 참가자와 없는 참가자 모두 포함
+
+        val participantUserIds = result.participantList.map { it.userId }.sorted()
+        assertEquals(listOf(456L, 789L), participantUserIds)
+
+        val surveyParticipant = result.participantList.find { it.userId == 456L }
+        assertEquals("설문한 참가자", surveyParticipant?.nickname)
+        
+        // 설문 안 한 참가자 확인 (selectedCategories는 빈 리스트)
+        val noSurveyParticipant = result.participantList.find { it.userId == 789L }
+        assertEquals("설문 안 한 참가자", noSurveyParticipant?.nickname)
+        assertEquals(emptyList(), noSurveyParticipant?.selectedCategories)
     }
 }
 
