@@ -63,6 +63,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                deleteDir()
                 checkout scm
                 script {
                     env.GIT_COMMIT_SHORT = sh(
