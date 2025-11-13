@@ -62,3 +62,4 @@ out/
 
 # nginx auth files
 module-infra/nginx/.htpasswd
+module-infrastructure/ngrinder/controller/

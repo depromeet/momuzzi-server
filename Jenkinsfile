@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    options {
-        timestamps()
-    }
-
     triggers {
         githubPush()
     }
