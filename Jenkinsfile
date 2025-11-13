@@ -36,10 +36,14 @@ pipeline {
         // Main 브랜치 감지 로직 통합
         IS_MAIN_BRANCH = """${sh(
             script: '''
-                [[ ${BRANCH_NAME} == "main" ]] || \
-                [[ ${GIT_BRANCH} == "origin/main" ]] || \
-                [[ ${GIT_BRANCH} == "main" ]] || \
-                [[ $(git branch --show-current) == "main" ]]
+                if [ "${BRANCH_NAME}" = "main" ] || \
+                   [ "${GIT_BRANCH}" = "origin/main" ] || \
+                   [ "${GIT_BRANCH}" = "main" ] || \
+                   [ "$(git branch --show-current)" = "main" ]; then
+                    exit 0
+                else
+                    exit 1
+                fi
             ''',
             returnStatus: true
         ) == 0}"""
