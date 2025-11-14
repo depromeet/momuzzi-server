@@ -99,7 +99,7 @@ class GetMeetingDetailService(
 
                 MeetingParticipantInfo(
                     userId = attendee.userId,
-                    nickname = attendee.attendeeNickname,
+                    nickname = attendee.attendeeNickname ?: "알 수 없음",
                     profileColor = attendee.muzziColor.name.lowercase(),
                     selectedCategories = selectedCategoryList
                 )
