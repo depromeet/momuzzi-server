@@ -74,27 +74,38 @@ pipeline {
                         returnStdout: true
                     ).trim()
                     
-                    env.IS_MAIN_BRANCH = (
-                        sh(
-                            script: """
-                                if [ "${currentCommit}" = "${mainCommit}" ] || \
-                                   [ "\${BRANCH_NAME}" = "main" ] || \
-                                   [ "\${GIT_BRANCH}" = "origin/main" ] || \
-                                   [ "\${GIT_BRANCH}" = "main" ] || \
-                                   [ "\$(git branch --show-current)" = "main" ]; then
-                                    echo "Detected as main branch"
-                                    exit 0
-                                else
-                                    echo "Not main branch"
-                                    exit 1
-                                fi
-                            """,
-                            returnStatus: true
-                        ) == 0
-                    ).toString()
+                    // 브랜치 확인
+                    def branchCheckResult = sh(
+                        script: """
+                            if [ "${currentCommit}" = "${mainCommit}" ] || \
+                               [ "\${BRANCH_NAME}" = "main" ] || \
+                               [ "\${GIT_BRANCH}" = "origin/main" ] || \
+                               [ "\${GIT_BRANCH}" = "main" ] || \
+                               [ "\$(git branch --show-current)" = "main" ]; then
+                                echo "Detected as main branch"
+                                exit 0
+                            else
+                                echo "Not main branch"
+                                exit 1
+                            fi
+                        """,
+                        returnStatus: true
+                    )
                     
                     echo "Current commit: ${currentCommit}"
                     echo "Main commit: ${mainCommit}"
+                    echo "Branch check result: ${branchCheckResult}"
+                    echo "Branch check result type: ${branchCheckResult.class}"
+                    
+                    // 명시적으로 문자열로 설정
+                    if (branchCheckResult == 0) {
+                        env.IS_MAIN_BRANCH = 'true'
+                        echo "Setting IS_MAIN_BRANCH to true"
+                    } else {
+                        env.IS_MAIN_BRANCH = 'false'
+                        echo "Setting IS_MAIN_BRANCH to false"
+                    }
+                    
                     echo "IS_MAIN_BRANCH: ${env.IS_MAIN_BRANCH}"
                 }
             }
@@ -262,7 +273,14 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    if (env.IS_MAIN_BRANCH == 'true') {
+                    // 현재 커밋과 origin/main 비교 (매번 직접 확인)
+                    def currentCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                    def mainCommit = sh(script: "git rev-parse origin/main", returnStdout: true).trim()
+                    def isMainBranch = (currentCommit == mainCommit)
+                    
+                    echo "Docker Build & Push: currentCommit=${currentCommit}, mainCommit=${mainCommit}, isMainBranch=${isMainBranch}"
+                    
+                    if (isMainBranch) {
                         // Docker 캐시 정리 (손상된 레이어 제거)
                         sh """
                             docker system prune -af
@@ -324,8 +342,14 @@ pipeline {
         stage('Deploy to NCP Server') {
             steps {
                 script {
-                    // env.IS_MAIN_BRANCH는 Checkout 단계에서 이미 설정됨
-                    if (env.IS_MAIN_BRANCH == 'true') {
+                    // 현재 커밋과 origin/main 비교 (매번 직접 확인)
+                    def currentCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                    def mainCommit = sh(script: "git rev-parse origin/main", returnStdout: true).trim()
+                    def isMainBranch = (currentCommit == mainCommit)
+                    
+                    echo "Deploy to NCP: currentCommit=${currentCommit}, mainCommit=${mainCommit}, isMainBranch=${isMainBranch}"
+                    
+                    if (isMainBranch) {
                         // 서버의 .env 파일을 Jenkins 워크스페이스로 복사
                         sh '''
                             cp /home/ubuntu/momuzzi-server/.env .env
