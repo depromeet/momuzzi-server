@@ -17,12 +17,12 @@ enum class MuzziColor {
     companion object {
         fun getOrDefault(name: String?): MuzziColor {
             return if (name.isNullOrBlank()) {
-                DEFAULT
+                NONE
             } else {
                 try {
                     valueOf(name.uppercase())
                 } catch (e: IllegalArgumentException) {
-                    DEFAULT
+                    NONE
                 }
             }
         }
