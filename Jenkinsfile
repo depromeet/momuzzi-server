@@ -28,13 +28,13 @@ pipeline {
         DEPLOY_PATH = "/home/ubuntu/momuzzi-server"
 
         // SonarQube 설정
-        SONARQUBE_SERVER_NAME = "depromeet-sonarqube"
-        SONARQUBE_TOKEN_CREDENTIALS_ID = "sonarqube-token"
-        SONARQUBE_PROJECT_KEY = "depromeet-team3-server"
-        SONARQUBE_PROJECT_NAME = "Depromeet Team 3 Server"
-        SONARQUBE_SCANNER_IMAGE = "sonarsource/sonar-scanner-cli:5.0.1"
-        SONARQUBE_BINARY_PATH_JAVA = "module-api/build/classes/java/main"
-        SONARQUBE_BINARY_PATH_KOTLIN = "module-api/build/classes/kotlin/main"
+//         SONARQUBE_SERVER_NAME = "depromeet-sonarqube"
+//         SONARQUBE_TOKEN_CREDENTIALS_ID = "sonarqube-token"
+//         SONARQUBE_PROJECT_KEY = "depromeet-team3-server"
+//         SONARQUBE_PROJECT_NAME = "Depromeet Team 3 Server"
+//         SONARQUBE_SCANNER_IMAGE = "sonarsource/sonar-scanner-cli:5.0.1"
+//         SONARQUBE_BINARY_PATH_JAVA = "module-api/build/classes/java/main"
+//         SONARQUBE_BINARY_PATH_KOTLIN = "module-api/build/classes/kotlin/main"
 
         // Main 브랜치 감지 로직 통합
         IS_MAIN_BRANCH = """${sh(
