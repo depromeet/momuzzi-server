@@ -1,6 +1,7 @@
 package org.depromeet.team3.meetingattendee
 
 enum class MuzziColor {
+    NONE,
     DEFAULT,
     STRAWBERRY,
     MATCHA,

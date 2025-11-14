@@ -8,7 +8,7 @@ data class MeetingParticipantInfo(
     val userId: Long,
     
     @Schema(description = "참여자 닉네임", example = "아따맘마")
-    val nickname: String,
+    val nickname: String?,
     
     @Schema(description = "프로필 색상", example = "choco")
     val profileColor: String,

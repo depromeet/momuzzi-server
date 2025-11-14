@@ -62,7 +62,7 @@ class CreateMeetingService(
             meetingId = meetingId,
             userId = userId,
             attendeeNickname = null,
-            muzziColor = MuzziColor.DEFAULT,
+            muzziColor = MuzziColor.NONE,
             createdAt = null,
             updatedAt = null
         )
