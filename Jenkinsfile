@@ -74,27 +74,29 @@ pipeline {
                         returnStdout: true
                     ).trim()
                     
-                    env.IS_MAIN_BRANCH = (
-                        sh(
-                            script: """
-                                if [ "${currentCommit}" = "${mainCommit}" ] || \
-                                   [ "\${BRANCH_NAME}" = "main" ] || \
-                                   [ "\${GIT_BRANCH}" = "origin/main" ] || \
-                                   [ "\${GIT_BRANCH}" = "main" ] || \
-                                   [ "\$(git branch --show-current)" = "main" ]; then
-                                    echo "Detected as main branch"
-                                    exit 0
-                                else
-                                    echo "Not main branch"
-                                    exit 1
-                                fi
-                            """,
-                            returnStatus: true
-                        ) == 0
-                    ).toString()
+                    // 브랜치 확인
+                    def branchCheckResult = sh(
+                        script: """
+                            if [ "${currentCommit}" = "${mainCommit}" ] || \
+                               [ "\${BRANCH_NAME}" = "main" ] || \
+                               [ "\${GIT_BRANCH}" = "origin/main" ] || \
+                               [ "\${GIT_BRANCH}" = "main" ] || \
+                               [ "\$(git branch --show-current)" = "main" ]; then
+                                echo "Detected as main branch"
+                                exit 0
+                            else
+                                echo "Not main branch"
+                                exit 1
+                            fi
+                        """,
+                        returnStatus: true
+                    )
+                    
+                    env.IS_MAIN_BRANCH = (branchCheckResult == 0) ? 'true' : 'false'
                     
                     echo "Current commit: ${currentCommit}"
                     echo "Main commit: ${mainCommit}"
+                    echo "Branch check result: ${branchCheckResult}"
                     echo "IS_MAIN_BRANCH: ${env.IS_MAIN_BRANCH}"
                 }
             }
