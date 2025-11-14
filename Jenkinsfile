@@ -92,11 +92,20 @@ pipeline {
                         returnStatus: true
                     )
                     
-                    env.IS_MAIN_BRANCH = (branchCheckResult == 0) ? 'true' : 'false'
-                    
                     echo "Current commit: ${currentCommit}"
                     echo "Main commit: ${mainCommit}"
                     echo "Branch check result: ${branchCheckResult}"
+                    echo "Branch check result type: ${branchCheckResult.class}"
+                    
+                    // 명시적으로 문자열로 설정
+                    if (branchCheckResult == 0) {
+                        env.IS_MAIN_BRANCH = 'true'
+                        echo "Setting IS_MAIN_BRANCH to true"
+                    } else {
+                        env.IS_MAIN_BRANCH = 'false'
+                        echo "Setting IS_MAIN_BRANCH to false"
+                    }
+                    
                     echo "IS_MAIN_BRANCH: ${env.IS_MAIN_BRANCH}"
                 }
             }
