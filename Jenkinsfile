@@ -37,19 +37,7 @@ pipeline {
 //         SONARQUBE_BINARY_PATH_KOTLIN = "module-api/build/classes/kotlin/main"
 
         // Main 브랜치 감지 로직 통합
-        IS_MAIN_BRANCH = """${sh(
-            script: '''
-                if [ "${BRANCH_NAME}" = "main" ] || \
-                   [ "${GIT_BRANCH}" = "origin/main" ] || \
-                   [ "${GIT_BRANCH}" = "main" ] || \
-                   [ "$(git branch --show-current)" = "main" ]; then
-                    exit 0
-                else
-                    exit 1
-                fi
-            ''',
-            returnStatus: true
-        ) == 0}"""
+        IS_MAIN_BRANCH = "false"
         
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=512m"
@@ -73,6 +61,21 @@ pipeline {
                         script: "git rev-parse --short HEAD",
                         returnStdout: true
                     ).trim()
+                    env.IS_MAIN_BRANCH = (
+                        sh(
+                            script: '''
+                                if [ "${BRANCH_NAME}" = "main" ] || \
+                                   [ "${GIT_BRANCH}" = "origin/main" ] || \
+                                   [ "${GIT_BRANCH}" = "main" ] || \
+                                   [ "$(git branch --show-current)" = "main" ]; then
+                                    exit 0
+                                else
+                                    exit 1
+                                fi
+                            ''',
+                            returnStatus: true
+                        ) == 0
+                    ).toString()
                 }
             }
         }
