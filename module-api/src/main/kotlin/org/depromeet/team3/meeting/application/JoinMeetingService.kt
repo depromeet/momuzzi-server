@@ -31,7 +31,7 @@ class JoinMeetingService(
             meetingId,
             userId,
             null,
-            MuzziColor.NONE,
+            MuzziColor.DEFAULT,
             null, null
         )
 
