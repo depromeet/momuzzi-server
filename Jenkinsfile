@@ -61,21 +61,41 @@ pipeline {
                         script: "git rev-parse --short HEAD",
                         returnStdout: true
                     ).trim()
+                    
+                    // 현재 커밋 해시
+                    def currentCommit = sh(
+                        script: "git rev-parse HEAD",
+                        returnStdout: true
+                    ).trim()
+                    
+                    // origin/main의 HEAD 커밋 해시
+                    def mainCommit = sh(
+                        script: "git rev-parse origin/main",
+                        returnStdout: true
+                    ).trim()
+                    
                     env.IS_MAIN_BRANCH = (
                         sh(
-                            script: '''
-                                if [ "${BRANCH_NAME}" = "main" ] || \
-                                   [ "${GIT_BRANCH}" = "origin/main" ] || \
-                                   [ "${GIT_BRANCH}" = "main" ] || \
-                                   [ "$(git branch --show-current)" = "main" ]; then
+                            script: """
+                                if [ "${currentCommit}" = "${mainCommit}" ] || \
+                                   [ "\${BRANCH_NAME}" = "main" ] || \
+                                   [ "\${GIT_BRANCH}" = "origin/main" ] || \
+                                   [ "\${GIT_BRANCH}" = "main" ] || \
+                                   [ "\$(git branch --show-current)" = "main" ]; then
+                                    echo "Detected as main branch"
                                     exit 0
                                 else
+                                    echo "Not main branch"
                                     exit 1
                                 fi
-                            ''',
+                            """,
                             returnStatus: true
                         ) == 0
                     ).toString()
+                    
+                    echo "Current commit: ${currentCommit}"
+                    echo "Main commit: ${mainCommit}"
+                    echo "IS_MAIN_BRANCH: ${env.IS_MAIN_BRANCH}"
                 }
             }
         }
@@ -304,12 +324,8 @@ pipeline {
         stage('Deploy to NCP Server') {
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' ||
-                                     env.GIT_BRANCH == 'origin/main' ||
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-
-                    if (isMainBranch) {
+                    // env.IS_MAIN_BRANCH는 Checkout 단계에서 이미 설정됨
+                    if (env.IS_MAIN_BRANCH == 'true') {
                         // 서버의 .env 파일을 Jenkins 워크스페이스로 복사
                         sh '''
                             cp /home/ubuntu/momuzzi-server/.env .env
