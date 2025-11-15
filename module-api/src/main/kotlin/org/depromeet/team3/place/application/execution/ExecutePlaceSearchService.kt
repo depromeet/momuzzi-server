@@ -35,7 +35,7 @@ class ExecutePlaceSearchService(
     private val placeDetailsProcessor: PlaceDetailsProcessor,
     private val meetingPlaceRepository: MeetingPlaceRepository,
     private val placeLikeRepository: PlaceLikeRepository,
-    private val cacheManager: MeetingPlaceSearchCacheManager
+    private val searchService: MeetingPlaceSearchService
 ) {
 
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
@@ -45,38 +45,23 @@ class ExecutePlaceSearchService(
     private val likeScoreMultiplier = 15.0
 
     suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
-        // 캐시 확인 (Automatic 검색 + meetingId 있을 때만)
-        val cachedResult = if (plan is PlaceSearchPlan.Automatic && request.meetingId != null) {
-            cacheManager.getCachedAutomaticResult(request.meetingId)
+        // DB 저장된 결과 확인 (Automatic 검색 + meetingId 있을 때만)
+        val storedResult = if (plan is PlaceSearchPlan.Automatic && request.meetingId != null) {
+            searchService.find(request.meetingId)
         } else null
         
-        val keywordResult = if (cachedResult != null) {
-            // 캐시 HIT: 저장된 결과를 그대로 사용 (Place 정보 + 가중치)
-            logger.info("자동 검색 캐시 HIT - meetingId=${request.meetingId}, places=${cachedResult.placeIds.size}개")
-            val places = fetchPlacesFromCache(cachedResult.placeIds)
-            KeywordSearchResult(
-                places = places,
-                fallbackPlaces = emptyList(),
-                placeWeights = cachedResult.placeWeights,
-                usedKeywords = cachedResult.usedKeywords
-            )
-        } else {
-            val automaticPlan = plan as? PlaceSearchPlan.Automatic
-                ?: throw IllegalArgumentException("PlaceSearchPlan.Automatic만 지원합니다.")
-
-            val result = fetchPlacesForKeywords(automaticPlan, photoFallbackBuffer)
-
-            if (request.meetingId != null && result.places.isNotEmpty()) {
-                cacheManager.cacheAutomaticResult(
-                    meetingId = request.meetingId,
-                    placeIds = result.places.map { it.id },
-                    placeWeights = result.placeWeights,
-                    usedKeywords = result.usedKeywords
-                )
-            }
-
-            result
+        // 저장된 결과가 있으면 좋아요 정보만 업데이트해서 반환
+        if (storedResult != null && request.meetingId != null) {
+            logger.info("저장된 검색 결과 사용 - meetingId=${request.meetingId}, places=${storedResult.items.size}개")
+            val updatedItems = updateLikesForStoredItems(storedResult.items, request.meetingId, request.userId)
+            return@supervisorScope PlacesSearchResponse(updatedItems)
         }
+        
+        // 저장된 결과 없음 -> 새로 검색
+        val automaticPlan = plan as? PlaceSearchPlan.Automatic
+            ?: throw IllegalArgumentException("PlaceSearchPlan.Automatic만 지원합니다.")
+
+        val keywordResult = fetchPlacesForKeywords(automaticPlan, photoFallbackBuffer)
 
         if (keywordResult.places.isEmpty()) {
             logger.info("장소 검색 결과 없음 - keywords={}, meetingId={}", keywordResult.usedKeywords, request.meetingId)
@@ -177,7 +162,15 @@ class ExecutePlaceSearchService(
             )
         }
 
-        PlacesSearchResponse(sortedItems.take(totalFetchSize))
+        val finalItems = sortedItems.take(totalFetchSize)
+        val response = PlacesSearchResponse(finalItems)
+        
+        // DB에 검색 결과 저장 (meetingId가 있을 때만)
+        if (request.meetingId != null && finalItems.isNotEmpty()) {
+            searchService.save(request.meetingId, response)
+        }
+
+        response
     }
 
     /**
@@ -593,6 +586,44 @@ class ExecutePlaceSearchService(
             val likes = if (placeDbId != null) likesByPlaceDbId[placeDbId] ?: emptyList() else emptyList()
 
             PlaceLikeInfo(
+                likeCount = likes.size,
+                isLiked = userId != null && likes.any { it.userId == userId }
+            )
+        }
+    }
+
+    /**
+     * 저장된 검색 결과의 좋아요 정보만 업데이트
+     */
+    private suspend fun updateLikesForStoredItems(
+        storedItems: List<PlacesSearchResponse.PlaceItem>,
+        meetingId: Long,
+        userId: Long?
+    ): List<PlacesSearchResponse.PlaceItem> = withContext(Dispatchers.IO) {
+        if (storedItems.isEmpty()) return@withContext emptyList()
+        
+        // PlaceItem의 placeId는 DB ID이므로 직접 사용
+        val placeDbIds = storedItems.map { it.placeId }
+        val meetingPlaces = createOrGetMeetingPlaces(meetingId, placeDbIds)
+        
+        if (meetingPlaces.isEmpty()) {
+            return@withContext storedItems
+        }
+        
+        // MeetingPlace ID -> Place DB ID 매핑
+        val meetingPlaceIdToPlaceDbId = meetingPlaces
+            .filter { it.id != null }
+            .associate { it.id!! to it.placeId }
+        
+        // 좋아요 정보 조회
+        val placeLikes = placeLikeRepository.findByMeetingPlaceIds(meetingPlaceIdToPlaceDbId.keys.toList())
+        val likesByPlaceDbId = placeLikes
+            .groupBy { meetingPlaceIdToPlaceDbId[it.meetingPlaceId] }
+        
+        // 각 아이템의 좋아요 정보 업데이트
+        storedItems.map { item ->
+            val likes = likesByPlaceDbId[item.placeId] ?: emptyList()
+            item.copy(
                 likeCount = likes.size,
                 isLiked = userId != null && likes.any { it.userId == userId }
             )
