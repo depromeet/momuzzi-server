@@ -41,7 +41,7 @@ class ExecutePlaceSearchService(
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
     private val totalFetchSize = 10  // 최종 반환 개수
     private val photoFallbackBuffer = 5  // 사진 없는 결과를 대체할 여분 슬롯
-    private val keywordFetchSize = 5  // 키워드당 API 요청 개수 (API 호출 비용 절감)
+    private val keywordFetchSize = 3  // 키워드당 API 요청 개수 (API 호출 비용 절감)
     private val weightScoreMultiplier = 100.0
     private val likeScoreMultiplier = 50.0  // 좋아요 비중 증가 (15.0 → 50.0)
 
