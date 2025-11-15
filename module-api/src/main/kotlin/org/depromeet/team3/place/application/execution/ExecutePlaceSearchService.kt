@@ -53,7 +53,7 @@ class ExecutePlaceSearchService(
         
         // 저장된 결과가 있으면 좋아요 정보만 업데이트해서 반환
         if (storedResult != null && request.meetingId != null) {
-            logger.info("저장된 검색 결과 사용 - meetingId=${request.meetingId}, places=${storedResult.items.size}개")
+            logger.debug("저장된 검색 결과 사용 - meetingId=${request.meetingId}, places=${storedResult.items.size}개")
             val updatedItems = updateLikesForStoredItems(storedResult.items, request.meetingId, request.userId)
             return@supervisorScope PlacesSearchResponse(updatedItems)
         }
