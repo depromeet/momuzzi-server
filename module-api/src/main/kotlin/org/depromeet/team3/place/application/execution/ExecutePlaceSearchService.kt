@@ -41,8 +41,9 @@ class ExecutePlaceSearchService(
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
     private val totalFetchSize = 10  // 최종 반환 개수
     private val photoFallbackBuffer = 5  // 사진 없는 결과를 대체할 여분 슬롯
+    private val keywordFetchSize = 3  // 키워드당 API 요청 개수 (API 호출 비용 절감)
     private val weightScoreMultiplier = 100.0
-    private val likeScoreMultiplier = 15.0
+    private val likeScoreMultiplier = 50.0  // 좋아요 비중 증가 (15.0 → 50.0)
 
     suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
         // DB 저장된 결과 확인 (Automatic 검색 + meetingId 있을 때만)
@@ -140,13 +141,15 @@ class ExecutePlaceSearchService(
         }
 
         // 정렬 우선순위:
-        // 자동 검색(가중치 있음): (설문가중치 * 100) + (ln(좋아요+1) * 10) 점수 → 좋아요 순
+        // 자동 검색(가중치 있음): (설문가중치 * 100) + (ln(좋아요+1) * 50) 점수 → 좋아요 순
+        // 사용자가 좋아요 누른 항목은 추가 부스트 적용
         val sortedItems = when {
             placeWeightByDbId.isNotEmpty() -> {
                 val scoreByPlaceId = items.associate { item ->
                     val weight = placeWeightByDbId[item.placeId] ?: 0.0
                     val likeScore = if (item.likeCount > 0) ln(item.likeCount.toDouble() + 1) * likeScoreMultiplier else 0.0
-                    val combinedScore = weight * weightScoreMultiplier + likeScore
+                    val userLikedBoost = if (item.isLiked) 100.0 else 0.0  // 사용자가 좋아요 누른 항목 추가 부스트
+                    val combinedScore = weight * weightScoreMultiplier + likeScore + userLikedBoost
                     item.placeId to combinedScore
                 }
 
@@ -171,43 +174,6 @@ class ExecutePlaceSearchService(
         }
 
         response
-    }
-
-    /**
-     * 캐시된 Google Place ID 리스트로 DB에서 Place 정보 조회
-     * (Google API 호출 없이 DB 캐시만 사용)
-     */
-    private suspend fun fetchPlacesFromCache(
-        googlePlaceIds: List<String>
-    ): List<PlacesTextSearchResponse.Place> {
-        return withContext(Dispatchers.IO) {
-            val places = placeQuery.findByGooglePlaceIds(googlePlaceIds)
-            val placeMap = places.mapNotNull { place ->
-                val gId = place.googlePlaceId ?: return@mapNotNull null
-                gId to place
-            }.toMap()
-            
-            // 캐시된 순서대로 Place 생성
-            googlePlaceIds.mapNotNull { googlePlaceId ->
-                val place = placeMap[googlePlaceId]
-                if (place == null) {
-                    logger.warn("캐시된 Place를 DB에서 찾을 수 없음: googlePlaceId=$googlePlaceId")
-                    return@mapNotNull null
-                }
-                
-                // PlaceEntity -> PlacesTextSearchResponse.Place 변환
-                PlacesTextSearchResponse.Place(
-                    id = place.googlePlaceId ?: googlePlaceId,
-                    displayName = PlacesTextSearchResponse.Place.DisplayName(text = place.name),
-                    formattedAddress = place.address,
-                    rating = place.rating,
-                    userRatingCount = place.userRatingsTotal,
-                    currentOpeningHours = if (place.openNow != null) {
-                        PlacesTextSearchResponse.Place.OpeningHours(openNow = place.openNow)
-                    } else null
-                )
-            }
-        }
     }
 
     private fun hasPhoto(item: PlacesSearchResponse.PlaceItem): Boolean =
@@ -504,7 +470,7 @@ class ExecutePlaceSearchService(
             withContext(Dispatchers.IO) {
                 placeQuery.textSearch(
                     query = sanitizedQuery,
-                    maxResults = totalFetchSize,
+                    maxResults = keywordFetchSize,
                     latitude = stationCoordinates?.latitude,
                     longitude = stationCoordinates?.longitude,
                     radius = 3000.0  // 역 중심 반경 3km 내 우선 검색

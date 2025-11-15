@@ -12,6 +12,7 @@ import org.depromeet.team3.place.util.PlaceAddressResolver
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 @Repository
 class PlaceQuery(
@@ -57,15 +58,22 @@ class PlaceQuery(
                 .toMutableMap()
         }
 
+        val now = LocalDateTime.now()
         val needingUpdateIds = cachedPlaces.values
-            .filter { it.photos.isNullOrBlank() || !placeAddressResolver.isValidAddressDescriptor(it.addressDescriptor) }
+            .filter { entity ->
+                val needsImmediateUpdate = entity.photos.isNullOrBlank() ||
+                    !placeAddressResolver.isValidAddressDescriptor(entity.addressDescriptor)
+                val isStale =
+                    entity.updatedAt?.isBefore(now.minusHours(24)) ?: true
+                needsImmediateUpdate || isStale
+            }
             .mapNotNull { it.googlePlaceId }
 
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }
 
         val idsToFetch = (needingUpdateIds + uncachedIds).distinct()
         val fetchResults = idsToFetch.map { placeId ->
-            async(Dispatchers.IO.limitedParallelism(32)) {
+            async(Dispatchers.IO.limitedParallelism(12)) {
                 try {
                     val response = googlePlacesClient.getPlaceDetails(placeId)
                     Triple(response, openNowMap[placeId], linkMap[placeId])

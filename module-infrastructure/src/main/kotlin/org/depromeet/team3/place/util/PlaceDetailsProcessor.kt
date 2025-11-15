@@ -20,6 +20,7 @@ class PlaceDetailsProcessor(
     private val googlePlacesApiProperties: GooglePlacesApiProperties
 ) {
     private val logger = LoggerFactory.getLogger(PlaceDetailsProcessor::class.java)
+    private val maxPhotoCount = 3
 
     /**
      * 여러 장소의 상세 정보를 배치로 가져와서 PlaceDetailResult로 변환
@@ -141,7 +142,7 @@ class PlaceDetailsProcessor(
     }
     
     /**
-     * 사진 URL 추출 (최대 5개)
+     * 사진 URL 추출 (최대 3개)
      */
     private fun extractPhotos(
         placeDetails: PlaceDetailsResponse?
@@ -157,7 +158,7 @@ class PlaceDetailsProcessor(
             }
             
 
-            val photoUrls = placeDetails.photos.take(5).mapNotNull { photo ->
+            val photoUrls = placeDetails.photos.take(maxPhotoCount).mapNotNull { photo ->
                 try {
                     val photoUrl = PlaceFormatter.generatePhotoUrl(photo.name, googlePlacesApiProperties.apiKey)
                     photoUrl

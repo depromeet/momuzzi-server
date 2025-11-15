@@ -117,7 +117,10 @@ class SelectSurveyKeywordsService {
                 }
         }
 
-        if (keywordMap.isEmpty()) {
+        var filteredKeywords = keywordMap.values
+            .filter { it.weight >= minimalVoteThreshold || it.type == KeywordType.GENERAL }
+
+        if (filteredKeywords.isEmpty()) {
             val keyword = buildGeneralKeyword(aggregate.stationName)
             val normalized = CreateSurveyKeywordService.normalizeKeyword(keyword)
             keywordMap[normalized] = KeywordCandidate(
@@ -127,9 +130,10 @@ class SelectSurveyKeywordsService {
                 categoryName = null,
                 matchKeywords = emptySet()
             )
+            filteredKeywords = keywordMap.values.toList()
         }
 
-        return keywordMap.values.take(maxKeywordCount)
+        return filteredKeywords.take(maxKeywordCount)
     }
 
     /**
