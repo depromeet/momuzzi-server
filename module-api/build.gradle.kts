@@ -34,8 +34,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.8.20")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.3")
-
     runtimeOnly("com.mysql:mysql-connector-j")
     
     // 테스트용 H2 데이터베이스
