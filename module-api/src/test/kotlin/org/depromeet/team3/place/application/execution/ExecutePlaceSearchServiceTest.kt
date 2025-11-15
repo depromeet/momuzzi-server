@@ -27,7 +27,7 @@ class ExecutePlaceSearchServiceTest {
     private lateinit var placeDetailsProcessor: FakePlaceDetailsProcessor
     private lateinit var meetingPlaceRepository: MeetingPlaceRepository
     private lateinit var placeLikeRepository: PlaceLikeRepository
-    private lateinit var cacheManager: MeetingPlaceSearchCacheManager
+    private lateinit var searchService: MeetingPlaceSearchService
 
     private lateinit var service: ExecutePlaceSearchService
 
@@ -37,18 +37,18 @@ class ExecutePlaceSearchServiceTest {
         placeDetailsProcessor = FakePlaceDetailsProcessor()
         meetingPlaceRepository = mock()
         placeLikeRepository = mock()
-        cacheManager = mock()
+        searchService = mock()
 
         service = ExecutePlaceSearchService(
             placeQuery = placeQuery,
             placeDetailsProcessor = placeDetailsProcessor,
             meetingPlaceRepository = meetingPlaceRepository,
             placeLikeRepository = placeLikeRepository,
-            cacheManager = cacheManager
+            searchService = searchService
         )
 
-        cacheManager.stub {
-            onBlocking { getCachedAutomaticResult(any()) }.doReturn(null)
+        searchService.stub {
+            onBlocking { find(any()) }.doReturn(null)
         }
 
         meetingPlaceRepository.stub {
@@ -64,73 +64,51 @@ class ExecutePlaceSearchServiceTest {
     }
 
     @Test
-    fun `캐시된 결과에서 사진이 있는 항목을 우선 정렬한다`() = runTest {
+    fun `저장된 결과가 있으면 좋아요 정보만 업데이트해서 반환한다`() = runTest {
         val plan = PlaceSearchPlan.Automatic(
             keywords = emptyList(),
             stationCoordinates = null,
             fallbackKeyword = "fallback"
         )
 
-        placeQuery.stubFindByGooglePlaceIds(
-            listOf(
-                PlaceEntity(
-                    id = 1L,
-                    googlePlaceId = "PHOTOLESS",
-                    name = "사진 없음",
-                    address = "주소",
-                    rating = 4.5,
-                    userRatingsTotal = 10
-                ),
-                PlaceEntity(
-                    id = 2L,
-                    googlePlaceId = "PHOTO",
-                    name = "사진 있음",
-                    address = "주소",
-                    rating = 4.0,
-                    userRatingsTotal = 8
-                )
-            )
+        // DB에 저장된 결과 설정
+        val storedItem1 = org.depromeet.team3.place.dto.response.PlacesSearchResponse.PlaceItem(
+            placeId = 1L,
+            name = "사진 없음",
+            address = "주소",
+            rating = 4.5,
+            userRatingsTotal = 10,
+            openNow = true,
+            photos = emptyList(),
+            link = "link",
+            weekdayText = emptyList(),
+            topReview = null,
+            priceRange = null,
+            addressDescriptor = null,
+            likeCount = 0,
+            isLiked = false
+        )
+        val storedItem2 = org.depromeet.team3.place.dto.response.PlacesSearchResponse.PlaceItem(
+            placeId = 2L,
+            name = "사진 있음",
+            address = "주소",
+            rating = 4.0,
+            userRatingsTotal = 8,
+            openNow = true,
+            photos = listOf("image"),
+            link = "link",
+            weekdayText = emptyList(),
+            topReview = null,
+            priceRange = null,
+            addressDescriptor = null,
+            likeCount = 0,
+            isLiked = false
         )
 
-        placeDetailsProcessor.stubDetails(
-            listOf(
-                PlaceDetailsProcessor.PlaceDetailResult(
-                    placeId = "PHOTOLESS",
-                    name = "사진 없음",
-                    address = "주소",
-                    rating = 4.5,
-                    userRatingsTotal = 10,
-                    openNow = true,
-                    photos = emptyList(),
-                    link = "link",
-                    weekdayText = emptyList(),
-                    topReview = null,
-                    priceRange = null,
-                    addressDescriptor = null
-                ),
-                PlaceDetailsProcessor.PlaceDetailResult(
-                    placeId = "PHOTO",
-                    name = "사진 있음",
-                    address = "주소",
-                    rating = 4.0,
-                    userRatingsTotal = 8,
-                    openNow = true,
-                    photos = listOf("image"),
-                    link = "link",
-                    weekdayText = emptyList(),
-                    topReview = null,
-                    priceRange = null,
-                    addressDescriptor = null
-                )
-            )
-        )
-
-        cacheManager.stub {
-            onBlocking { getCachedAutomaticResult(1L) }.doReturn(
-                MeetingPlaceSearchCacheManager.AutomaticSearchResult(
-                    placeIds = listOf("PHOTOLESS", "PHOTO"),
-                    placeWeights = mapOf("PHOTOLESS" to 1.0, "PHOTO" to 1.0),
-                    usedKeywords = listOf("cached")
+        searchService.stub {
+            onBlocking { find(1L) }.doReturn(
+                org.depromeet.team3.place.dto.response.PlacesSearchResponse(
+                    items = listOf(storedItem1, storedItem2)
                 )
             )
         }
@@ -139,12 +117,13 @@ class ExecutePlaceSearchServiceTest {
 
         val response = service.search(request, plan)
 
-        assertThat(response.items.map { it.name }).contains("사진 있음")
-        assertThat(response.items.first().photos).isNotEmpty()
+        // 저장된 결과를 반환하는지 확인
+        assertThat(response.items).hasSize(2)
+        assertThat(response.items.map { it.name }).containsExactly("사진 없음", "사진 있음")
     }
 
     @Test
-    fun `캐시 미스 시 사진 없는 결과를 fallback 후보 중 사진 있는 항목으로 보완한다`() = runTest {
+    fun `저장된 결과 없을 시 사진 없는 결과를 fallback 후보 중 사진 있는 항목으로 보완한다`() = runTest {
         val keywordCandidate = CreateSurveyKeywordService.KeywordCandidate(
             keyword = "키워드 맛집",
             weight = 1.0,

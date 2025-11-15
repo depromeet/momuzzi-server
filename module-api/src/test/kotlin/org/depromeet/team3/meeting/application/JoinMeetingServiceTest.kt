@@ -38,7 +38,7 @@ class JoinMeetingServiceTest {
     }
 
     @Test
-    fun `모임 참여 시 muzziColor가 NONE으로 설정된다`() {
+    fun `모임 참여 시 muzziColor가 DEFAULT로 설정된다`() {
         // Given
         val userId = 1L
         val meetingId = 100L
@@ -67,7 +67,7 @@ class JoinMeetingServiceTest {
         verify(meetingAttendeeRepository).save(attendeeCaptor.capture())
         
         val savedAttendee = attendeeCaptor.firstValue
-        assertEquals(MuzziColor.NONE, savedAttendee.muzziColor)
+        assertEquals(MuzziColor.DEFAULT, savedAttendee.muzziColor)
         assertEquals(userId, savedAttendee.userId)
         assertEquals(meetingId, savedAttendee.meetingId)
     }
@@ -103,7 +103,7 @@ class JoinMeetingServiceTest {
         
         val savedAttendee = attendeeCaptor.firstValue
         assertNotNull(savedAttendee)
-        assertEquals(MuzziColor.NONE, savedAttendee.muzziColor)
+        assertEquals(MuzziColor.DEFAULT, savedAttendee.muzziColor)
     }
 
     @Test
