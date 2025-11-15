@@ -85,17 +85,19 @@ class GetMeetingDetailService(
             surveyResultRepository.findBySurveyIdIn(surveyIds)
         }
         val surveyResultsMap = allSurveyResults.groupBy { it.surveyId }
-        
-        // 모든 참가자를 participantList에 포함 (설문이 없어도 user 정보만 포함)
+
+        // 설문이 있는 참가자만 participantList에 포함 (참가자의 userId 기준 매칭)
         val participantList = attendeeList
-            .map { attendee ->
+            .mapNotNull { attendee ->
                 // Map에서 참가자의 설문 조회 (Survey.participantId == attendee.userId)
                 val survey = surveyMap[attendee.userId]
-                
-                // 설문이 있는 경우 선택한 카테고리 목록 생성, 없는 경우 빈 리스트
-                val selectedCategoryList = survey?.id?.let { surveyId ->
-                    buildParticipantSelectedCategories(surveyId, surveyResultsMap)
-                } ?: emptyList()
+
+                // 설문이 없는 경우 null 반환하여 제외
+                survey ?: return@mapNotNull null
+
+                // 설문이 있는 경우 선택한 카테고리 목록 생성
+                val surveyId = requireNotNull(survey.id) { "설문 ID는 필수입니다" }
+                val selectedCategoryList = buildParticipantSelectedCategories(surveyId, surveyResultsMap)
 
                 MeetingParticipantInfo(
                     userId = attendee.userId,
