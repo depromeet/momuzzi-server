@@ -123,8 +123,8 @@ class PlaceQueryRetryTest {
         val placeIds = listOf("place_1", "place_2", "place_3", "place_4")
 
         val cachedPlaces = listOf(
-            createPlaceEntity("place_1", photos = "photo1"),
-            createPlaceEntity("place_2", photos = "photo2")
+            createPlaceEntity("place_1", photos = "photo1", recentlyUpdated = true),
+            createPlaceEntity("place_2", photos = "photo2", recentlyUpdated = true)
         )
 
         whenever(placeJpaRepository.findByGooglePlaceIdIn(placeIds)).thenReturn(cachedPlaces)
@@ -199,7 +199,8 @@ class PlaceQueryRetryTest {
     private fun createPlaceEntity(
         googlePlaceId: String,
         photos: String? = "photo1",
-        addressDescriptor: String? = "신논현역 도보 약 5분"
+        addressDescriptor: String? = "신논현역 도보 약 5분",
+        recentlyUpdated: Boolean = false
     ): PlaceEntity {
         return PlaceEntity(
             id = 1L,
@@ -218,7 +219,11 @@ class PlaceQueryRetryTest {
             addressDescriptor = addressDescriptor,
             photos = photos,
             isDeleted = false
-        )
+        ).apply {
+            if (recentlyUpdated) {
+                updateTimestamp()
+            }
+        }
     }
 
     private fun createPlaceDetailsResponse(placeId: String, name: String): PlaceDetailsResponse {
