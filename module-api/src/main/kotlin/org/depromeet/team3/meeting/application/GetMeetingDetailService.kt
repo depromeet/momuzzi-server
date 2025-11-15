@@ -32,12 +32,16 @@ class GetMeetingDetailService(
 ) {
 
     @Transactional
-    operator fun invoke(meetingId: Long, userId: Long): MeetingDetailResponse {
+    operator fun invoke(
+        meetingId: Long,
+        userId: Long,
+        allowClosed: Boolean = false
+    ): MeetingDetailResponse {
         // 모임 조회 및 endAt 기반 자동 종료 처리
         val meeting = findAndAutoCloseIfExpired(meetingId)
         
         // 종료 모임 검증
-        if (meeting.isClosed) {
+        if (meeting.isClosed && !allowClosed) {
             throw MeetingException(
                 ErrorCode.MEETING_ALREADY_CLOSED,
                 mapOf(
