@@ -316,5 +316,51 @@ class GetMeetingDetailServiceTest {
         assertEquals("설문 안 한 참가자", noSurveyParticipant?.nickname)
         assertEquals(emptyList(), noSurveyParticipant?.selectedCategories)
     }
+
+    @Test
+    fun `종료된 모임도 allowClosed true라면 정상 조회된다`() {
+        // given
+        val meetingId = 2L
+        val userId = 999L
+        val now = LocalDateTime.now()
+        val meeting = MeetingTestDataFactory.createMeeting(
+            id = meetingId,
+            name = "종료 모임",
+            hostUserId = 100L,
+            attendeeCount = 1,
+            isClosed = true,
+            stationId = 3L,
+            endAt = now.minusHours(1),
+            createdAt = now.minusDays(3),
+            updatedAt = now.minusMinutes(30)
+        )
+
+        val station = StationTestDataFactory.createStation(
+            id = 3L,
+            name = "강남"
+        )
+
+        val attendee = MeetingAttendeeTestDataFactory.createMeetingAttendee(
+            id = 10L,
+            meetingId = meetingId,
+            userId = userId,
+            attendeeNickname = "참가자",
+            muzziColor = MuzziColor.DEFAULT
+        )
+
+        whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
+        whenever(stationRepository.findById(3L)).thenReturn(station)
+        whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee))
+        whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(emptyList())
+
+        // when
+        val result = getMeetingDetailService.invoke(meetingId, userId, allowClosed = true)
+
+        // then
+        assertEquals(meetingId, result.meetingInfo.id)
+        assertTrue(result.meetingInfo.isClosed)
+        assertEquals("종료 모임", result.meetingInfo.title)
+        assertEquals(1, result.participantList.size)
+    }
 }
 

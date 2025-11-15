@@ -65,6 +65,24 @@ class MeetingController(
     }
 
     @Operation(
+        summary = "종료된 모임 상세 정보 조회",
+        description = "endAt이 지난 모임도 동일한 응답 스키마로 조회합니다."
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "종료된 모임 상세 정보 조회 성공")
+    )
+    @GetMapping("/{meetingId}/history")
+    fun getMeetingDetailHistory(
+        @Parameter(description = "모임 ID", example = "1")
+        @PathVariable meetingId: Long,
+        @UserId userId: Long
+    ): DpmApiResponse<MeetingDetailResponse> {
+        val response = getMeetingDetailService.invoke(meetingId, userId, allowClosed = true)
+
+        return DpmApiResponse.ok(response)
+    }
+
+    @Operation(
         summary = "모임 초대 토큰 조회",
         description = "특정 모임의 초대 토큰을 조회합니다."
     )
