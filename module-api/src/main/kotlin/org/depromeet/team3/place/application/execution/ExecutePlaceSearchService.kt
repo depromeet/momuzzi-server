@@ -6,6 +6,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.slf4j.MDCContext
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meeting.MeetingQuery
 import org.depromeet.team3.meetingplace.MeetingPlace
@@ -45,7 +46,8 @@ class ExecutePlaceSearchService(
     private val weightScoreMultiplier = 100.0
     private val likeScoreMultiplier = 50.0  // 좋아요 비중 증가 (15.0 → 50.0)
 
-    suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
+    suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = withContext(MDCContext()) {
+        supervisorScope {
         // DB 저장된 결과 확인 (Automatic 검색 + meetingId 있을 때만)
         val storedResult = if (plan is PlaceSearchPlan.Automatic && request.meetingId != null) {
             searchService.find(request.meetingId)
@@ -174,6 +176,7 @@ class ExecutePlaceSearchService(
         }
 
         response
+        }
     }
 
     private fun hasPhoto(item: PlacesSearchResponse.PlaceItem): Boolean =

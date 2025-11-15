@@ -2,6 +2,8 @@ package org.depromeet.team3.common.resolver
 
 import org.depromeet.team3.common.annotation.UserId
 import org.depromeet.team3.security.jwt.JwtAuthenticationToken
+import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
@@ -12,9 +14,17 @@ import org.springframework.web.method.support.ModelAndViewContainer
 
 /**
  * @UserId 어노테이션이 붙은 파라미터에 JWT 토큰에서 추출한 사용자 ID를 주입하는 ArgumentResolver
+ * 
+ * 사용자 ID를 MDC에 저장하여 로그 추적을 가능하게 합니다.
  */
 @Component
 class UserIdArgumentResolver : HandlerMethodArgumentResolver {
+    
+    private val logger = LoggerFactory.getLogger(UserIdArgumentResolver::class.java)
+    
+    companion object {
+        const val USER_ID = "user_id"
+    }
 
     /**
      * 지원하는 파라미터인지 확인
@@ -28,6 +38,7 @@ class UserIdArgumentResolver : HandlerMethodArgumentResolver {
 
     /**
      * JWT 토큰에서 사용자 ID를 추출하여 반환
+     * 추출된 사용자 ID를 MDC에 저장하여 로그 추적을 가능하게 함
      */
     override fun resolveArgument(
         parameter: MethodParameter,
@@ -39,6 +50,7 @@ class UserIdArgumentResolver : HandlerMethodArgumentResolver {
         
         // JWT 인증 토큰이 아닌 경우
         if (authentication !is JwtAuthenticationToken) {
+            MDC.put(USER_ID, "anonymous")
             return handleUnauthenticatedRequest(parameter)
         }
 
@@ -46,8 +58,15 @@ class UserIdArgumentResolver : HandlerMethodArgumentResolver {
         
         // 사용자 ID가 없는 경우
         if (userId == null) {
+            MDC.put(USER_ID, "anonymous")
             return handleUnauthenticatedRequest(parameter)
         }
+
+        // MDC에 사용자 ID 저장
+        MDC.put(USER_ID, userId.toString())
+        
+        // 사용자 식별 로그
+        logger.info("User identified: userId={}", userId)
 
         return userId
     }

@@ -1,5 +1,7 @@
 package org.depromeet.team3.place.application.facade
 
+import kotlinx.coroutines.slf4j.MDCContext
+import kotlinx.coroutines.withContext
 import org.depromeet.team3.place.application.plan.CreatePlaceSearchPlanService
 import org.depromeet.team3.place.application.execution.ExecutePlaceSearchService
 import org.depromeet.team3.place.dto.request.PlacesSearchRequest
@@ -15,8 +17,8 @@ class GetPlacesService(
     private val createPlaceSearchPlanService: CreatePlaceSearchPlanService,
     private val executePlaceSearchService: ExecutePlaceSearchService
 ) {
-    suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse {
+    suspend fun textSearch(request: PlacesSearchRequest): PlacesSearchResponse = withContext(MDCContext()) {
         val plan = createPlaceSearchPlanService.resolve(request)
-        return executePlaceSearchService.search(request, plan)
+        executePlaceSearchService.search(request, plan)
     }
 }
