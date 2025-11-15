@@ -53,13 +53,8 @@ class MdcLoggingFilter : OncePerRequestFilter() {
         } finally {
             // 요청 처리 완료 후 로깅
             val duration = System.currentTimeMillis() - startTime
-            
             logger.info(
-                "HTTP Request Completed - status={} method={} uri={} duration={}ms",
-                response.status,
-                request.method,
-                request.requestURI,
-                duration
+                "HTTP Request Completed - status=${response.status} method=${request.method} uri=${request.requestURI} duration=${duration}ms"
             )
             
             // MDC 정리 (다른 요청에 영향을 주지 않도록)
