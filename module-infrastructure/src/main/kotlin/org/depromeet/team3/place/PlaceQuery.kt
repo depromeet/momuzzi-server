@@ -18,7 +18,7 @@ import java.time.LocalDateTime
 class PlaceQuery(
     private val googlePlacesClient: GooglePlacesClient,
     private val placeJpaRepository: PlaceJpaRepository,
-    private val placeAddressResolver: org.depromeet.team3.place.util.PlaceAddressResolver
+    private val placeAddressResolver: PlaceAddressResolver
 ) {
     private val logger = LoggerFactory.getLogger(PlaceQuery::class.java)
     /**

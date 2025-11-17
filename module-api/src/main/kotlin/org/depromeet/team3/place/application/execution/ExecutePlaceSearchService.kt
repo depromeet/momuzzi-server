@@ -460,7 +460,6 @@ class ExecutePlaceSearchService(
         query: String,
         stationCoordinates: MeetingQuery.StationCoordinates?
     ): PlacesTextSearchResponse {
-        // 호출부에서 정규화되지만, 외부 입력을 고려해 한 번 더 정규화
         val sanitizedQuery = CreateSurveyKeywordService.normalizeKeyword(query)
         if (sanitizedQuery.isBlank()) {
             throw PlaceSearchException(
