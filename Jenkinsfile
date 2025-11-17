@@ -38,7 +38,7 @@ pipeline {
 
         // Main 브랜치 감지 로직 통합
         IS_MAIN_BRANCH = "false"
-        
+
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=512m"
         
@@ -420,8 +420,8 @@ for i in {1..24}; do
 done
 
 # Nginx 컨테이너 재시작 (기존 컨테이너 제거 후 시작)
-docker-compose -f docker-compose.prod.yml rm -f nginx 2>/dev/null || true
-docker-compose -f docker-compose.prod.yml up -d nginx
+docker-compose -f docker-compose.prod.yml rm -f nginx-app 2>/dev/null || true
+docker-compose -f docker-compose.prod.yml up -d nginx-app
 
 # 사용하지 않는 Docker 리소스 정리 (디스크 절약)
 echo "=== Cleaning up Docker resources ==="
@@ -454,7 +454,7 @@ df -h /
 sleep 10
 docker ps
 echo "Checking service health..."
-docker inspect --format='{{.Name}}: {{.State.Health.Status}}' backend nginx || true
+docker inspect --format='{{.Name}}: {{.State.Health.Status}}' backend nginx-app || true
 EOF
                                 """
                             }
