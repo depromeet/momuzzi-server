@@ -25,6 +25,7 @@ class KakaoOAuthClient(
     private fun getAllowedRedirectUris(): Set<String> {
         val hardcodedUris = setOf(
             "http://localhost:3000/auth/callback",
+            "http://192.168.35.119:3000/auth/callback",
             "http://localhost:8080/auth/callback",
             "https://api.momuzzi.site/auth/callback",
             "https://www.momuzzi.site/auth/callback"

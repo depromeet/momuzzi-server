@@ -87,7 +87,7 @@ class GetSurveyListService(
 
             SurveyItemResponse(
                 participantId = survey.participantId,
-                nickname = participant.attendeeNickname ?: "알 수 없음",
+                nickname = participant.attendeeNickname,
                 selectedCategoryList = selectedCategoryList
             )
         }

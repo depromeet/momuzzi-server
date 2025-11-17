@@ -27,12 +27,13 @@ class JoinMeetingService(
         validateMeeting(meetingId, userId)
 
         val meetingAttendee = MeetingAttendee(
-            null,
-            meetingId,
-            userId,
-            null,
-            MuzziColor.DEFAULT,
-            null, null
+            id = null,
+            meetingId = meetingId,
+            userId = userId,
+            attendeeNickname = null,
+            muzziColor = MuzziColor.DEFAULT,
+            createdAt = null,
+            updatedAt = null
         )
 
         meetingAttendeeRepository.save(meetingAttendee)

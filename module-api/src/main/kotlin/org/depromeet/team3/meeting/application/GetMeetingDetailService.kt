@@ -32,12 +32,16 @@ class GetMeetingDetailService(
 ) {
 
     @Transactional
-    fun invoke(meetingId: Long, userId: Long): MeetingDetailResponse {
+    operator fun invoke(
+        meetingId: Long,
+        userId: Long,
+        allowClosed: Boolean = false
+    ): MeetingDetailResponse {
         // 모임 조회 및 endAt 기반 자동 종료 처리
         val meeting = findAndAutoCloseIfExpired(meetingId)
         
         // 종료 모임 검증
-        if (meeting.isClosed) {
+        if (meeting.isClosed && !allowClosed) {
             throw MeetingException(
                 ErrorCode.MEETING_ALREADY_CLOSED,
                 mapOf(
@@ -85,16 +89,16 @@ class GetMeetingDetailService(
             surveyResultRepository.findBySurveyIdIn(surveyIds)
         }
         val surveyResultsMap = allSurveyResults.groupBy { it.surveyId }
-        
+
         // 설문이 있는 참가자만 participantList에 포함 (참가자의 userId 기준 매칭)
         val participantList = attendeeList
             .mapNotNull { attendee ->
                 // Map에서 참가자의 설문 조회 (Survey.participantId == attendee.userId)
                 val survey = surveyMap[attendee.userId]
-                
+
                 // 설문이 없는 경우 null 반환하여 제외
                 survey ?: return@mapNotNull null
-                
+
                 // 설문이 있는 경우 선택한 카테고리 목록 생성
                 val surveyId = requireNotNull(survey.id) { "설문 ID는 필수입니다" }
                 val selectedCategoryList = buildParticipantSelectedCategories(surveyId, surveyResultsMap)

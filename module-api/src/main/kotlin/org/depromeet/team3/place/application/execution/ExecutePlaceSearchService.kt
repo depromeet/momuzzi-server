@@ -6,6 +6,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.slf4j.MDCContext
 import org.depromeet.team3.common.exception.ErrorCode
 import org.depromeet.team3.meeting.MeetingQuery
 import org.depromeet.team3.meetingplace.MeetingPlace
@@ -35,56 +36,47 @@ class ExecutePlaceSearchService(
     private val placeDetailsProcessor: PlaceDetailsProcessor,
     private val meetingPlaceRepository: MeetingPlaceRepository,
     private val placeLikeRepository: PlaceLikeRepository,
-    private val cacheManager: MeetingPlaceSearchCacheManager
+    private val searchService: MeetingPlaceSearchService
 ) {
 
     private val logger = LoggerFactory.getLogger(ExecutePlaceSearchService::class.java)
     private val totalFetchSize = 10  // 최종 반환 개수
+    private val photoFallbackBuffer = 5  // 사진 없는 결과를 대체할 여분 슬롯
+    private val keywordFetchSize = 5  // 키워드당 API 요청 개수 (API 호출 비용 절감)
     private val weightScoreMultiplier = 100.0
-    private val likeScoreMultiplier = 15.0
+    private val likeScoreMultiplier = 50.0  // 좋아요 비중 증가 (15.0 → 50.0)
 
-    suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = supervisorScope {
-        // 캐시 확인 (Automatic 검색 + meetingId 있을 때만)
-        val cachedResult = if (plan is PlaceSearchPlan.Automatic && request.meetingId != null) {
-            cacheManager.getCachedAutomaticResult(request.meetingId)
+    suspend fun search(request: PlacesSearchRequest, plan: PlaceSearchPlan): PlacesSearchResponse = withContext(MDCContext()) {
+        supervisorScope {
+        // DB 저장된 결과 확인 (Automatic 검색 + meetingId 있을 때만)
+        val storedResult = if (plan is PlaceSearchPlan.Automatic && request.meetingId != null) {
+            searchService.find(request.meetingId)
         } else null
         
-        val keywordResult = if (cachedResult != null) {
-            // 캐시 HIT: 저장된 결과를 그대로 사용 (Place 정보 + 가중치)
-            logger.info("자동 검색 캐시 HIT - meetingId=${request.meetingId}, places=${cachedResult.placeIds.size}개")
-            val places = fetchPlacesFromCache(cachedResult.placeIds)
-            KeywordSearchResult(
-                places = places,
-                placeWeights = cachedResult.placeWeights,
-                usedKeywords = cachedResult.usedKeywords
-            )
-        } else {
-            val automaticPlan = plan as? PlaceSearchPlan.Automatic
-                ?: throw IllegalArgumentException("PlaceSearchPlan.Automatic만 지원합니다.")
-
-            val result = fetchPlacesForKeywords(automaticPlan)
-
-            if (request.meetingId != null && result.places.isNotEmpty()) {
-                cacheManager.cacheAutomaticResult(
-                    meetingId = request.meetingId,
-                    placeIds = result.places.map { it.id },
-                    placeWeights = result.placeWeights,
-                    usedKeywords = result.usedKeywords
-                )
-            }
-
-            result
+        // 저장된 결과가 있으면 좋아요 정보만 업데이트해서 반환
+        if (storedResult != null && request.meetingId != null) {
+            logger.debug("저장된 검색 결과 사용 - meetingId=${request.meetingId}, places=${storedResult.items.size}개")
+            val updatedItems = updateLikesForStoredItems(storedResult.items, request.meetingId, request.userId)
+            return@supervisorScope PlacesSearchResponse(updatedItems)
         }
+        
+        // 저장된 결과 없음 -> 새로 검색
+        val automaticPlan = plan as? PlaceSearchPlan.Automatic
+            ?: throw IllegalArgumentException("PlaceSearchPlan.Automatic만 지원합니다.")
+
+        val keywordResult = fetchPlacesForKeywords(automaticPlan, photoFallbackBuffer)
 
         if (keywordResult.places.isEmpty()) {
             logger.info("장소 검색 결과 없음 - keywords={}, meetingId={}", keywordResult.usedKeywords, request.meetingId)
             return@supervisorScope PlacesSearchResponse(emptyList())
         }
 
-        // 가중치 기반으로 정렬 후 상위 15개만 상세 조회
-        val placesToProcess = keywordResult.places
+        // 가중치 기반으로 정렬 후 상위 (결과 + 여분) 개수만큼 상세 조회
+        val candidatePlaces = (keywordResult.places + keywordResult.fallbackPlaces)
+            .distinctBy { it.id }
+        val placesToProcess = candidatePlaces
             .sortedByDescending { keywordResult.placeWeights[it.id] ?: 0.0 }
-            .take(totalFetchSize)
+            .take(totalFetchSize + photoFallbackBuffer)
         val allPlaceDetails = placeDetailsProcessor.fetchPlaceDetailsInParallel(placesToProcess)
 
         if (allPlaceDetails.isEmpty()) {
@@ -151,64 +143,44 @@ class ExecutePlaceSearchService(
         }
 
         // 정렬 우선순위:
-        // 자동 검색(가중치 있음): (설문가중치 * 100) + (ln(좋아요+1) * 10) 점수 → 좋아요 순
+        // 자동 검색(가중치 있음): (설문가중치 * 100) + (ln(좋아요+1) * 50) 점수 → 좋아요 순
+        // 사용자가 좋아요 누른 항목은 추가 부스트 적용
         val sortedItems = when {
             placeWeightByDbId.isNotEmpty() -> {
                 val scoreByPlaceId = items.associate { item ->
                     val weight = placeWeightByDbId[item.placeId] ?: 0.0
                     val likeScore = if (item.likeCount > 0) ln(item.likeCount.toDouble() + 1) * likeScoreMultiplier else 0.0
-                    val combinedScore = weight * weightScoreMultiplier + likeScore
+                    val userLikedBoost = if (item.isLiked) 100.0 else 0.0  // 사용자가 좋아요 누른 항목 추가 부스트
+                    val combinedScore = weight * weightScoreMultiplier + likeScore + userLikedBoost
                     item.placeId to combinedScore
                 }
 
                 items.sortedWith(
-                    compareByDescending<PlacesSearchResponse.PlaceItem> { scoreByPlaceId[it.placeId] ?: 0.0 }
+                    compareByDescending<PlacesSearchResponse.PlaceItem> { hasPhoto(it) }
+                        .thenByDescending { scoreByPlaceId[it.placeId] ?: 0.0 }
                         .thenByDescending { it.likeCount }
                 )
             }
 
-            else -> items
+            else -> items.sortedWith(
+                compareByDescending<PlacesSearchResponse.PlaceItem> { hasPhoto(it) }
+            )
         }
 
-        PlacesSearchResponse(sortedItems)
-    }
+        val finalItems = sortedItems.take(totalFetchSize)
+        val response = PlacesSearchResponse(finalItems)
+        
+        // DB에 검색 결과 저장 (meetingId가 있을 때만)
+        if (request.meetingId != null && finalItems.isNotEmpty()) {
+            searchService.save(request.meetingId, response)
+        }
 
-    /**
-     * 캐시된 Google Place ID 리스트로 DB에서 Place 정보 조회
-     * (Google API 호출 없이 DB 캐시만 사용)
-     */
-    private suspend fun fetchPlacesFromCache(
-        googlePlaceIds: List<String>
-    ): List<PlacesTextSearchResponse.Place> {
-        return withContext(Dispatchers.IO) {
-            val places = placeQuery.findByGooglePlaceIds(googlePlaceIds)
-            val placeMap = places.mapNotNull { place ->
-                val gId = place.googlePlaceId ?: return@mapNotNull null
-                gId to place
-            }.toMap()
-            
-            // 캐시된 순서대로 Place 생성
-            googlePlaceIds.mapNotNull { googlePlaceId ->
-                val place = placeMap[googlePlaceId]
-                if (place == null) {
-                    logger.warn("캐시된 Place를 DB에서 찾을 수 없음: googlePlaceId=$googlePlaceId")
-                    return@mapNotNull null
-                }
-                
-                // PlaceEntity -> PlacesTextSearchResponse.Place 변환
-                PlacesTextSearchResponse.Place(
-                    id = place.googlePlaceId ?: googlePlaceId,
-                    displayName = PlacesTextSearchResponse.Place.DisplayName(text = place.name),
-                    formattedAddress = place.address,
-                    rating = place.rating,
-                    userRatingCount = place.userRatingsTotal,
-                    currentOpeningHours = if (place.openNow != null) {
-                        PlacesTextSearchResponse.Place.OpeningHours(openNow = place.openNow)
-                    } else null
-                )
-            }
+        response
         }
     }
+
+    private fun hasPhoto(item: PlacesSearchResponse.PlaceItem): Boolean =
+        item.photos?.isNullOrEmpty() == false
     
     /**
      * 설문 기반 키워드 목록으로 병렬 검색을 수행하고 결과를 가중치 비례로 병합한다.
@@ -230,7 +202,10 @@ class ExecutePlaceSearchService(
      * @param plan 설문 기반으로 생성된 키워드 목록과 역 좌표
      * @return 병합된 장소 목록, 장소별 가중치, 사용된 키워드 목록
      */
-    private suspend fun fetchPlacesForKeywords(plan: PlaceSearchPlan.Automatic): KeywordSearchResult = coroutineScope {
+    private suspend fun fetchPlacesForKeywords(
+        plan: PlaceSearchPlan.Automatic,
+        fallbackLimit: Int
+    ): KeywordSearchResult = coroutineScope {
         // 1단계: 각 키워드로 병렬 API 호출
         val deferredResponses = plan.keywords.map { candidate ->
             async {
@@ -254,7 +229,10 @@ class ExecutePlaceSearchService(
         val selectedPlaces = mutableListOf<PlacesTextSearchResponse.Place>()
         val placeWeights = mutableMapOf<String, Double>()
         val usedPlaceIds = mutableSetOf<String>()
+        val fallbackCandidates = mutableListOf<PlacesTextSearchResponse.Place>()
+        val fallbackIds = mutableSetOf<String>()
         val appliedKeywords = mutableSetOf<String>()
+        val fallbackResponses = mutableListOf<Pair<CreateSurveyKeywordService.KeywordCandidate, List<PlacesTextSearchResponse.Place>>>()
 
         results.forEach { appliedKeywords.add(it.first.keyword) }
 
@@ -263,41 +241,53 @@ class ExecutePlaceSearchService(
             if (allocation == 0) return@forEachIndexed
             
             val rawPlaces = response.places ?: emptyList()
-            val places = filterPlacesByKeyword(rawPlaces, candidate)
+            val candidatePlaces = filterPlacesByKeyword(rawPlaces, candidate)
+                .sortedByDescending { it.rating ?: 0.0 }
             var addedCount = 0
-            
-            // 평점 높은 순으로 정렬하여 할당량만큼 선택
-            places
-                .filter { !usedPlaceIds.contains(it.id) }  // 중복 제거
-                .sortedByDescending { it.rating ?: 0.0 }   // 평점 순
-                .take(allocation)                           // 할당량만큼
-                .forEach { place ->
+
+            candidatePlaces.forEach { place ->
+                if (usedPlaceIds.contains(place.id)) return@forEach
+
+                if (addedCount < allocation && selectedPlaces.size < totalFetchSize) {
                     selectedPlaces.add(place)
                     placeWeights[place.id] = candidate.weight
                     usedPlaceIds.add(place.id)
                     addedCount++
+                } else if (fallbackCandidates.size < fallbackLimit && fallbackIds.add(place.id)) {
+                    placeWeights.putIfAbsent(place.id, candidate.weight)
+                    fallbackCandidates.add(place)
                 }
+            }
 
-            if (addedCount < allocation) {
+            if (addedCount < allocation && selectedPlaces.size < totalFetchSize) {
                 val fallbackKeyword = candidate.fallbackKeyword
                 if (!fallbackKeyword.isNullOrBlank()) {
                     val fallbackResponse = fetchPlacesFromGoogle(fallbackKeyword, plan.stationCoordinates)
                     val fallbackRawPlaces = fallbackResponse.places ?: emptyList()
                     val fallbackPlaces = filterPlacesByKeyword(fallbackRawPlaces, candidate, candidate.fallbackMatchKeywords)
-                    var fallbackAdded = false
-                    fallbackPlaces
-                        .filter { !usedPlaceIds.contains(it.id) }
                         .sortedByDescending { it.rating ?: 0.0 }
-                        .take(allocation - addedCount)
-                        .forEach { place ->
+
+                    fallbackResponses.add(candidate to fallbackPlaces)
+
+                    var fallbackUsed = false
+
+                    fallbackPlaces.forEach { place ->
+                        if (usedPlaceIds.contains(place.id)) return@forEach
+
+                        if (addedCount < allocation && selectedPlaces.size < totalFetchSize) {
                             selectedPlaces.add(place)
                             placeWeights[place.id] = candidate.weight
                             usedPlaceIds.add(place.id)
                             addedCount++
-                            fallbackAdded = true
+                            fallbackUsed = true
+                        } else if (fallbackCandidates.size < fallbackLimit && fallbackIds.add(place.id)) {
+                            placeWeights.putIfAbsent(place.id, candidate.weight)
+                            fallbackCandidates.add(place)
+                            fallbackUsed = true
                         }
+                    }
 
-                    if (fallbackAdded) {
+                    if (fallbackUsed) {
                         appliedKeywords.add(fallbackKeyword)
                     }
                 }
@@ -324,6 +314,35 @@ class ExecutePlaceSearchService(
             }
         }
 
+        // fallback 후보군 보충 (가중치 순 → 평점 순, 기존 선택 제외)
+        if (fallbackCandidates.size < fallbackLimit) {
+            val candidateSources = buildList {
+                addAll(results.map { (candidate, resp) ->
+                    candidate to filterPlacesByKeyword(resp.places ?: emptyList(), candidate)
+                        .sortedByDescending { it.rating ?: 0.0 }
+                })
+                addAll(fallbackResponses)
+            }
+
+            candidateSources.forEach { (candidate, places) ->
+                places
+                    .filter { place -> !usedPlaceIds.contains(place.id) && fallbackIds.add(place.id) }
+                    .sortedByDescending { it.rating ?: 0.0 }
+                    .forEach { place ->
+                        if (fallbackCandidates.size < fallbackLimit) {
+                            fallbackCandidates.add(place)
+                            placeWeights.putIfAbsent(place.id, candidate.weight)
+                        }
+                    }
+
+                if (fallbackCandidates.size >= fallbackLimit) return@forEach
+            }
+        }
+
+        // 이미 선택된 ID는 fallback 후보에서 제거
+        val uniqueFallbackCandidates = fallbackCandidates
+            .filterNot { usedPlaceIds.contains(it.id) }
+
         // 5단계: 최종 정렬 (가중치 순 → 평점 순)
         // 좋아요 정렬은 나중에 search() 메서드에서 DB 데이터와 함께 처리됨
         val sortedPlaces = selectedPlaces
@@ -331,11 +350,20 @@ class ExecutePlaceSearchService(
                 compareByDescending<PlacesTextSearchResponse.Place> { placeWeights[it.id] ?: 0.0 }
                     .thenByDescending { it.rating ?: 0.0 }
             )
-            .take(totalFetchSize)
 
         if (sortedPlaces.isNotEmpty()) {
+            val primaryPlaces = sortedPlaces.take(totalFetchSize)
+            val primaryIds = primaryPlaces.map { it.id }.toSet()
+
             return@coroutineScope KeywordSearchResult(
-                places = sortedPlaces,
+                places = primaryPlaces,
+                fallbackPlaces = uniqueFallbackCandidates
+                    .filter { it.id !in primaryIds }
+                    .sortedWith(
+                        compareByDescending<PlacesTextSearchResponse.Place> { placeWeights[it.id] ?: 0.0 }
+                            .thenByDescending { it.rating ?: 0.0 }
+                    )
+                    .take(fallbackLimit),
                 placeWeights = placeWeights,
                 usedKeywords = appliedKeywords.toList()
             )
@@ -349,6 +377,7 @@ class ExecutePlaceSearchService(
 
         KeywordSearchResult(
             places = fallbackPlaces,
+            fallbackPlaces = emptyList(),
             placeWeights = fallbackWeights,
             usedKeywords = listOf(plan.fallbackKeyword)
         )
@@ -444,7 +473,7 @@ class ExecutePlaceSearchService(
             withContext(Dispatchers.IO) {
                 placeQuery.textSearch(
                     query = sanitizedQuery,
-                    maxResults = totalFetchSize,
+                    maxResults = keywordFetchSize,
                     latitude = stationCoordinates?.latitude,
                     longitude = stationCoordinates?.longitude,
                     radius = 3000.0  // 역 중심 반경 3km 내 우선 검색
@@ -532,8 +561,47 @@ class ExecutePlaceSearchService(
         }
     }
 
+    /**
+     * 저장된 검색 결과의 좋아요 정보만 업데이트
+     */
+    private suspend fun updateLikesForStoredItems(
+        storedItems: List<PlacesSearchResponse.PlaceItem>,
+        meetingId: Long,
+        userId: Long?
+    ): List<PlacesSearchResponse.PlaceItem> = withContext(Dispatchers.IO) {
+        if (storedItems.isEmpty()) return@withContext emptyList()
+        
+        // PlaceItem의 placeId는 DB ID이므로 직접 사용
+        val placeDbIds = storedItems.map { it.placeId }
+        val meetingPlaces = createOrGetMeetingPlaces(meetingId, placeDbIds)
+        
+        if (meetingPlaces.isEmpty()) {
+            return@withContext storedItems
+        }
+        
+        // MeetingPlace ID -> Place DB ID 매핑
+        val meetingPlaceIdToPlaceDbId = meetingPlaces
+            .filter { it.id != null }
+            .associate { it.id!! to it.placeId }
+        
+        // 좋아요 정보 조회
+        val placeLikes = placeLikeRepository.findByMeetingPlaceIds(meetingPlaceIdToPlaceDbId.keys.toList())
+        val likesByPlaceDbId = placeLikes
+            .groupBy { meetingPlaceIdToPlaceDbId[it.meetingPlaceId] }
+        
+        // 각 아이템의 좋아요 정보 업데이트
+        storedItems.map { item ->
+            val likes = likesByPlaceDbId[item.placeId] ?: emptyList()
+            item.copy(
+                likeCount = likes.size,
+                isLiked = userId != null && likes.any { it.userId == userId }
+            )
+        }
+    }
+
     private data class KeywordSearchResult(
         val places: List<PlacesTextSearchResponse.Place>,
+        val fallbackPlaces: List<PlacesTextSearchResponse.Place>,
         val placeWeights: Map<String, Double>,
         val usedKeywords: List<String>
     )

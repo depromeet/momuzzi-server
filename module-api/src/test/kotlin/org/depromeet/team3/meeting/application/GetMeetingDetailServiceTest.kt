@@ -249,8 +249,8 @@ class GetMeetingDetailServiceTest {
     }
 
     @Test
-    @DisplayName("설문이 없는 참가자는 participantList에 포함되지 않는다")
-    fun `설문이 없는 참가자는 participantList에 포함되지 않는다`() {
+    @DisplayName("설문이 있는 참가자만 participantList에 포함된다")
+    fun `설문이 있는 참가자만 participantList에 포함된다`() {
         // given
         val meetingId = 1L
         val userId = 234L
@@ -303,9 +303,58 @@ class GetMeetingDetailServiceTest {
         val result = getMeetingDetailService.invoke(meetingId, userId)
 
         // then
-        assertEquals(1, result.participantList.size) // 설문이 있는 참가자만 포함
-        assertEquals(456L, result.participantList[0].userId)
-        assertEquals("설문한 참가자", result.participantList[0].nickname)
+        assertEquals(1, result.participantList.size)
+
+        val participant = result.participantList.first()
+        assertEquals(456L, participant.userId)
+        assertEquals("설문한 참가자", participant.nickname)
+        assertTrue(participant.selectedCategories.isEmpty())
+    }
+
+    @Test
+    fun `종료된 모임도 allowClosed true라면 정상 조회된다`() {
+        // given
+        val meetingId = 2L
+        val userId = 999L
+        val now = LocalDateTime.now()
+        val meeting = MeetingTestDataFactory.createMeeting(
+            id = meetingId,
+            name = "종료 모임",
+            hostUserId = 100L,
+            attendeeCount = 1,
+            isClosed = true,
+            stationId = 3L,
+            endAt = now.minusHours(1),
+            createdAt = now.minusDays(3),
+            updatedAt = now.minusMinutes(30)
+        )
+
+        val station = StationTestDataFactory.createStation(
+            id = 3L,
+            name = "강남"
+        )
+
+        val attendee = MeetingAttendeeTestDataFactory.createMeetingAttendee(
+            id = 10L,
+            meetingId = meetingId,
+            userId = userId,
+            attendeeNickname = "참가자",
+            muzziColor = MuzziColor.DEFAULT
+        )
+
+        whenever(meetingRepository.findById(meetingId)).thenReturn(meeting)
+        whenever(stationRepository.findById(3L)).thenReturn(station)
+        whenever(meetingAttendeeRepository.findByMeetingId(meetingId)).thenReturn(listOf(attendee))
+        whenever(surveyRepository.findByMeetingId(meetingId)).thenReturn(emptyList())
+
+        // when
+        val result = getMeetingDetailService.invoke(meetingId, userId, allowClosed = true)
+
+        // then
+        assertEquals(meetingId, result.meetingInfo.id)
+        assertTrue(result.meetingInfo.isClosed)
+        assertEquals("종료 모임", result.meetingInfo.title)
+        assertTrue(result.participantList.isEmpty())
     }
 }
 

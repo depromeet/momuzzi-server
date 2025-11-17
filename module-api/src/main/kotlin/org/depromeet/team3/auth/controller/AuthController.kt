@@ -49,6 +49,7 @@ class AuthController(
                 type = "string",
                 allowableValues = [
                     "http://localhost:3000/auth/callback",
+                    "http://192.168.35.119:3000/auth/callback",
                     "http://localhost:8080/auth/callback", 
                     "https://www.momuzzi.site/auth/callback",
                     "https://api.momuzzi.site/auth/callback"

@@ -12,6 +12,8 @@ import org.depromeet.team3.meetingattendee.MeetingAttendeeRepository
 import org.depromeet.team3.meetingattendee.MuzziColor
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 @Service
 class CreateMeetingService(
@@ -23,6 +25,14 @@ class CreateMeetingService(
 
     @Transactional
     operator fun invoke(request: CreateMeetingRequest, userId: Long): CreateMeetingResponse {
+        val now = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
+        if (request.endAt != null && request.endAt.isBefore(now)) {
+            throw MeetingException(
+                errorCode = ErrorCode.INVALID_END_TIME,
+                detail = mapOf("endAt" to request.endAt.toString())
+            )
+        }
+
         val meeting = Meeting(
             id = null,
             name = request.name,

@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    options {
+        skipDefaultCheckout(true)
+    }
 
     triggers {
         githubPush()
@@ -23,7 +26,19 @@ pipeline {
         NCP_SERVER_USER = "ubuntu"
 
         DEPLOY_PATH = "/home/ubuntu/momuzzi-server"
-        
+
+        // SonarQube 설정
+//         SONARQUBE_SERVER_NAME = "depromeet-sonarqube"
+//         SONARQUBE_TOKEN_CREDENTIALS_ID = "sonarqube-token"
+//         SONARQUBE_PROJECT_KEY = "depromeet-team3-server"
+//         SONARQUBE_PROJECT_NAME = "Depromeet Team 3 Server"
+//         SONARQUBE_SCANNER_IMAGE = "sonarsource/sonar-scanner-cli:5.0.1"
+//         SONARQUBE_BINARY_PATH_JAVA = "module-api/build/classes/java/main"
+//         SONARQUBE_BINARY_PATH_KOTLIN = "module-api/build/classes/kotlin/main"
+
+        // Main 브랜치 감지 로직 통합
+        IS_MAIN_BRANCH = "false"
+
         // Kotlin 컴파일 최적화
         GRADLE_OPTS = "-Xmx4g -XX:MaxMetaspaceSize=512m"
         
@@ -39,12 +54,59 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                deleteDir()
                 checkout scm
                 script {
                     env.GIT_COMMIT_SHORT = sh(
                         script: "git rev-parse --short HEAD",
                         returnStdout: true
                     ).trim()
+                    
+                    // 현재 커밋 해시
+                    def currentCommit = sh(
+                        script: "git rev-parse HEAD",
+                        returnStdout: true
+                    ).trim()
+                    
+                    // origin/main의 HEAD 커밋 해시
+                    def mainCommit = sh(
+                        script: "git rev-parse origin/main",
+                        returnStdout: true
+                    ).trim()
+                    
+                    // 브랜치 확인
+                    def branchCheckResult = sh(
+                        script: """
+                            if [ "${currentCommit}" = "${mainCommit}" ] || \
+                               [ "\${BRANCH_NAME}" = "main" ] || \
+                               [ "\${GIT_BRANCH}" = "origin/main" ] || \
+                               [ "\${GIT_BRANCH}" = "main" ] || \
+                               [ "\$(git branch --show-current)" = "main" ]; then
+                                echo "Detected as main branch"
+                                exit 0
+                            else
+                                echo "Not main branch"
+                                exit 1
+                            fi
+                        """,
+                        returnStatus: true
+                    )
+                    
+                    echo "Current commit: ${currentCommit}"
+                    echo "Main commit: ${mainCommit}"
+                    echo "Branch check result: ${branchCheckResult}"
+                    echo "Branch check result type: ${branchCheckResult.class}"
+                    
+                    // 명시적으로 문자열로 설정
+                    if (branchCheckResult == 0) {
+                        env.IS_MAIN_BRANCH = 'true'
+                        echo "Setting IS_MAIN_BRANCH to true"
+                    } else {
+                        env.IS_MAIN_BRANCH = 'false'
+                        echo "Setting IS_MAIN_BRANCH to false"
+                    }
+                    
+                    echo "IS_MAIN_BRANCH: ${env.IS_MAIN_BRANCH}"
                 }
             }
         }
@@ -91,6 +153,109 @@ pipeline {
             }
         }
 
+        // stage('SonarQube Analysis (PR)') {
+        //     when {
+        //         changeRequest()
+        //     }
+        //     steps {
+        //         script {
+        //             withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+        //                 withCredentials([string(
+        //                     credentialsId: "${SONARQUBE_TOKEN_CREDENTIALS_ID}",
+        //                     variable: 'SONARQUBE_TOKEN'
+        //                 )]) {
+        //                     sh """
+        //                         mkdir -p module-api/build
+        //                         docker run --rm \
+        //                           -e SONAR_HOST_URL=$SONAR_HOST_URL \
+        //                           -e SONAR_LOGIN=$SONARQUBE_TOKEN \
+        //                           -v ${env.WORKSPACE}:/usr/src \
+        //                           -w /usr/src \
+        //                           ${SONARQUBE_SCANNER_IMAGE} sonar-scanner \
+        //                             -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \
+        //                             -Dsonar.projectName="${SONARQUBE_PROJECT_NAME}" \
+        //                             -Dsonar.sources=module-api/src/main/java,module-api/src/main/kotlin \
+        //                             -Dsonar.tests=module-api/src/test/java,module-api/src/test/kotlin \
+        //                             -Dsonar.java.binaries=${SONARQUBE_BINARY_PATH_JAVA} \
+        //                             -Dsonar.kotlin.binaries=${SONARQUBE_BINARY_PATH_KOTLIN} \
+        //                             -Dsonar.sourceEncoding=UTF-8 \
+        //                             -Dsonar.pullrequest.key=${env.CHANGE_ID} \
+        //                             -Dsonar.pullrequest.branch=${env.BRANCH_NAME} \
+        //                             -Dsonar.pullrequest.base=${env.CHANGE_TARGET}
+        //                     """
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        // stage('SonarQube Quality Gate (PR)') {
+        //     when {
+        //         changeRequest()
+        //     }
+        //     steps {
+        //         script {
+        //             withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+        //                 timeout(time: 10, unit: 'MINUTES') {
+        //                     waitForQualityGate abortPipeline: true
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        // stage('SonarQube Analysis (Main)') {
+        //     when {
+        //         expression {
+        //             env.IS_MAIN_BRANCH == 'true'
+        //         }
+        //     }
+        //     steps {
+        //         script {
+        //             withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+        //                 withCredentials([string(
+        //                     credentialsId: "${SONARQUBE_TOKEN_CREDENTIALS_ID}",
+        //                     variable: 'SONARQUBE_TOKEN'
+        //                 )]) {
+        //                     sh """
+        //                         mkdir -p module-api/build
+        //                         docker run --rm \
+        //                           -e SONAR_HOST_URL=$SONAR_HOST_URL \
+        //                           -e SONAR_LOGIN=$SONARQUBE_TOKEN \
+        //                           -v ${env.WORKSPACE}:/usr/src \
+        //                           -w /usr/src \
+        //                           ${SONARQUBE_SCANNER_IMAGE} sonar-scanner \
+        //                             -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \
+        //                             -Dsonar.projectName="${SONARQUBE_PROJECT_NAME}" \
+        //                             -Dsonar.sources=module-api/src/main/java,module-api/src/main/kotlin \
+        //                             -Dsonar.tests=module-api/src/test/java,module-api/src/test/kotlin \
+        //                             -Dsonar.java.binaries=${SONARQUBE_BINARY_PATH_JAVA} \
+        //                             -Dsonar.kotlin.binaries=${SONARQUBE_BINARY_PATH_KOTLIN} \
+        //                             -Dsonar.sourceEncoding=UTF-8
+        //                     """
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        // stage('SonarQube Quality Gate (Main)') {
+        //     when {
+        //         expression {
+        //             env.IS_MAIN_BRANCH == 'true'
+        //         }
+        //     }
+        //     steps {
+        //         script {
+        //             withSonarQubeEnv("${SONARQUBE_SERVER_NAME}") {
+        //                 timeout(time: 10, unit: 'MINUTES') {
+        //                     waitForQualityGate abortPipeline: true
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
         stage('Docker Build Test') {
             when {
                 changeRequest()
@@ -108,11 +273,13 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' ||
-                                     env.GIT_BRANCH == 'origin/main' ||
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-
+                    // 현재 커밋과 origin/main 비교 (매번 직접 확인)
+                    def currentCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                    def mainCommit = sh(script: "git rev-parse origin/main", returnStdout: true).trim()
+                    def isMainBranch = (currentCommit == mainCommit)
+                    
+                    echo "Docker Build & Push: currentCommit=${currentCommit}, mainCommit=${mainCommit}, isMainBranch=${isMainBranch}"
+                    
                     if (isMainBranch) {
                         // Docker 캐시 정리 (손상된 레이어 제거)
                         sh """
@@ -175,11 +342,13 @@ pipeline {
         stage('Deploy to NCP Server') {
             steps {
                 script {
-                    def isMainBranch = env.BRANCH_NAME == 'main' ||
-                                     env.GIT_BRANCH == 'origin/main' ||
-                                     env.GIT_BRANCH == 'main' ||
-                                     sh(script: 'git branch --show-current', returnStdout: true).trim() == 'main'
-
+                    // 현재 커밋과 origin/main 비교 (매번 직접 확인)
+                    def currentCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                    def mainCommit = sh(script: "git rev-parse origin/main", returnStdout: true).trim()
+                    def isMainBranch = (currentCommit == mainCommit)
+                    
+                    echo "Deploy to NCP: currentCommit=${currentCommit}, mainCommit=${mainCommit}, isMainBranch=${isMainBranch}"
+                    
                     if (isMainBranch) {
                         // 서버의 .env 파일을 Jenkins 워크스페이스로 복사
                         sh '''
@@ -251,8 +420,8 @@ for i in {1..24}; do
 done
 
 # Nginx 컨테이너 재시작 (기존 컨테이너 제거 후 시작)
-docker-compose -f docker-compose.prod.yml rm -f nginx 2>/dev/null || true
-docker-compose -f docker-compose.prod.yml up -d nginx
+docker-compose -f docker-compose.prod.yml rm -f nginx-app 2>/dev/null || true
+docker-compose -f docker-compose.prod.yml up -d nginx-app
 
 # 사용하지 않는 Docker 리소스 정리 (디스크 절약)
 echo "=== Cleaning up Docker resources ==="
@@ -285,7 +454,7 @@ df -h /
 sleep 10
 docker ps
 echo "Checking service health..."
-docker inspect --format='{{.Name}}: {{.State.Health.Status}}' backend nginx || true
+docker inspect --format='{{.Name}}: {{.State.Health.Status}}' backend nginx-app || true
 EOF
                                 """
                             }
