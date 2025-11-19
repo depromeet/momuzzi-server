@@ -21,9 +21,8 @@ services:
     container_name: ngrinder-controller
     restart: unless-stopped
     ports:
-      - "16001:16001"   # nGrinder 웹 콘솔 (HTTP)
-      - "16010:16010"   # 에이전트 제어 포트
-      - "8000:80"
+      - "16001:80"      # nGrinder 웹 콘솔 (HTTP)
+      - "16010:16001"   # 에이전트 제어 포트
     environment:
       - TZ=Asia/Seoul
       - NGRINDER_HOME=/opt/ngrinder-controller
@@ -40,7 +39,7 @@ services:
       - ngrinder-controller
     environment:
       - TZ=Asia/Seoul
-    command: ["-c", "ngrinder-controller", "-p", "16001", "-r", "local"]
+    command: ngrinder-controller:16001
     volumes:
       - ./module-infrastructure/ngrinder/agent:/opt/ngrinder-agent
     networks:
