@@ -3,6 +3,8 @@ package org.depromeet.team3.place
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import org.depromeet.team3.place.client.GooglePlacesClient
@@ -18,7 +20,7 @@ import java.time.LocalDateTime
 class PlaceQuery(
     private val googlePlacesClient: GooglePlacesClient,
     private val placeJpaRepository: PlaceJpaRepository,
-    private val placeAddressResolver: org.depromeet.team3.place.util.PlaceAddressResolver
+    private val placeAddressResolver: PlaceAddressResolver
 ) {
     private val logger = LoggerFactory.getLogger(PlaceQuery::class.java)
     /**
@@ -72,8 +74,12 @@ class PlaceQuery(
         val uncachedIds = placeIds.filter { it !in cachedPlaces.keys }
 
         val idsToFetch = (needingUpdateIds + uncachedIds).distinct()
+        // 현재 코루틴 컨텍스트 캡처 (MDC 등 전파를 위해)
+        val parentContext = currentCoroutineContext()
+        
         val fetchResults = idsToFetch.map { placeId ->
-            async(Dispatchers.IO.limitedParallelism(12)) {
+            async(parentContext + Dispatchers.IO.limitedParallelism(12)) {
+                ensureActive()  // 취소 신호 확인
                 try {
                     val response = googlePlacesClient.getPlaceDetails(placeId)
                     Triple(response, openNowMap[placeId], linkMap[placeId])

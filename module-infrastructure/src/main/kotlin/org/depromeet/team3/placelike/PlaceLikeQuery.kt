@@ -34,7 +34,6 @@ class PlaceLikeQuery(
         meetingPlaceId: Long,
         userId: Long
     ): Unit = withContext(Dispatchers.IO) {
-        // 먼저 엔티티를 조회한 후 삭제 (더 안전한 방식)
         placeLikeJpaRepository.findByMeetingPlaceIdAndUserId(meetingPlaceId, userId)
             ?.let { placeLikeJpaRepository.delete(it) }
         Unit

@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.slf4j.MDCContext
@@ -206,9 +208,13 @@ class ExecutePlaceSearchService(
         plan: PlaceSearchPlan.Automatic,
         fallbackLimit: Int
     ): KeywordSearchResult = coroutineScope {
+        // 현재 코루틴 컨텍스트 캡처 (MDC 등 전파를 위해)
+        val parentContext = currentCoroutineContext()
+        
         // 1단계: 각 키워드로 병렬 API 호출
         val deferredResponses = plan.keywords.map { candidate ->
-            async {
+            async(parentContext) {
+                ensureActive()
                 runCatching {
                     candidate to fetchPlacesFromGoogle(candidate.keyword, plan.stationCoordinates)
                 }.onFailure { e ->
@@ -460,7 +466,6 @@ class ExecutePlaceSearchService(
         query: String,
         stationCoordinates: MeetingQuery.StationCoordinates?
     ): PlacesTextSearchResponse {
-        // 호출부에서 정규화되지만, 외부 입력을 고려해 한 번 더 정규화
         val sanitizedQuery = CreateSurveyKeywordService.normalizeKeyword(query)
         if (sanitizedQuery.isBlank()) {
             throw PlaceSearchException(
