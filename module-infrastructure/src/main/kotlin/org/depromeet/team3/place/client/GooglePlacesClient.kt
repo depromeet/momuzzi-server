@@ -68,7 +68,7 @@ class GooglePlacesClient(
                         logger.warn(e) { 
                             "$operation 재시도 (${attempt + 1}/${maxRetries - 1}) - 상태코드: $statusCode, $operationDetail, ${totalDelay}ms 후 재시도 (지터: ${jitter}ms)" 
                         }
-                        delay(totalDelay)
+                        delay(totalDelay)  // delay()는 이미 취소 가능
                         delayMillis = minOf(delayMillis * 2, maxDelayMillis) // 지수 백오프 (다음 재시도를 위해)
                     }
                 } else {
